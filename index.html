@@ -191,6 +191,21 @@
   .bst.part{background:#f7f0d8; color:#8a6d1d; border:1px solid #d9c47a}
   .bst.off{background:#f7e3df; color:#a33c2a; border:1px solid #d99a8d}
   .isx-cats td:first-child{padding-left:14px}
+  /* ---------- просмотрщик текстов документов (ИГИ / документация ГТС) ---------- */
+  #txtModal{display:none; position:fixed; inset:0; z-index:1050; background:rgba(15,28,38,.55)}
+  #txtModal .box{background:var(--panel); width:1000px; max-width:96vw; max-height:92vh; margin:3vh auto; border-radius:10px; padding:18px 22px; box-shadow:0 10px 40px rgba(0,0,0,.35); display:flex; flex-direction:column}
+  #txtModal h2{font-size:15px; margin-right:30px}
+  #txtModal .close{float:right; border:none; background:none; font-size:20px; cursor:pointer; color:var(--mut)}
+  #txtBar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0}
+  #txtBar button{border:1px solid var(--line); background:#fff; border-radius:5px; padding:3px 10px; font-size:12.5px; cursor:pointer}
+  #txtBar button:hover{border-color:var(--c-centr); color:var(--c-centr)}
+  #txtBar select, #txtBar input{border:1px solid var(--line); border-radius:5px; padding:4px 7px; font-size:12.5px; font-family:inherit}
+  #txtBody{overflow:auto; flex:1; background:#fff; border:1px solid var(--line); border-radius:6px; padding:14px 18px; font-size:12.6px; line-height:1.55; white-space:pre-wrap; word-break:break-word; font-family:'Segoe UI',Arial,sans-serif; margin:0; min-height:200px}
+  #txtBody mark{background:#ffe58a; padding:0 1px}
+  table.rows tr.grp td{background:#d8d2c4; font-weight:700; font-size:11.8px; color:#3c3a34}
+  table.rows td.mut{color:var(--mut); font-size:11.5px}
+  .vbtn{border:1px solid #b9c4d0; background:#fff; border-radius:5px; padding:1px 8px; font-size:11.5px; cursor:pointer; white-space:nowrap; color:#2f5f8f}
+  .vbtn:hover{border-color:var(--c-centr); color:var(--c-centr)}
   /* ---------- скрытый раздел НИОКР ---------- */
   #niokrModal{display:none; position:fixed; inset:0; z-index:1100; background:rgba(15,28,38,.6)}
   #niokrModal .box{background:var(--panel); width:1080px; max-width:96vw; max-height:92vh; margin:3vh auto; border-radius:10px; padding:20px 24px; box-shadow:0 10px 40px rgba(0,0,0,.4); display:flex; flex-direction:column}
@@ -453,6 +468,23 @@
   </div>
 </div>
 
+<div id="txtModal">
+  <div class="box">
+    <button class="close" id="txtClose">✕</button>
+    <h2 id="txtTitle"></h2>
+    <div class="note" id="txtMeta"></div>
+    <div id="txtBar">
+      <button id="txtPrev">← пред.</button>
+      <select id="txtPage"></select>
+      <button id="txtNext">след. →</button>
+      <input id="txtQ" placeholder="Поиск по тексту документа…" style="flex:1; min-width:220px">
+      <button id="txtFind">найти</button>
+      <span class="note" id="txtInfo"></span>
+    </div>
+    <pre id="txtBody">Загрузка…</pre>
+  </div>
+</div>
+
 <div id="niokrModal">
   <div class="box">
     <button class="close" id="niokrClose">✕</button>
@@ -537,14 +569,14 @@
   </div>
 </div>
 
-<script src="db_p1.js?v=f03a8e98"></script>
-<script src="db_p2.js?v=f03a8e98"></script>
-<script src="db_p3.js?v=f03a8e98"></script>
-<script src="db_p4.js?v=f03a8e98"></script>
-<script src="db_p5.js?v=f03a8e98"></script>
-<script src="db_p6.js?v=f03a8e98"></script>
-<script src="db_p7.js?v=f03a8e98"></script>
-<script src="db_p8.js?v=f03a8e98"></script>
+<script src="db_p1.js?v=f2588da5"></script>
+<script src="db_p2.js?v=f2588da5"></script>
+<script src="db_p3.js?v=f2588da5"></script>
+<script src="db_p4.js?v=f2588da5"></script>
+<script src="db_p5.js?v=f2588da5"></script>
+<script src="db_p6.js?v=f2588da5"></script>
+<script src="db_p7.js?v=f2588da5"></script>
+<script src="db_p8.js?v=f2588da5"></script>
 <script src="niokr.js?v=311e584678"></script>
 
 <div id="loginModal">
@@ -1849,6 +1881,7 @@ function tabGtsPassport(o, el){
     <tr><td>Наименование объекта</td><td><b>${esc(o.a)}</b></td></tr>
     <tr><td>Предприятие</td><td>${esc(o.d||'—')}</td></tr>
     <tr><td>Тип ГТС</td><td>${sel(o,'pf','type', g.type||'', TYPE_OPTS)}</td></tr>
+    <tr><td>Вид и тип ГТС по декларации безопасности <span class="note">(приказ Ростехнадзора от 07.12.2020 № 499, Российский регистр ГТС)</span></td><td>${esc(g.vt||'—')}</td></tr>
     <tr><td>Класс ГТС (ПП РФ № 1607)</td><td>${sel(o,'pf','klass', g.klass||'', ['','I','II','III','IV'])}</td></tr>
     <tr><td>Тип по рельефу</td><td>${esc(g.relief||'—')}</td></tr>
     <tr><td>Способ образования</td><td>${esc(g.fill||'—')}</td></tr>
@@ -2085,21 +2118,50 @@ function tabGtsDocs(o, el){
   ${isx.cats.map(c=>`<tr><td>${esc(c.cat)}</td><td><b>${c.n}</b></td><td>${c.yrs&&c.yrs.length?esc(c.yrs[0]+(c.yrs.length>1?' – '+c.yrs[c.yrs.length-1]:'')):'—'}</td><td class="note">архив «Исходники», папка объекта</td></tr>`).join('')}
   </tbody></table>
   <div class="note" style="margin:-4px 0 10px">Папка объекта: «${esc(isx.folder)}». Файлы хранятся в архиве исходных данных НИР; числовые ряды (термометрия, пьезометрия, геодезия) извлекаются во вкладки мониторинга на этапе загрузки данных.</div>`:'';
+  /* --- статичные реестры из базы (db.js): документация ГТС (по видам) и отчёты ИГИ --- */
+  const GTS_V_ORDER=['Декларация безопасности ГТС','Проект эксплуатации (ПЭ)','Правила эксплуатации','Инструкция по эксплуатации','Проект/программа мониторинга','Проектная документация (ПД)','Рабочая документация (РД)','Проектная и рабочая документация (прочие комплекты)','Журналы контроля (формы)','Прочее'];
+  const txtBtn=(store,r)=>{
+    if(r.f&&!r.scan) return '<button class="vbtn" data-store="'+store+'" data-id="'+esc(r.f)+'">📖 текст'+(r.pages?' ('+r.pages+' стр.)':'')+'</button>';
+    if(r.f&&r.scan) return '<span class="mut" title="Скан без текстового слоя — использовать оригинал из архива">скан</span>';
+    return '<span class="mut">—</span>';
+  };
+  let docsHtml='';
+  if(o.gtsdocs&&o.gtsdocs.length){
+    const groups={};
+    o.gtsdocs.forEach(r=>{ const v=r.v||'Прочее'; (groups[v]=groups[v]||[]).push(r); });
+    const order=GTS_V_ORDER.filter(v=>groups[v]);
+    Object.keys(groups).filter(v=>!GTS_V_ORDER.includes(v)).forEach(v=>order.push(v));
+    docsHtml='<div class="sect">Реестр документации ГТС · '+o.gtsdocs.length+' поз.</div>'
+    +'<table class="rows static"><thead><tr><th style="width:36%">Наименование документа</th><th style="width:7%">Год</th><th style="width:22%">Организация / разработчик</th><th style="width:12%">Текст</th><th>Примечание</th></tr></thead><tbody>'
+    +order.map(v=>'<tr class="grp"><td colspan="5">'+esc(v)+' · '+groups[v].length+'</td></tr>'
+      +groups[v].map(r=>'<tr><td>'+esc(r.t||'')+(r.comp?'<div class="mut">'+esc(r.comp)+'</div>':'')+'</td><td>'+esc(r.y||'—')+'</td><td>'+esc(r.org||'—')+'</td><td>'+txtBtn('docs_txt',r)+'</td><td class="mut">'+esc(r.note||'')+'</td></tr>').join('')).join('')
+    +'</tbody></table>';
+  }
+  let igiHtml='';
+  if(o.igirep&&o.igirep.length){
+    igiHtml='<div class="sect">Реестр отчётов инженерно-геологических изысканий · '+o.igirep.length+'</div>'
+    +'<table class="rows static"><thead><tr><th style="width:36%">Отчёт ИГИ</th><th style="width:7%">Год</th><th style="width:20%">Организация</th><th style="width:15%">Скважины / объёмы</th><th style="width:11%">Текст</th><th>Примечание</th></tr></thead><tbody>'
+    +o.igirep.map(r=>'<tr><td>'+esc(r.t||'')+(r.comp?'<div class="mut">'+esc(r.comp)+'</div>':'')+'</td><td>'+esc(r.y||'—')+'</td><td>'+esc(r.org||'—')+'</td><td>'+esc(r.skv||'—')+'</td><td>'+txtBtn('igi_txt',r)+'</td><td class="mut">'+esc(r.note||'')+'</td></tr>').join('')
+    +'</tbody></table>';
+  }
   el.innerHTML=`
   <div class="normref">Состав документации ГТС: паспорт ГТС, декларация безопасности, критерии безопасности, инструкция по эксплуатации — ФЗ-117, ФНП (приказ Ростехнадзора от 08.05.2024 № 151); проектная и исполнительная документация — ПП РФ № 87, шифры — ГОСТ 21.1101-2013; отчёты ИГИ — СП 47.13330.2016. Полный перечень НТД со статусами — кнопка «§ Нормативка» в шапке.</div>
   ${isxHtml}
-  <div class="sect">Реестр документации ГТС</div>
+  ${docsHtml}
+  <div class="sect" style="font-size:12px">Реестр документации ГТС — записи, добавленные вручную</div>
   <table class="rows" id="docsTbl"><thead><tr>
     <th style="width:32%">Наименование документа</th><th style="width:14%">Шифр / №</th><th style="width:18%">Разработчик / организация</th><th style="width:8%">Год</th><th style="width:8%">Стадия</th><th>Примечание</th><th></th>
   </tr></thead><tbody></tbody></table>
   <button class="addrow" id="docsAdd">+ добавить документ</button>
-  <div class="sect">Реестр отчётов инженерно-геологических изысканий</div>
+  ${igiHtml}
+  <div class="sect" style="font-size:12px">Реестр отчётов ИГИ — записи, добавленные вручную</div>
   <table class="rows" id="igiTbl"><thead><tr>
     <th style="width:22%">Отчёт ИГИ / инв. №</th><th style="width:8%">Год</th><th style="width:18%">Организация</th><th style="width:13%">Скважины ИГИ</th><th style="width:19%">Грунты (ИГЭ)</th><th style="width:8%">УГВ, м</th><th>Примечание</th><th></th>
   </tr></thead><tbody></tbody></table>
   <button class="addrow" id="igiAdd">+ добавить отчёт ИГИ</button>`;
   renderRows2(o, el.querySelector('#docsTbl'), 'docs', ['name','shifr','org','year','stage','note'], {stage:['','П','Р','РД','ИД','ЭД']}, el.querySelector('#docsAdd'));
   renderRows2(o, el.querySelector('#igiTbl'), 'igi', ['report','year','org','wells','grunt','ugv','note'], null, el.querySelector('#igiAdd'));
+  el.querySelectorAll('.vbtn').forEach(b=>b.onclick=()=>txtOpen(b.dataset.store,b.dataset.id));
 }
 function tabGeoterm(o, el){
   const st=statusOf(o);
@@ -3727,6 +3789,71 @@ function openNtd(){
 document.getElementById('ntdBtn').onclick=openNtd;
 document.getElementById('ntdClose').onclick=()=>ntdModal.style.display='none';
 ntdModal.addEventListener('click',e=>{ if(e.target===ntdModal) ntdModal.style.display='none'; });
+
+/* ---------- просмотрщик текстов документов (ИГИ / документация ГТС, ленивая подгрузка igi_txt/ docs_txt/) ---------- */
+const txtModal=document.getElementById('txtModal');
+const TXT_CACHE={};
+let txtCur=null;
+function txtOpen(store,id){
+  const key=store+'/'+id;
+  txtModal.style.display='block';
+  txtCur=null;
+  document.getElementById('txtTitle').textContent='Загрузка…';
+  document.getElementById('txtMeta').textContent='';
+  document.getElementById('txtBody').textContent='Подгрузка текстового слоя документа…';
+  document.getElementById('txtInfo').textContent='';
+  document.getElementById('txtPage').innerHTML='';
+  document.getElementById('txtQ').value='';
+  if(TXT_CACHE[key]){ txtShow(TXT_CACHE[key],key); return; }
+  const s=document.createElement('script');
+  s.src=store+'/'+id+'.js';
+  s.onload=()=>{
+    const reg=store==='igi_txt'?window.IGI_TXT:window.DOC_TXT;
+    const d=reg&&reg[id];
+    if(!d){ document.getElementById('txtBody').textContent='Текст не найден ('+key+')'; return; }
+    TXT_CACHE[key]=d; txtShow(d,key);
+  };
+  s.onerror=()=>{ document.getElementById('txtBody').textContent='Не удалось загрузить файл текста: '+key+'.js'; };
+  document.head.appendChild(s);
+}
+function txtShow(d,key){
+  txtCur={key:key, pages:d.pages||(d.pagesTxt?d.pagesTxt.length:0), pagesTxt:d.pagesTxt||[], pg:0, hl:''};
+  document.getElementById('txtTitle').textContent=d.title||key;
+  document.getElementById('txtMeta').textContent='Страниц в текстовом слое: '+txtCur.pages+'. Текст извлечён из PDF/DOC автоматически и может содержать ошибки распознавания; для официальных целей — оригинал из архива исходных данных НИР.';
+  document.getElementById('txtPage').innerHTML=txtCur.pagesTxt.map((_,i)=>'<option value="'+i+'">стр. '+(i+1)+'</option>').join('');
+  txtRender();
+}
+function txtRender(){
+  if(!txtCur) return;
+  let t=txtCur.pagesTxt[txtCur.pg]||'(пустая страница)';
+  t=esc(t);
+  if(txtCur.hl){
+    const q=esc(txtCur.hl).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    t=t.replace(new RegExp(q,'gi'),m=>'<mark>'+m+'</mark>');
+  }
+  document.getElementById('txtBody').innerHTML=t;
+  document.getElementById('txtPage').value=txtCur.pg;
+  document.getElementById('txtInfo').textContent='стр. '+(txtCur.pg+1)+' / '+txtCur.pages;
+}
+document.getElementById('txtClose').onclick=()=>txtModal.style.display='none';
+txtModal.addEventListener('click',e=>{ if(e.target===txtModal) txtModal.style.display='none'; });
+document.getElementById('txtPrev').onclick=()=>{ if(txtCur&&txtCur.pg>0){txtCur.pg--; txtRender();} };
+document.getElementById('txtNext').onclick=()=>{ if(txtCur&&txtCur.pg<txtCur.pages-1){txtCur.pg++; txtRender();} };
+document.getElementById('txtPage').onchange=e=>{ if(txtCur){txtCur.pg=+e.target.value; txtRender();} };
+document.getElementById('txtFind').onclick=()=>{
+  if(!txtCur) return;
+  const q=document.getElementById('txtQ').value.trim();
+  if(!q){ txtCur.hl=''; txtRender(); return; }
+  const ql=q.toLowerCase(), n=txtCur.pagesTxt.length;
+  const start=(txtCur.hl===q)?(txtCur.pg+1)%n:txtCur.pg;
+  for(let k=0;k<n;k++){
+    const i=(start+k)%n;
+    if((txtCur.pagesTxt[i]||'').toLowerCase().includes(ql)){ txtCur.pg=i; txtCur.hl=q; txtRender(); return; }
+  }
+  txtCur.hl=''; txtRender();
+  document.getElementById('txtInfo').textContent='«'+q+'» — не найдено';
+};
+document.getElementById('txtQ').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('txtFind').click(); });
 
 /* ---------- скрытый раздел «НИОКР 2026 НПО Фундамент» (отдельный пароль) ---------- */
 const niokrModal=document.getElementById('niokrModal');
@@ -5966,8 +6093,8 @@ setTimeout(()=>{ try{
 }catch(e){} }, 5000); // тихое ежедневное пополнение метеоряда при открытии приложения
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"6hl/4EOfyGY5te5t"};
-const BUILD="f03a8e98";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"WKZqPC3c6nTIBLNd"};
+const BUILD="f2588da5";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
