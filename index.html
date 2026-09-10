@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель»</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="shortcut icon" href="favicon.ico">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -246,9 +249,12 @@
   #loginModal .lnote{font-size:11.3px; color:var(--mut); margin-top:10px; border-top:1px solid var(--line); padding-top:10px}
   #logoutBtn{background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px}
   #logoutBtn:hover{background:#1b2c3a}
-  body.role-view #uploadBtn, body.role-view .addrow, body.role-view .delrow{display:none !important}
+  /* Ролевая модель (ФЗ-117, ФНП № 151): наблюдатель — просмотр; оператор — ведение базы; надзор — контроль без редактирования */
+  body.role-view #uploadBtn, body.role-insp #uploadBtn, body.role-view .addrow, body.role-insp .addrow, body.role-view .delrow, body.role-insp .delrow{display:none !important}
   body:not(.role-edit) #geoPosBtn{display:none}
-  body.role-view input.ed, body.role-view select.ed, body.role-view textarea.ed{pointer-events:none; border-color:transparent !important; background:transparent !important}
+  body.role-view input.ed, body.role-view select.ed, body.role-view textarea.ed, body.role-insp input.ed, body.role-insp select.ed, body.role-insp textarea.ed{pointer-events:none; border-color:transparent !important; background:transparent !important}
+  body.role-view #repBtn, body.role-view #regExport, body.role-view .tglock{display:none !important}
+  body:not(.role-edit) #niokrBtn{display:none !important}
   /* причины статуса */
   .reasons{margin:6px 0 4px; border:1px solid var(--line); border-radius:6px; background:#fff; padding:6px 10px}
   .rsn{font-size:12.2px; padding:2px 0; line-height:1.4}
@@ -520,7 +526,7 @@
     <input type="password" id="loginPw" placeholder="Пароль" autocomplete="current-password" autofocus>
     <button type="submit">Войти</button>
     <div class="lerr" id="loginErr"></div>
-    <div class="lnote">Уровни доступа: <b>наблюдатель</b> — просмотр базы и графиков; <b>оператор</b> — просмотр, загрузка замеров, ведение карточек объектов.</div>
+    <div class="lnote">Уровни доступа: <b>наблюдатель</b> — просмотр базы и графиков; <b>оператор</b> — загрузка замеров, ведение карточек, отчёты и выгрузки; <b>надзор</b> — контроль: замечания и предписания, чек-листы осмотров, выгрузки (без изменения данных мониторинга).</div>
   </form>
 </div>
 <script>window.__initApp=function(){
@@ -4058,6 +4064,7 @@ function tgOvr(id){ TG.ovr=TG.ovr||{}; return TG.ovr[id]=TG.ovr[id]||{replies:[]
 let TG_VIEW='tg';
 function openTg(o,view){
   TG_VIEW=view||'tg';
+  if(document.body.classList.contains('role-insp')) sessionStorage.setItem('gtm_tg_ok','1'); // надзорная роль подтверждена при входе — пароль раздела не требуется
   const m=document.getElementById('tgModal'); m.style.display='block';
   tgRender(o);
 }
@@ -5079,24 +5086,26 @@ async function exportInspWord(o, cur){
   a2.download='Акт_осмотра_'+o.a.replace(/[\s\/]+/g,'_')+'_'+(cur.head.date||'')+'.docx';
   a2.click();
 }
-const PWH={view:'e25263815248915f93d27213a93195cf2b11e94e51171099fb6a5c6954cc040a',
-           edit:'2fc5b5a616cdbc8e4081158340a5d424d05a2be0a4df7aa968c04868103f89cc'};
+const PWH={view:'6c5c0bb7759179eabecaba02fbef4973cb4c5ecdc1a8312d6a703a356f3de4a5',
+           edit:'d084b94e55a00f4fe5878949a2063529c9cd09d7afba6143b5ce32d3b2d72db0',
+           insp:'ea0f6f487dd9dfe52dcf1423c1810274282e497f46150433c3c236c2df4098bf'};
 async function sha256Hex(s){ const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 function enterApp(role){
   sessionStorage.setItem('gtm_role', role);
   document.body.classList.add('authed', 'role-'+role);
   document.getElementById('loginModal').style.display='none';
-  document.getElementById('roleBadge').textContent=role==='edit'?'оператор':'наблюдатель';
+  document.getElementById('roleBadge').textContent=role==='edit'?'оператор':(role==='insp'?'надзор':'наблюдатель');
 }
 (function initAuth(){
-  document.getElementById('logoutBtn').onclick=()=>{ sessionStorage.removeItem('gtm_role'); sessionStorage.removeItem('gtm_k'); sessionStorage.removeItem('gtm_niokr'); location.reload(); };
+  document.getElementById('logoutBtn').onclick=()=>{ sessionStorage.removeItem('gtm_role'); sessionStorage.removeItem('gtm_k'); sessionStorage.removeItem('gtm_niokr'); sessionStorage.removeItem('gtm_tg_ok'); location.reload(); };
   const role=sessionStorage.getItem('gtm_role');
-  if(role==='view'||role==='edit'){ enterApp(role); return; }
+  if(role==='view'||role==='edit'||role==='insp'){ enterApp(role); return; }
   document.getElementById('loginModal').style.display='flex';
   document.getElementById('loginForm').onsubmit=async ev=>{
     ev.preventDefault();
     const h=await sha256Hex(document.getElementById('loginPw').value);
     if(h===PWH.edit) enterApp('edit');
+    else if(h===PWH.insp) enterApp('insp');
     else if(h===PWH.view) enterApp('view');
     else document.getElementById('loginErr').textContent='Неверный пароль';
   };
@@ -5523,7 +5532,7 @@ setTimeout(()=>{ try{
 };
 const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"LoNYt9SL7AdaYIf4"};
 const BUILD="abd0df9b";
-function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":"наблюдатель"; }
+function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
   try{
@@ -5566,7 +5575,7 @@ async function _decrypt(rawK){
       if(!silent) errEl.textContent="Не удалось загрузить данные. Обновите страницу (Ctrl+F5). Если ошибка повторится — сообщите администратору. ("+e+")";
     }
   }
-  document.getElementById("logoutBtn").onclick=()=>{ sessionStorage.removeItem("gtm_role"); sessionStorage.removeItem("gtm_k"); sessionStorage.removeItem("gtm_niokr"); location.reload(); };
+  document.getElementById("logoutBtn").onclick=()=>{ sessionStorage.removeItem("gtm_role"); sessionStorage.removeItem("gtm_k"); sessionStorage.removeItem("gtm_niokr"); sessionStorage.removeItem("gtm_tg_ok"); location.reload(); };
   lm.style.display="flex";
   document.getElementById("loginForm").onsubmit=async ev=>{
     ev.preventDefault(); errEl.textContent="";
@@ -5575,7 +5584,7 @@ async function _decrypt(rawK){
     if(rawK) return init(rawK,"edit");
     rawK=await _unwrap(pw,ENC.saltV,ENC.ivV,ENC.wrapV);
     if(rawK) return init(rawK,"view");
-    if(ENC.saltX){ rawK=await _unwrap(pw,ENC.saltX,ENC.ivX,ENC.wrapX); if(rawK) return init(rawK,"view"); }
+    if(ENC.saltX){ rawK=await _unwrap(pw,ENC.saltX,ENC.ivX,ENC.wrapX); if(rawK) return init(rawK,"insp"); }
     errEl.textContent="Неверный пароль";
   };
   const ck=sessionStorage.getItem("gtm_k"), cr=sessionStorage.getItem("gtm_role");
