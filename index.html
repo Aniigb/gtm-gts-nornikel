@@ -116,7 +116,7 @@
   .photos figcaption{font-size:10.5px; padding:3px 6px; color:var(--mut); display:flex; justify-content:space-between; align-items:center}
   .ukgroup{position:sticky; top:0; background:#e4ded2; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.4px; color:#5a5346; border-bottom:1px solid var(--line); z-index:5}
   .ukgroup .n{font-weight:400; color:var(--mut); margin-left:6px}
-  /* --- аккордеон по улицам (полный реестр МКД) --- */
+  /* --- аккордеон по предприятиям (полный реестр ГТС) --- */
   .acc-h{padding:7px 14px; font-size:12.5px; font-weight:700; color:#4a4234; background:#efe9dc; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center}
   .acc-h:hover{background:#e7dfcd}
   .acc-h .n{font-weight:400; color:var(--mut); font-size:11px}
@@ -220,7 +220,7 @@
   .rsn.r-crit{color:var(--crit)}
   .rsn.r-risk{color:#a86400}
   .rsn.r-ok{color:var(--ok)}
-  /* ---------- телефонограммы (скрытый раздел) ---------- */
+  /* ---------- замечания и предписания (скрытый раздел) ---------- */
   .tglock{border:none; background:none; cursor:pointer; font-size:12px; color:var(--mut); padding:1px 4px}
   .tglock:hover{color:var(--ink)}
   #tgModal{display:none; position:fixed; inset:0; z-index:1100; background:rgba(15,28,38,.6)}
@@ -291,15 +291,8 @@
     <button id="logoutBtn" title="Выйти / сменить пользователя">⎋ Выход</button>
   </header>
   <div id="side">
-    <div style="display:flex; gap:6px; padding:10px 12px 4px">
-      <button class="brbtn on" id="brMkd">🏢 МКД</button>
-      <button class="brbtn" id="brSkb" title="Объекты соцкультбыта Администрации г. Норильска">🏛 Соцкультбыт Адм.</button>
-    </div>
     <div class="chips" id="chips"></div>
-    <select id="ukFilter" style="margin:0 12px 6px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:12.5px; width:calc(100% - 24px)"></select>
-    <label style="margin:0 12px 8px; font-size:11.8px; color:var(--mut); display:flex; gap:6px; align-items:center; cursor:pointer"><input type="checkbox" id="ukGroup"> группировать список по УК</label>
-    <label style="margin:0 12px 8px; font-size:11.8px; color:#5b4a7a; display:flex; gap:6px; align-items:center; cursor:pointer" title="Фиолетовые маркеры на карте — дома в краткосрочном плане ремонтов текущего года (Power BI регоператора)"><input type="checkbox" id="kpYr"> 🔧 КП <span id="kpYrNum"></span> на карте</label>
-    <input id="search" placeholder="Поиск по адресу…">
+    <input id="search" placeholder="Поиск по наименованию объекта ГТС…">
     <div id="list"></div>
   </div>
   <div id="map">
@@ -308,7 +301,6 @@
       <div><span class="sw" style="background:#e08a00"></span>РИСК</div>
       <div><span class="sw" style="background:#c8372d"></span>КРИТИЧНО</div>
       <div><span class="sw" style="background:#8a97a3"></span>без замеров</div>
-      <div><span class="sw" style="background:transparent; border:2px solid #2f6fb2; border-radius:2px"></span>границы районов</div>
     </div>
     <div id="wxTicker" title="Текущая погода в Норильске (Open-Meteo, обновление каждые 30 мин; пауза — навести курсор)"><div class="tk"><span id="wxA">загрузка погоды…</span><span id="wxB" aria-hidden="true"></span></div></div>
     <div id="mapTicker" title="Бегущая строка: количество объектов по категориям состояния (пауза — навести курсор)"><div class="tk"><span id="tkA"></span><span id="tkB" aria-hidden="true"></span></div></div>
@@ -328,11 +320,8 @@
   <label>РИСК: скорость осадки ≥ <span><input id="sGRisk" type="number" step="1"> мм/год</span></label>
   <label>КРИТИЧНО: скорость осадки ≥ <span><input id="sGCrit" type="number" step="1"> мм/год</span></label>
   <label>КРИТИЧНО: суммарная осадка ≥ <span><input id="sGTotal" type="number" step="5"> мм</span></label>
-  <h3 style="margin-top:12px">Несущая способность сваи против проектной</h3>
-  <label>РИСК: F_d &lt; <span><input id="sBearR" type="number" step="0.01"> доли проектной</span></label>
-  <label>КРИТИЧНО: F_d &lt; <span><input id="sBearC" type="number" step="0.01"> доли проектной</span></label>
   <button class="save" id="sSave">Применить</button>
-  <div class="note">Пороги — рабочие превентивные значения макета; при наличии проектной (расчётной) температуры основания здания введите её в карточке объекта.</div>
+  <div class="note">Пороги — рабочие превентивные значения макета для режимного мониторинга ГТС. Предельные значения показателей состояния сооружений (критерии безопасности К1/К2) задаются во вкладке «Контрольные критерии» карточки объекта по данным декларации безопасности ГТС (ФЗ-117, ст. 9; ГОСТ Р 59873-2021).</div>
 </div>
 
 <div id="tgModal">
@@ -353,15 +342,15 @@
   <div class="box">
     <button class="close" id="repClose">✕</button>
     <h2 style="font-size:16px">Формирование сводного отчёта по результатам геотехнического мониторинга</h2>
-    <div class="normref noprint">Методика: балльная оценка по трём направлениям (грунты основания / прочность по деформациям / дефекты и повреждения), категории технического состояния — по ГОСТ 31937-2024; требования к эксплуатации — СП 497.1325800.2020, СП 25.13330.2020.</div>
+    <div class="normref noprint">Методика: балльная оценка по направлениям (температурный режим грунтов / деформации сооружений / дефекты и повреждения), категории технического состояния — по ГОСТ 31937-2024; критерии безопасности ГТС — ФЗ-117 (ст. 9), ФНП приказ Ростехнадзора от 08.05.2024 № 151, ГОСТ Р 59873-2021; мониторинг на ММГ — СП 25.13330.2020.</div>
     <div class="noprint" style="display:flex; gap:18px; flex-wrap:wrap; margin-top:6px">
       <div>
         <b style="font-size:12.5px">Задачи отчёта:</b>
-        <label class="task"><input type="checkbox" class="repTask" value="passport" checked> Паспорт и общие сведения</label>
+        <label class="task"><input type="checkbox" class="repTask" value="passport" checked> Паспорт ГТС и общие сведения</label>
         <label class="task"><input type="checkbox" class="repTask" value="gtm" checked> Паспорт геотехнического мониторинга</label>
-        <label class="task"><input type="checkbox" class="repTask" value="grunts" checked> Оценка несущей способности по грунтам основания</label>
-        <label class="task"><input type="checkbox" class="repTask" value="strength" checked> Оценка по прочности (деформации основания)</label>
-        <label class="task"><input type="checkbox" class="repTask" value="defects" checked> Оценка по дефектам и повреждениям конструкций</label>
+        <label class="task"><input type="checkbox" class="repTask" value="grunts" checked> Температурный режим грунтов тела и основания сооружений</label>
+        <label class="task"><input type="checkbox" class="repTask" value="strength" checked> Деформации сооружений (геодезические наблюдения)</label>
+        <label class="task"><input type="checkbox" class="repTask" value="defects" checked> Дефекты и повреждения сооружений</label>
         <label class="task"><input type="checkbox" class="repTask" value="concl" checked> Выводы и рекомендуемые мероприятия</label>
       </div>
       <div>
@@ -385,13 +374,9 @@
     <div class="normref" id="regSummary"></div>
     <div style="display:flex; gap:10px; margin:8px 0; flex-wrap:wrap; align-items:center">
       <select id="regD" style="padding:5px 8px; border:1px solid var(--line); border-radius:6px; font-size:12.5px">
-        <option value="">Все районы</option><option>Центральный</option><option>Талнах</option><option>Кайеркан</option>
+        <option value="">Все предприятия</option><option>ТОФ</option><option>НМЗ</option><option>НОФ</option><option>Дудинка</option>
       </select>
-      <select id="regUK" style="padding:5px 8px; border:1px solid var(--line); border-radius:6px; font-size:12.5px"></select>
       <button id="regExport" style="border:1px solid var(--c-centr); background:var(--c-centr); color:#fff; border-radius:6px; padding:6px 14px; font-size:12.5px; cursor:pointer">⬇ Выгрузить в Excel</button>
-      <button id="regExportUK" title="Один файл, отдельный лист на каждую управляющую компанию" style="border:1px solid var(--c-centr); background:#fff; color:var(--c-centr); border-radius:6px; padding:6px 14px; font-size:12.5px; cursor:pointer">⬇ Ведомости по УК (листы)</button>
-      <button id="regPlansUK" title="Один файл на УК: все планы мероприятий её домов (ремонт + противоаварийные). УК выбирается в фильтре слева; без фильтра — файлы по всем УК" style="border:1px solid var(--ok); background:#fff; color:var(--ok); border-radius:6px; padding:6px 14px; font-size:12.5px; cursor:pointer">📦 Планы УК (Excel)</button>
-      <button id="regCoverageUK" title="Ведомость охвата осмотрами: по каждой УК дома, осмотрено за квартал/6/12 мес., % охвата, список неосмотренных адресов" style="border:1px solid var(--ok); background:#fff; color:var(--ok); border-radius:6px; padding:6px 14px; font-size:12.5px; cursor:pointer">📊 Охват осмотрами по УК</button>
       <span class="note">Клик по строке открывает карточку объекта.</span>
     </div>
     <div id="regWrap"><table class="reg" id="regTable"></table></div>
@@ -451,14 +436,14 @@
   </div>
 </div>
 
-<script src="db_p1.js?v=a496b5c9"></script>
-<script src="db_p2.js?v=a496b5c9"></script>
-<script src="db_p3.js?v=a496b5c9"></script>
-<script src="db_p4.js?v=a496b5c9"></script>
-<script src="db_p5.js?v=a496b5c9"></script>
-<script src="db_p6.js?v=a496b5c9"></script>
-<script src="db_p7.js?v=a496b5c9"></script>
-<script src="db_p8.js?v=a496b5c9"></script>
+<script src="db_p1.js?v=bca8cfe9"></script>
+<script src="db_p2.js?v=bca8cfe9"></script>
+<script src="db_p3.js?v=bca8cfe9"></script>
+<script src="db_p4.js?v=bca8cfe9"></script>
+<script src="db_p5.js?v=bca8cfe9"></script>
+<script src="db_p6.js?v=bca8cfe9"></script>
+<script src="db_p7.js?v=bca8cfe9"></script>
+<script src="db_p8.js?v=bca8cfe9"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -471,7 +456,7 @@
   </form>
 </div>
 <script>window.__initApp=function(){
-const DCOL = {"Центральный":"#2f6fb2","Талнах":"#c05a2e","Кайеркан":"#3d8a5a"};
+const DCOL = {"ТОФ":"#c05a2e","НМЗ":"#2f6fb2","НОФ":"#3d8a5a","Дудинка":"#8a5aa8"};
 const SCOL = {"НОРМА":"#2e7d32","РИСК":"#e08a00","КРИТИЧНО":"#c8372d"};
 const DB = window.DB;
 
@@ -523,10 +508,7 @@ function saveUSERDATA(){ localStorage.setItem('gtm_userdata', JSON.stringify(USE
 const AIR4={}; // 'адрес|скважина|дата' → {tOut,tSa,src,est} — температура наружного воздуха / воздуха подполья на дату замера
 function air4Set(a,w,dt,x){ AIR4[a+'|'+w+'|'+dt]={tOut:(x.tOut!=null?x.tOut:null), tSa:(x.tSa!=null?x.tSa:null), src:x.tOutSrc||null, est:!!x.tSaEst}; }
 
-/* ---------- управляющие компании ---------- */
-const UK_LIST = ['УК «ЖКС-Норильск»','УК «Город»','ООО «Нордсервис»','ООО «СеверныйБыт»','ООО «СеверныйУправдом»','ООО «Заполярный жилищный трест»','ООО «Будущее»'];
-function effectiveUK(o){ if(o.br==='skb') return o.podr||'Администрация г. Норильска';
-  const c=CARD[o.a]; return (c&&c.uk!==undefined&&c.uk!=='')?c.uk:(o.uk||'Не определена'); }
+/* ---------- эксплуатирующие организации (предприятия ЗФ ПАО «ГМК «Норильский никель») ---------- */
 function normAddrKey(s){
   s=(s||'').toLowerCase().replace(/ё/g,'е');
   s=s.replace(/\([^)]*\)/g,' ');
@@ -538,7 +520,7 @@ function normAddrKey(s){
   if(!m) return s;
   let h=m[2].toLowerCase().replace(/\s/g,'').replace(/_/g,'-');
   const mm=h.match(/^(\d+)([а-я]{2,}.*)$/); if(mm) h=mm[1];
-  h=h.replace(/(\d+)[кK](\d+)$/,'$1').replace(/(\d+)-(\d+)$/,'$1'); // корпус/секция ЖКС -> базовый дом
+  h=h.replace(/(\d+)[кK](\d+)$/,'$1').replace(/(\d+)-(\d+)$/,'$1'); // корпус/секция -> базовый номер
   return m[1].trim()+' '+h;
 }
 
@@ -682,12 +664,6 @@ function statusDetail(o){ // статус + причины (какие прав�
       });
       if(worstD) reasons.push({level:'risk', text:`T на уровне НГК ${worstD.tl} °C выше расчётной ${tc} °C на ${worstD.dv.toFixed(1)} °C > порога ${TH.above} °C (скв. ${worstD.w})`});
     }
-    // запас несущей способности вмороженной сваи против проектной (СП 25.13330.2020, прил. В)
-    const bd=bearingDyn(o);
-    if(bd&&bd.k!==null){
-      if(bd.k<TH.bearCrit) reasons.push({level:'crit', text:`несущая способность сваи ${bd.fd[bd.fd.length-1].toFixed(0)} кН = ${(bd.k*100).toFixed(0)} % от проектной (при T расч ${bd.tc} °C, F_d ${bd.fd0.toFixed(0)} кН) — хуже порога ${(TH.bearCrit*100).toFixed(0)} %`});
-      else if(bd.k<TH.bearRisk) reasons.push({level:'risk', text:`несущая способность сваи снизилась до ${(bd.k*100).toFixed(0)} % от проектной (при T расч ${bd.tc} °C, F_d ${bd.fd0.toFixed(0)} кН) — ниже порога ${(TH.bearRisk*100).toFixed(0)} %`});
-    }
   }
   const gm=geodMetrics(o);
   if(gm){
@@ -701,21 +677,16 @@ function statusDetail(o){ // статус + причины (какие прав�
 function statusOf(o){ return statusDetail(o).status; }
 
 /* ---------- карта ---------- */
-const map = L.map('map',{zoomControl:true}).setView([69.355,88.20], 12);
+const map = L.map('map',{zoomControl:true}).setView([69.40,88.00], 9);
 window.addEventListener('resize', ()=>map.invalidateSize());
 window.addEventListener('orientationchange', ()=>{ map.invalidateSize(); if(curObj) renderDetail(curObj); });
 const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'});
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
 const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'💧 Сток по рельефу (модель, ЦМР 30 м)':hydroGroup,'💧 Оганер · сток (ЦМР 5 см, тест)':hydroOgGroup,'🏢 Контуры зданий · Оганер':fpGroup,'🌡 Тепловая карта грунтов':thermGroup},{position:'topright'}).addTo(map);
-map.on('overlayadd',e=>{ if(e.layer===hydroGroup) hydroToggle(true,'city'); if(e.layer===hydroOgGroup) hydroToggle(true,'oganer'); if(e.layer===fpGroup) fpToggle(true); if(e.layer===thermGroup) thermToggle(true); });
-map.on('overlayremove',e=>{ if(e.layer===hydroGroup) hydroToggle(false,'city'); if(e.layer===hydroOgGroup) hydroToggle(false,'oganer'); if(e.layer===fpGroup) fpToggle(false); if(e.layer===thermGroup) thermToggle(false); });
-const labelPos = {"Центральный":[69.349,88.19],"Талнах":[69.494,88.40],"Кайеркан":[69.352,87.755]};
-for(const [name, rings] of Object.entries(DB.districts)){
-  L.polygon(rings.map(r=>r.map(p=>[p[0],p[1]])),{color:DCOL[name],weight:2.5,fillColor:DCOL[name],fillOpacity:.06,dashArray:'6 4'}).addTo(map);
-  L.marker(labelPos[name],{interactive:false,icon:L.divIcon({className:'district-label',html:name.toUpperCase(),iconSize:null})}).addTo(map);
-}
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов':thermGroup},{position:'topright'}).addTo(map);
+map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); });
+map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); });
 
 /* ---------- слои гидрологической модели поверхностного стока (D8): город — ЦМР Copernicus 30 м; Оганер — ЦМР 5 см (тест) ---------- */
 const hydroSets={
@@ -958,7 +929,7 @@ function thermToggle(on){
   else{ thermCv.getContext('2d').clearRect(0,0,thermCv.width,thermCv.height); thermCtl.style.display='none'; }
 }
 
-let curD='Все', curQ='', curUK='Все', groupUK=false, curBranch='mkd';
+let curD='Все', curQ='';
 /* --- срез охвата ГТМ (кликабельная диаграмма): объявлено до drawMarkers() --- */
 let covFilter=null; // null | 'tw' | 'gd' | 'os' | 'full'
 function covOSM(){ try{ return OSM; }catch(e){ return {}; } }
@@ -1013,8 +984,8 @@ map.on('click', e=>{
     const d=hav(lat,lng,o.lat,o.lon);
     if(d<bd){ bd=d; best=i; }
   });
-  if(best===null||bd>120){
-    L.popup().setLatLng(e.latlng).setContent('В радиусе 120 м объектов базы нет.').openOn(map);
+  if(best===null||bd>2000){
+    L.popup().setLatLng(e.latlng).setContent('В радиусе 2 км объектов базы нет.').openOn(map);
     return;
   }
   const o=DB.objects[best];
@@ -1038,15 +1009,19 @@ geoCtl=document.createElement('button');
 geoCtl.id='geoPosBtn';
 geoCtl.textContent='📍 Позиционирование';
 geoCtl.style.cssText='position:absolute; top:84px; left:10px; z-index:700; background:#fff; border:2px solid rgba(0,0,0,.25); border-radius:5px; padding:4px 9px; font-size:12px; cursor:pointer';
-geoCtl.title='Режим уточнения координат: клик по зданию на снимке → ближайший объект → перенос точки';
+geoCtl.title='Режим уточнения координат: клик по сооружению на снимке → ближайший объект → перенос точки';
 geoCtl.onclick=toggleGeoMode;
 document.getElementById('map').appendChild(geoCtl);
 drawMarkers();
+{ // охват карты: все объекты ГТС с координатами
+  const pts=DB.objects.filter(o=>o.lat!==null&&o.lat!==undefined).map(o=>[o.lat,o.lon]);
+  if(pts.length>1) map.fitBounds(L.latLngBounds(pts).pad(0.12));
+}
 
 /* --- живая диаграмма охвата ГТМ (нижний левый угол карты) --- */
 function gtmCovDraw(){
   const cv=document.getElementById('gtmCovC'); if(!cv) return;
-  const objs=DB.objects.filter(o=>branchOf(o)===curBranch);
+  const objs=DB.objects;
   const since=new Date(); since.setFullYear(since.getFullYear()-1);
   const iso=since.toISOString().slice(0,10);
   let osmRef={}; try{ osmRef=OSM; }catch(e){}  // OSM объявлен ниже (let) — защита от TDZ при первой отрисовке
@@ -1062,7 +1037,7 @@ function gtmCovDraw(){
   const ctx=cv.getContext('2d'); const W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
   ctx.font='bold 10.5px Segoe UI, sans-serif'; ctx.fillStyle='#33404d';
-  ctx.fillText('Охват ГТМ · '+(curBranch==='mkd'?'МКД':'Соцкультбыт')+' · объектов: '+objs.length+(covFilter?'':' · клик по строке — фильтр'), 2, 12);
+  ctx.fillText('Охват ГТМ · ГТС · объектов: '+objs.length+(covFilter?'':' · клик по строке — фильтр'), 2, 12);
   const barX=118, barW=W-barX-44, rowH=26;
   rows.forEach(([key,label,v,color],i)=>{
     const y=20+i*rowH;
@@ -1118,109 +1093,45 @@ function renderStats(){
 }
 renderStats();
 setTimeout(()=>loadOsmotry(), 0); // после полной инициализации скрипта (TG_SB и пр.)
-setTimeout(()=>{ krpLoadLocal(); krpAuto(); }, 0); // план ремонтов МКД: локальный кэш + автообновление
 setTimeout(()=>{ wxTick(); setInterval(wxTick, 30*60e3); }, 0); // погода Норильска: первая загрузка + автообновление раз в 30 мин
 
 /* ---------- фильтры/список ---------- */
-const districts=['Все','Центральный','Талнах','Кайеркан'];
+const districts=['Все','ТОФ','НМЗ','НОФ','Дудинка'];
 const chipsEl=document.getElementById('chips');
 function renderChips(){
   chipsEl.innerHTML='';
   districts.forEach(d=>{
-    const n=DB.objects.filter(o=>branchOf(o)===curBranch&&(d==='Все'||o.d===d)).length;
+    const n=DB.objects.filter(o=>(d==='Все'||o.d===d)).length;
     const el=document.createElement('span');
     el.className='chip'+(d===curD?' on':'');
     el.innerHTML=d+`<span class="n">${n}</span>`;
     el.onclick=()=>{curD=d;document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');renderList();
-      if(d!=='Все'&&DB.districts[d]){const pts=DB.districts[d].flat();map.flyToBounds(L.latLngBounds(pts.map(p=>[p[0],p[1]])),{padding:[30,30]});}
-      if(d==='Все'){map.flyTo([69.355,88.20],12);}};
+      const pts=DB.objects.filter(o=>(d==='Все'||o.d===d)&&o.lat!==null&&o.lat!==undefined).map(o=>[o.lat,o.lon]);
+      if(pts.length>1) map.flyToBounds(L.latLngBounds(pts),{padding:[30,30]});
+      else if(pts.length===1) map.flyTo(pts[0],11);
+    };
     chipsEl.appendChild(el);
   });
 }
 renderChips();
 document.getElementById('search').addEventListener('input',e=>{curQ=e.target.value.toLowerCase();renderList();});
-/* --- фильтр и группировка по УК --- */
-const ukSel=document.getElementById('ukFilter');
-{
-  const opts=['Все'].concat(UK_LIST, ['Не определена']);
-  ukSel.innerHTML=opts.map(u=>{
-    const n=u==='Все'?DB.objects.length:DB.objects.filter(o=>effectiveUK(o)===u).length;
-    return `<option value="${u}">УК: ${u} (${n})</option>`;
-  }).join('');
-  ukSel.onchange=()=>{curUK=ukSel.value; renderList();};
-  document.getElementById('ukGroup').onchange=e=>{groupUK=e.target.checked; renderList();};
-  /* --- подсветка КП текущего года на карте --- */
-  const kpY=String(new Date().getFullYear());
-  document.getElementById('kpYrNum').textContent=kpY;
-  window.kpOn=false;
-  document.getElementById('kpYr').onchange=e=>{ window.kpOn=e.target.checked; drawMarkers(); };
-}
-function passF(o){ const inBr=curBranch==='mkd'?(o.br||'mkd')==='mkd':o.br==='skb';
-  return inBr&&(curD==='Все'||o.d===curD)&&(curUK==='Все'||effectiveUK(o)===curUK)&&(!curQ||o.a.toLowerCase().includes(curQ))&&covPass(o); }
-/* --- переключатель веток: МКД / объекты соцкультбыта Администрации --- */
-function branchOf(o){ return o.br||'mkd'; }
-function podrList(){ const s=new Set(); DB.objects.forEach(o=>{ if(o.br==='skb') s.add(o.podr||'Администрация г. Норильска'); }); return [...s].sort(); }
-function setBranch(b){
-  curBranch=b;
-  document.getElementById('brMkd').className='brbtn'+(b==='mkd'?' on':'');
-  document.getElementById('brSkb').className='brbtn'+(b==='skb'?' on':'');
-  // фильтр УК → подразделения для ветки соцкультбыта
-  const ukSel=document.getElementById('ukFilter');
-  const opts=b==='mkd'?UK_LIST.concat(['Не определена']):podrList();
-  ukSel.innerHTML='<option value="Все">'+(b==='mkd'?'УК: Все':'Подразделение: Все')+' ('+DB.objects.filter(o=>branchOf(o)===b).length+')</option>'+
-    opts.map(u=>{ const n=DB.objects.filter(o=>branchOf(o)===b&&effectiveUK(o)===u).length; return `<option value="${esc(u)}">${esc(u)} (${n})</option>`; }).join('');
-  curUK='Все';
-  renderChips(); renderList(); gtmCovDraw();
-}
-document.getElementById('brMkd').onclick=()=>setBranch('mkd');
-document.getElementById('brSkb').onclick=()=>setBranch('skb');
+function passF(o){ return (curD==='Все'||o.d===curD)&&(!curQ||o.a.toLowerCase().includes(curQ))&&covPass(o); }
 const openStreets=new Set();
-function streetOf(o){ let s=o.a;
-  const mc=s.match(/^(.*?),\s*д\.\s*/);              // канонический шаблон «ул. …, д. …»
-  if(mc) s=mc[1]; else { const m=s.match(/^(.*?)\s+\d/); s=m?m[1]:s; }
-  s=s.toLowerCase().replace(/ё/g,'е');
-  s=s.replace(/^(ул\.|пр-т|пр-кт|пл\.|наб\.|пр-д|ш\.|пер\.|улица|проспект|площадь|набережная|проезд|шоссе)\s*/,'');
-  s=s.replace(/[.\s,]+/g,'');
-  const fix={'бхмельницкого':'богданахмельницкого','мкравца':'михаилакравца','лауретов':'лауреатов','комсомольсая':'комсомольская','московскаяд':'московская'};
-  return fix[s]||s; }
-function stubUK(s){ return s.uk||'Не определена'; }
-function stubPass(s){ return !covFilter&&curBranch==='mkd'&&(curD==='Все'||s.d===curD)&&(curUK==='Все'||stubUK(s)===curUK)&&(!curQ||s.a.toLowerCase().includes(curQ)); }
 function renderList(){
   const list=document.getElementById('list'); list.innerHTML='';
-  if(groupUK){
-    let idx=DB.objects.map((o,i)=>[o,i]).filter(([o])=>passF(o));
-    idx.sort((a,b)=>{ const ua=effectiveUK(a[0]), ub=effectiveUK(b[0]); return ua===ub? a[0].a.localeCompare(b[0].a,'ru') : ua.localeCompare(ub,'ru'); });
-    let lastGroup=null;
-    idx.forEach(([o,i])=>{
-      const g=effectiveUK(o);
-      if(g!==lastGroup){
-        lastGroup=g;
-        const n=DB.objects.filter(x=>passF(x)&&effectiveUK(x)===g).length;
-        const gh=document.createElement('div');
-        gh.className='ukgroup'; gh.innerHTML=g+`<span class="n">${n} об.</span>`;
-        list.appendChild(gh);
-      }
-      list.appendChild(objItem(o,i));
-    });
-    applyFilter(); return;
-  }
-  // --- аккордеон по улицам: карточки мониторинга + полный реестр домов города ---
+  // --- аккордеон по предприятиям: карточки объектов ГТС ---
   const groups=new Map();
-  DB.objects.forEach((o,i)=>{ if(!passF(o)) return; const st=streetOf(o); if(!groups.has(st)) groups.set(st,[]); groups.get(st).push({t:'o',o,i}); });
-  (DB.stubs||[]).forEach((s,si)=>{ if(!stubPass(s)) return; const stk=s.st.replace(/[.\s]+/g,''); if(!groups.has(stk)) groups.set(stk,[]); groups.get(stk).push({t:'s',s,si}); });
-  [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ru')).forEach(([st,items])=>{
-    items.sort((a,b)=>{ const ha=(a.t==='o'?a.o.a:a.s.a), hb=(b.t==='o'?b.o.a:b.s.a);
-      const na=parseInt((ha.match(/\d+/)||[999])[0]), nb=parseInt((hb.match(/\d+/)||[999])[0]);
-      return (na-nb)||ha.localeCompare(hb,'ru'); });
-    const disp=((items[0].t==='o'?items[0].o.a:items[0].s.a).replace(/,\s*д\..*$/,'').replace(/\s+\d[^\s]*$/,''))||items[0].t;
-    const nMon=items.filter(x=>x.t==='o').length;
+  DB.objects.forEach((o,i)=>{ if(!passF(o)) return; const g=o.d||'—'; if(!groups.has(g)) groups.set(g,[]); groups.get(g).push({o,i}); });
+  const order=['ТОФ','НМЗ','НОФ','Дудинка'];
+  [...groups.entries()].sort((a,b)=>{ const ia=order.indexOf(a[0]), ib=order.indexOf(b[0]); return (ia<0?99:ia)-(ib<0?99:ib)||a[0].localeCompare(b[0],'ru'); }).forEach(([g,items])=>{
+    items.sort((a,b)=>a.o.a.localeCompare(b.o.a,'ru'));
     const acc=document.createElement('div');
-    acc.className='acc'+((openStreets.has(st)||curQ)?' open':'');
+    acc.className='acc'+((openStreets.has(g)||curQ)?' open':'');
     const h=document.createElement('div'); h.className='acc-h';
-    h.innerHTML=`<span>${esc(disp)}</span><span class="n">${items.length} дом.${nMon&&nMon<items.length?` · карточек: ${nMon}`:''}</span>`;
-    h.onclick=()=>{ acc.classList.toggle('open'); if(acc.classList.contains('open')) openStreets.add(st); else openStreets.delete(st); };
+    h.innerHTML=`<span>${esc(g)}</span><span class="n">${items.length} об.</span>`;
+    h.onclick=()=>{ acc.classList.toggle('open'); if(acc.classList.contains('open')) openStreets.add(g); else openStreets.delete(g); };
     const bd=document.createElement('div'); bd.className='acc-b';
-    items.forEach(x=>{ bd.appendChild(x.t==='o'?objItem(x.o,x.i):stubItem(x.s,x.si)); });
+    items.forEach(x=>{ bd.appendChild(objItem(x.o,x.i)); });
     acc.appendChild(h); acc.appendChild(bd); list.appendChild(acc);
   });
   applyFilter();
@@ -1229,38 +1140,10 @@ function objItem(o,i){
   const st=statusOf(o);
   const el=document.createElement('div');
   el.className='item'; el.id='it'+i;
-  const info=o.nm?`${o.nm} зам. · ${(o.d0||'').slice(0,4)}–${(o.d1||'').slice(0,4)}`:(o.d||'');
+  const info=o.nm?`${o.nm} зам. · ${(o.d0||'').slice(0,4)}–${(o.d1||'').slice(0,4)}`:(o.gts?o.gts.type+' · класс '+(o.gts.klass||'—'):'');
   el.innerHTML=`<span class="a">${st?`<span class="sdot" style="background:${SCOL[st]}"></span>`:''}${o.a}</span><span class="t${o.nm?' has':''}">${info}</span>`;
   el.onclick=()=>select(i,true);
   return el;
-}
-function stubItem(s,si){
-  const el=document.createElement('div');
-  el.className='item stub'; el.id='st'+si;
-  el.innerHTML=`<span class="a">${esc(s.a)}<span class="stubbadge">реестр</span></span><span class="t">${esc(s.uk?s.uk.replace(/^(ООО|АО)\s*"?|"?$/g,''):(s.d||''))}</span>`;
-  el.onclick=()=>selectStub(si);
-  return el;
-}
-function selectStub(si){
-  const s=(DB.stubs||[])[si]; if(!s) return;
-  curObj=null;
-  document.querySelectorAll('.item').forEach(e=>e.classList.remove('sel'));
-  const li=document.getElementById('st'+si); if(li){ li.classList.add('sel'); }
-  if(s.lat!=null) map.panTo([s.lat,s.lon]);
-  const d=document.getElementById('detail');
-  d.innerHTML=`
-    <h2>${esc(s.a)}<span class="badge b-card">реестр МКД</span></h2>
-    <div class="rayon">Район: <b style="color:${DCOL[s.d]||'#666'}">${esc(s.d||'не определён')}</b> · УК: <b>${esc(s.uk||'не определена')}</b> · г. Норильск</div>
-    <div class="normref">Адрес из полного реестра МКД города: координаты и наименование — адресный справочник ginfo.ru; УК, год постройки, кадастровый номер — ГИС ЖКХ. Карточка геотехнического мониторинга по этому дому не заведена.</div>
-    <table class="kv">
-      ${s.ao?`<tr><td>Официальный адрес</td><td><b>${esc(s.ao)}</b></td></tr>`:''}
-      ${s.cad?`<tr><td>Кадастровый номер</td><td><b>${esc(s.cad)}</b></td></tr>`:''}
-      ${s.y?`<tr><td>Год постройки</td><td>${esc(String(s.y))}</td></tr>`:''}
-      ${s.pc?`<tr><td>Почтовый индекс</td><td>${esc(s.pc)}</td></tr>`:''}
-      <tr><td>Координаты (WGS-84)</td><td>${s.lat!=null?fmt(s.lat)+', '+fmt(s.lon):'—'}</td></tr>
-    </table>`;
-  if(window.matchMedia('(max-width:900px)').matches)
-    setTimeout(()=>document.getElementById('detail').scrollIntoView({behavior:'smooth'}),150);
 }
 function applyFilter(){
   DB.objects.forEach((o,i)=>{
@@ -1355,7 +1238,7 @@ function drawGostProfile(cv, o, wliter){
 
 /* ---------- график тренда T(t) ---------- */
 function drawTrend(cv, seriesList, unit){ // seriesList: [{label, xs, ys, color}]; unit: undefined=°C | 'mm'
-  const U = unit==='mm' ? {yl:'осадка s, мм', xl:'дата измерения', su:'мм/год'} : (unit==='m' ? {yl:'глубина оттаивания h, м', xl:'дата замера', su:'м/год'} : {yl:'t, °C', xl:'дата замера', su:'°C/год'});
+  const U = unit==='mm' ? {yl:'осадка s, мм', xl:'дата измерения', su:'мм/год'} : (unit==='ugv' ? {yl:'уровень грунтовых вод, м', xl:'дата замера', su:'м/год'} : (unit==='m' ? {yl:'глубина оттаивания h, м', xl:'дата замера', su:'м/год'} : {yl:'t, °C', xl:'дата замера', su:'°C/год'}));
   const ctx=cv.getContext('2d');
   const W=cv.clientWidth, H=300; cv.width=W*2; cv.height=H*2; cv.style.height=H+'px'; ctx.scale(2,2);
   ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
@@ -1374,7 +1257,7 @@ function drawTrend(cv, seriesList, unit){ // seriesList: [{label, xs, ys, color}
   // сетка по Y
   ctx.textAlign='right';
   let step=0.5;
-  if(unit==='mm'||unit==='m'){
+  if(unit==='mm'||unit==='m'||unit==='ugv'){
     const raw=(tmax-tmin)/6||1, mag=Math.pow(10,Math.floor(Math.log10(raw)));
     step=[1,2,5,10].map(m=>m*mag).find(s=>raw<=s)||10*mag;
   }
@@ -1632,7 +1515,7 @@ function normText(s){
 }
 function escT(s){ return esc(normText(s)); }
 let curObj=null, curWell=null, curDepths=new Set(), curTab='passport', fcDepth=5;
-const TABS=[['passport','Паспорт объекта'],['gtm','Паспорт ГТМ'],['fund','Фундаменты'],['podpol','Подполье'],['cokper','Цокольное перекрытие'],['cokogr','Цокольное ограждение'],['geoterm','Геотермика'],['geod','Геодезия'],['calc','РАСЧЕТЫ'],['expl','Условия эксплуатации'],['plans','Планы'],['repairs','Ремонты'],['krplan','План ремонтов МКД'],['project','Проектная документация'],['igi','Инженерно-геологические условия'],['photo','Фотоматериалы'],['misc','Иное']];
+const TABS=[['passport','Паспорт ГТС'],['gtm','Паспорт ГТМ'],['kk','Контрольные критерии'],['geoterm','Термометрия'],['piezo','Пьезометрия'],['geod','Деформации'],['climate','Климат до 2050'],['expl','Осмотры и эксплуатация'],['repairs','Ремонты и работы'],['docs','Документация'],['photo','Фотоматериалы'],['misc','Иное']];
 
 function select(i,fromList){
   const o=DB.objects[i]; curObj=o;
@@ -1656,8 +1539,8 @@ function renderDetail(o){
     ? `<div class="reasons">${sd.reasons.map(r=>`<div class="rsn r-${r.level}">${r.level==='crit'?'⛔':'⚠️'} ${esc(r.text)}</div>`).join('')}</div>`
     : (st?'<div class="reasons"><div class="rsn r-ok">✔ все показатели в пределах превентивных порогов</div></div>':'');
   d.innerHTML=`
-    <h2>${esc(o.a)}<span class="badge ${st?('b-'+{НОРМА:'ok',РИСК:'risk',КРИТИЧНО:'crit'}[st]):'b-card'}">${st||'карточка'}</span>${o.br==='skb'?'':`<button class="tglock" id="tgLock" title="Телефонограммы (доступ для УК и надзорной организации)">🔒</button>`}<button class="tglock" id="inspLock" title="Текущий осмотр — чек-лист (доступ для надзорной организации)">📋</button></h2>
-    <div class="rayon">Район: <b style="color:${DCOL[o.d]||'#666'}">${esc(o.d||'не определён')}</b> · ${o.br==='skb'?'Подразделение':'УК'}: <b>${esc(effectiveUK(o))}</b> · г. Норильск</div>
+    <h2>${esc(o.a)}<span class="badge ${st?('b-'+{НОРМА:'ok',РИСК:'risk',КРИТИЧНО:'crit'}[st]):'b-card'}">${st||'карточка'}</span><button class="tglock" id="tgLock" title="Замечания и предписания (доступ для эксплуатирующей и надзорной организаций)">🔒</button><button class="tglock" id="inspLock" title="Текущий осмотр — чек-лист (доступ для надзорной организации)">📋</button></h2>
+    <div class="rayon">Предприятие: <b style="color:${DCOL[o.d]||'#666'}">${esc(o.d||'—')}</b> · Тип: <b>${esc(o.gts?o.gts.type:'—')}</b> · Класс ГТС: <b>${esc(o.gts&&o.gts.klass?o.gts.klass:'—')}</b></div>
     ${osmLine(o)}
     ${reasonsHtml}
     <div class="tabs" id="cardTabs"></div>
@@ -1680,139 +1563,10 @@ function renderDetail(o){
 }
 function renderTab(o){
   const el=document.getElementById('tabBody');
-  ({passport:tabPassport, gtm:tabGtm, fund:tabFund, podpol:tabPodpol, cokper:tabCokPer, cokogr:tabCokOgr,
-    project:tabProject, igi:tabIGI, geoterm:tabGeoterm, calc:tabCalc,
-    geod:tabGeod, expl:tabExpl, plans:tabPlans, repairs:tabRepairs, krplan:tabKrp, photo:tabPhoto, misc:tabMisc})[curTab](o, el);
+  ({passport:tabGtsPassport, gtm:tabGtmGts, kk:tabKK, geoterm:tabGeoterm, piezo:tabPiezo, geod:tabGeod, climate:tabClimate,
+    expl:tabExpl, repairs:tabRepairs, docs:tabGtsDocs, photo:tabPhoto, misc:tabMisc})[curTab](o, el);
 }
 
-/* --- блок дефектов из годового отчёта --- */
-const DEF_TITLES={fund_piles:'Сваи', fund_rostverk:'Ростверк / продольные балки', fund_ogolovki:'Оголовки свай',
-  cok_perekrytie:'Плиты цокольного перекрытия', cok_ograd:'Цокольное ограждение / продухи', podpol:'Подполье'};
-function defectBlock(o, codes){
-  const d=o.defects||{};
-  const cx=(CARD[o.a]&&CARD[o.a].defx)||{};
-  const present=codes.filter(c=>(d[c]&&d[c].length)||(cx[c]&&cx[c].length));
-  if(!present.length) return '<div class="note">Дефекты и повреждения по этому разделу в свежем отчёте не зарегистрированы (или отчёт отсутствует).</div>';
-  return present.map(c=>{
-    const rows=(d[c]||[]).map(r=>`<tr><td>${escT(r[0])}</td><td>${escT(r[1])}</td></tr>`);
-    const xr=(cx[c]||[]).map(t=>`<tr><td colspan="2" style="background:#f4f0e4">${escT(t)} <span class="note">(из отчёта, загруженного оператором)</span></td></tr>`);
-    return `<div class="sect">${DEF_TITLES[c]} · выявлено: ${(d[c]||[]).length+(cx[c]||[]).length}</div>
-    <table class="rows static"><thead><tr><th style="width:24%">Марка / оси</th><th>Дефект / повреждение (состояние конструкции)</th></tr></thead>
-    <tbody>${rows.concat(xr).join('')}</tbody></table>`;
-  }).join('');
-}
-function pfRow(o,k,label){ const v=o.pf2&&o.pf2[k]; return v?`<tr><td>${label}</td><td>${escT(v)}</td></tr>`:''; }
-function reportSrc(o){ return o.report_year_full?`<div class="note">Источник: информационный отчёт ООО «НПО «Фундамент», ${o.report_year_full} г. (последний из имеющихся).</div>`:''; }
-
-function fundSummary(o){
-  const p=o.pf2||{};
-  const pl=parsePile(o);
-  const fund=p.fund||'';
-  let typ='';
-  if(/буроопуск/i.test(fund)) typ='буроопускные';
-  else if(/буронабив/i.test(fund)) typ='буронабивные';
-  else if(/бурозабив/i.test(fund)) typ='бурозабивные';
-  else if(/бурообсадн/i.test(fund)) typ='бурообсадные';
-  else if(/опуск/i.test(fund)) typ='опускные';
-  else if(/забив/i.test(fund)) typ='забивные';
-  if(/столбчат/i.test(fund)) typ='столбчатые';
-  if(/ленточн/i.test(fund)) typ='ленточные';
-  if(/свай|сваи/i.test(fund)||pl.U) typ=typ?('свайные, '+typ):'свайные (тип погружения — по паспорту)';
-  if(/сва[яи][-–]стойк/i.test(fund)) typ+='; сваи-стойки';
-  const nPiles=p.arc_piles?String(p.arc_piles):'';
-  let gab=pl.note||'';
-  if(pl.U) gab+=` — периметр ${pl.U} м, сечение торца ${pl.Ap} м²`;
-  let depth=pl.L?(`сваи длиной до ${pl.L} м (паспорт)`):'';
-  const rostM=(p.rostverk||'').match(/\(?h\)?\s*\d[,.]\d+\s*[×xх]\s*\d[,.]\d+\s*м/g);
-  const rostTxt=rostM?rostM.map(s=>s.replace(/[()]/g,m=>m)).join('; '):'';
-  const rows=[
-    ['Количество свай', nPiles?nPiles+' (архив ЖКС)':'—'],
-    ['Тип фундаментов', typ||'—'],
-    ['Габаритные размеры свай', gab||'—'],
-    ['Глубина залегания', depth||'—'],
-    ['Размеры балок ростверка', rostTxt||'—'],
-  ];
-  if(!nPiles&&!typ&&!gab&&!depth&&!rostTxt) return '';
-  return `<div class="sect">Сводка по фундаментам (извлечено из карточки)</div>
-  <table class="kv">${rows.map(r=>`<tr><td>${r[0]}</td><td>${escT(r[1])}</td></tr>`).join('')}</table>`;
-}
-function tabFund(o, el){
-  el.innerHTML=`
-  <div class="normref">СП 497.1325800.2020 «Основания и фундаменты зданий и сооружений на многолетнемерзлых грунтах. Правила эксплуатации»; СП 25.13330.2020; ГОСТ 31937-2024 (классификация повреждений).</div>
-  ${fundSummary(o)}
-  <div class="sect">Конструкция и сведения</div>
-  <table class="kv">
-    ${pfRow(o,'fund','Фундаменты')}
-    ${pfRow(o,'rostverk','Ростверк')}
-    ${pfRow(o,'grunts','Грунты основания')}
-    ${pfRow(o,'princip','Принцип использования ММГ')}
-    ${pfRow(o,'arc_piles','Количество свай (архив ЖКС)')}
-  </table>
-  <div class="sect">Дефекты и повреждения</div>
-  ${defectBlock(o,['fund_piles','fund_rostverk','fund_ogolovki'])}
-  ${reportSrc(o)}`;
-}
-function tabPodpol(o, el){
-  el.innerHTML=`
-  <div class="normref">СП 497.1325800.2020 (разд. по подпольям: планировка, водоотвод, вентиляция); ВСН 01-89; ГОСТ 31937-2024.</div>
-  <div class="sect">Параметры и состояние</div>
-  <table class="kv">
-    ${pfRow(o,'podpol','Подполье')}
-    ${pfRow(o,'podpol_plan','Планировка подполья')}
-    ${pfRow(o,'lotok','Водоотводной лоток')}
-    ${pfRow(o,'heating','Отопление и канализация')}
-    ${pfRow(o,'arc_area_podpol','Площадь подполья (архив ЖКС), м²')}
-  </table>
-  <div class="sect">Дефекты и повреждения</div>
-  ${defectBlock(o,['podpol'])}
-  ${reportSrc(o)}`;
-}
-function tabCokPer(o, el){
-  el.innerHTML=`
-  <div class="normref">СП 497.1325800.2020; СП 70.13330 (несущие конструкции); ГОСТ 31937-2024.</div>
-  <div class="sect">Конструкция</div>
-  <table class="kv">
-    ${pfRow(o,'perekrytie','Цокольное перекрытие')}
-    ${pfRow(o,'perekrytia2','Межэтажные перекрытия')}
-  </table>
-  <div class="sect">Дефекты и повреждения</div>
-  ${defectBlock(o,['cok_perekrytie'])}
-  ${reportSrc(o)}`;
-}
-function tabCokOgr(o, el){
-  const vc=ventCheck(o);
-  const dm=parseDims(o), pv=parseVent(o);
-  const vcCol=vc.st.s==='НОРМА'?GTM_COL.ok:(vc.st.s==='НЕДОСТАТОЧНО'?GTM_COL.warn:(vc.st.s==='—'?GTM_COL.na:GTM_COL.bad));
-  el.innerHTML=`
-  <div class="normref">СП 497.1325800.2020 (вентиляционные продухи, отмостка, цоколь); Правила № 170, п. 4.1.4 (площадь и размещение продухов); СП 25.13330.2020, разд. 6.3, прил. Д (расчёт проветриваемого подполья); ВСН 01-89; ГОСТ 31937-2024.</div>
-  <div class="sect">Конструкция и вентиляция</div>
-  <table class="kv">
-    ${pfRow(o,'cokol','Цокольное ограждение')}
-    ${pfRow(o,'vent','Вентилирование подполья (продухи)')}
-    ${pfRow(o,'otmostka','Отмостка')}
-  </table>
-  <div class="sect">Нормативная проверка продухов — Правила № 170, п. 4.1.4; СП 25.13330.2020, разд. 6.3</div>
-  <table class="kv">
-    <tr><td>Площадь подполья S, м²</td><td>${inp(o,'cok','vs','','number')} <span class="note">— если пусто: ${dm?dm.A+' м² по габаритам в осях (паспорт)':'принимается по габаритам в осях из паспорта'}</span></td></tr>
-    <tr><td>Число секций дома</td><td>${inp(o,'cok','vsec','1','number')} <span class="note">— норма: не менее 2 продухов на каждую секцию</span></td></tr>
-    <tr><td>Число продухов, шт</td><td>${inp(o,'cok','vn','','number')} ${pv.n!==null?`<span class="note">— если пусто: ${pv.n} (из паспорта/отчёта)</span>`:''}</td></tr>
-    <tr><td>Сечение одного продуха, м</td><td>${inp(o,'cok','vw','0.25')} × ${inp(o,'cok','vh','0.25')} <span class="note">— типовое 0,25 × 0,25 м</span></td></tr>
-    <tr><td>Продухи на противоположных стенах</td><td>${sel(o,'cok','vopp','',['','да','нет'])} <span class="note">— для сквозного проветривания (п. 4.1.4)</span></td></tr>
-  </table>
-  <div style="margin:8px 0; padding:8px 12px; border-radius:6px; background:#f6f7f9; border-left:4px solid ${vcCol}">
-    <b>Заключение по продухам: <span style="color:${vcCol}">${vc.st.s}</span></b>
-    ${vc.Sreq!==null?`<div style="margin-top:4px">Требуемая суммарная площадь: S/400 = ${vc.S} / 400 = <b>${vc.Sreq.toFixed(2)} м²</b>; фактическая: ${vc.F0!==null?('<b>'+vc.F0.toFixed(2)+' м²</b> <span class="note">('+esc(vc.F0src)+')</span>'):'—'}; минимум по числу: 2 × ${vc.nSec} секц. = ${vc.Nmin} шт${vc.Nreq!==null&&vc.Nreq>vc.Nmin?(' (с учётом площади — не менее <b>'+vc.Nreq+' шт</b>)'):''}.</div>`:''}
-    <div class="note" style="margin-top:4px">${esc(vc.st.d)}</div>
-    <div class="note" style="margin-top:4px">Для зданий на ММГ по принципу I число и площадь продухов уточняются теплотехническим расчётом проветриваемого подполья — СП 25.13330.2020, разд. 6.3, прил. Д (см. «РАСЧЕТЫ → Вентиляция подполья»); проверка 1/400 — обязательный минимум Правил № 170. Требование t ≥ +5 °C (разд. 4.1 Правил № 170) относится к подвалам жилых домов и к холодным проветриваемым подпольям на ММГ не применяется. Заключение синхронизировано с «Паспортом ГТМ».</div>
-  </div>
-  <div class="sect">Дефекты и повреждения</div>
-  ${defectBlock(o,['cok_ograd'])}
-  ${reportSrc(o)}`;
-  wireEd(o, el, 'cok');
-  el.querySelectorAll('.ed[data-scope="cok"]').forEach(i2=>i2.addEventListener('change',()=>renderTab(o)));
-}
-
-/* --- редактируемые поля карточки: <input|select|textarea class="ed" data-scope data-k> --- */
 function edVal(o, scope, k, dflt){
   const c=CARD[o.a]; const v=c&&c[scope]&&c[scope][k];
   return v!==undefined?v:(dflt===undefined?'':dflt);
@@ -1868,53 +1622,60 @@ function renderRows(o, el, scope, keys, selects){
   el.querySelector('.addrow').onclick=()=>{ c[scope].push({}); saveCARD(); paint(); };
 }
 
-/* --- извлечённый паспорт (годовые отчёты НПО «Фундамент» + «Жилье-архив» ЖКС) --- */
-const PF2_LABELS=[['year_in','Ввод в эксплуатацию'],['project','Проект / серия'],['dims','Основные размеры'],['floors_txt','Этажность'],['konstr','Конструктивная схема'],['princip','Принцип использования грунтов'],['grunts','Грунты основания'],['fund','Фундаменты'],['rostverk','Ростверк'],['podpol_plan','Подполье / планировка'],['lotok','Водоотводной лоток'],['vent','Вентилирование подполья'],['otmostka','Отмостка'],['cokol','Цокольное ограждение'],['heating','Отопление и канализация'],['walls','Наружные стены'],['walls_in','Внутренние стены'],['roof','Кровля'],['windows','Оконные заполнения'],['arc_year','Год постройки (архив)'],['arc_series','Серия (архив)'],['arc_floors','Этажей (архив)'],['arc_walls_mat','Материал стен (архив)'],['arc_volume','Объём здания, м³'],['arc_area','Площадь по дому, м²'],['arc_piles','Кол-во свай'],['arc_area_podpol','Площадь подполья, м²'],['arc_vol_podpol','Объём подполья, м³'],['geoterm_obs','Геотермические наблюдения'],['geod_obs','Геодезические наблюдения']];
-function passportBlock(o){
-  const p=o.pf2; if(!p) return '';
-  const rows=PF2_LABELS.filter(([k])=>p[k]).map(([k,l])=>`<tr><td>${l}</td><td>${escT(p[k])}</td></tr>`).join('');
-  if(!rows) return '';
-  const src=p.report_year?`Информационный отчёт ООО «НПО «Фундамент», ${p.report_year} г.`:'';
-  const srcA=p.arc_year?'«Жилье-архив» ООО «ЖКС»':'';
-  return `<div class="sect">Паспортные характеристики (извлечены из архива ЖКС)</div>
-  <table class="kv">${rows}</table>
-  <div class="note">Источники: ${[src,srcA].filter(Boolean).join(' · ')}. Значения даны как в документах, без редактирования.</div>`;
-}
 
-function tabPassport(o, el){
-  const wells=o.prof?Object.keys(o.prof):[];
+/* ---------- Вкладки карточки ГТС (Этап 1 НИР, модель данных по ТЗ) ---------- */
+function tabGtsPassport(o, el){
   const ro0=!document.body.classList.contains('role-edit');
-  const prec={'точный':'точный адрес (OSM)','по улице':'центроид улицы','nominatim':'Nominatim/OSM','уточнено вручную':'уточнено по спутниковому снимку','приблизительная (по улице)':'приблизительная (по улице)','точный (офиц. данные)':'точный (официальные данные)','справочник ginfo.ru':'адресный справочник ginfo.ru'}[o.p]||'—';
+  const g=o.gts||{};
+  const prec={'точный':'точное положение (OSM)','nominatim':'Nominatim/OSM','уточнено вручную':'уточнено по спутниковому снимку','оценка (OSM)':'оценка по данным OSM — требует уточнения','требует уточнения':'оценка — требует уточнения по материалам заказчика'}[o.p]||esc(o.p||'—');
+  const TYPE_OPTS=['','гидротехническое сооружение (дамбы, плотины)','хвостохранилище','отстойник / пруд-накопитель','ГТС гидротранспорта','комплекс ГТС','иное'];
+  const stRows=(g.structures||[]).map(s=>`<tr><td>${escT(s.name)}</td><td>${escT(s.kind||'—')}</td><td>${fmt(s.len)}</td><td>${fmt(s.h)}</td><td>${escT(s.crest||'—')}</td><td>${fmt(s.width)}</td><td>${escT(s.note||'—')}</td></tr>`).join('');
+  const kia=g.kia||{};
+  const kiaDef=[
+    ['Термометрические скважины','term','thermal'],
+    ['Пьезометрические скважины','piezo','piezo'],
+    ['Деформационные марки','marks','marks'],
+    ['Реперы','reper','repers'],
+    ['Контрольные реперы','kreper',null],
+    ['Водомерные рейки','gauge','gauge'],
+    ['Наблюдательные скважины','obs','obs'],
+  ];
+  const kiaRows=kiaDef.map(([nm,k,pk])=>{
+    const plan=kia[k]; const fact=pk?((o.points&&o.points[pk]||[]).length):'—';
+    return `<tr><td>${nm}</td><td>${plan===0?'0':(plan===null||plan===undefined?'—':plan)}</td><td><b>${fact}</b></td></tr>`;
+  }).join('');
   el.innerHTML=`
-  <div class="normref">Состав сведений: ГОСТ 31937-2024 «Здания и сооружения. Правила обследования и мониторинга технического состояния» (паспорт объекта мониторинга); СП 25.13330.2020 (разд. 5 — принципы использования вечномерзлых грунтов); ПП РФ № 491 (п. 24–26, состав технической документации на МКД). Поля редактируются и сохраняются локально в браузере.</div>
-  ${passportBlock(o)}
+  <div class="normref">Состав сведений: ГОСТ 31937-2024 (паспорт объекта мониторинга); ФЗ-117 «О безопасности ГТС» (паспорт ГТС, декларация безопасности — ст. 9); ПП РФ № 1892 (декларирование); ПП РФ № 1607 (классы ГТС); СП 25.13330.2020 (основания на ММГ). Состав объекта и КИА — по ТЗ на НИР (2025). Поля редактируются и сохраняются локально в браузере.</div>
   <table class="kv">
-    <tr><td>Адрес</td><td>г. Норильск, ${esc(o.a)}</td></tr>
-    ${o.ao?`<tr><td>Официальный адрес (ГИС ЖКХ / ginfo.ru)</td><td><b>${esc(o.ao)}</b></td></tr>`:''}
-    ${o.cad?`<tr><td>Кадастровый номер</td><td><b>${esc(o.cad)}</b></td></tr>`:''}
-    ${o.pc?`<tr><td>Почтовый индекс</td><td>${esc(o.pc)}</td></tr>`:''}
-    ${o.gkh?`<tr><td>ГИС ЖКХ</td><td>${[o.gkh.condition?('состояние: '+esc(o.gkh.condition)):'' , o.gkh.wear?('износ: '+esc(o.gkh.wear)+'%'):'', o.gkh.area?('общая площадь: '+esc(o.gkh.area)+' м²'):'', o.gkh.mgmt?('способ управления: '+esc(o.gkh.mgmt)):''].filter(Boolean).join('; ')||'—'}</td></tr>`:''}
-    <tr><td>Район</td><td>${esc(o.d||'—')}</td></tr>
-    <tr><td>${o.br==='skb'?'Подразделение Администрации':'Управляющая компания'}</td><td>${o.br==='skb'?sel(o,'pf','uk', o.podr||'', podrList()):sel(o,'pf','uk', o.uk||'Не определена', UK_LIST.concat(['Не определена']))}</td></tr>
+    <tr><td>Наименование объекта</td><td><b>${esc(o.a)}</b></td></tr>
+    <tr><td>Предприятие</td><td>${esc(o.d||'—')}</td></tr>
+    <tr><td>Тип ГТС</td><td>${sel(o,'pf','type', g.type||'', TYPE_OPTS)}</td></tr>
+    <tr><td>Класс ГТС (ПП РФ № 1607)</td><td>${sel(o,'pf','klass', g.klass||'', ['','I','II','III','IV'])}</td></tr>
+    <tr><td>Тип по рельефу</td><td>${esc(g.relief||'—')}</td></tr>
+    <tr><td>Способ образования</td><td>${esc(g.fill||'—')}</td></tr>
+    <tr><td>Класс отходов</td><td>${esc(g.waste||'—')}</td></tr>
+    <tr><td>Местоположение</td><td>${esc(g.location||'—')}</td></tr>
+    <tr><td>Назначение</td><td>${esc(g.purpose||'—')}</td></tr>
     <tr><td>Координаты (WGS-84)</td><td>${ro0?`${fmt(o.lat)}, ${fmt(o.lon)} <span style="color:var(--mut)">(${prec})</span>`:`
       <input id="geoLat" type="number" step="0.000001" style="width:100px" value="${o.lat??''}"> , <input id="geoLon" type="number" step="0.000001" style="width:100px" value="${o.lon??''}">
       <button class="wbtn" id="geoApply" style="padding:2px 8px">💾 Применить</button>
-      <button class="wbtn" id="geoPosOpen" style="padding:2px 8px" title="Клик по зданию на спутниковом снимке → перенос координаты">📍 Позиционировать на карте</button>
+      <button class="wbtn" id="geoPosOpen" style="padding:2px 8px" title="Клик по сооружению на спутниковом снимке → перенос координаты">📍 Позиционировать на карте</button>
       <br><span class="note">точность: ${prec}${GEOVR[o.a]?' · координата уточнена по спутнику':''} · правки сохраняются локально</span>`}</td></tr>
-    <tr><td>Год постройки</td><td>${inp(o,'pf','year', o.y??(o.pf2&&((o.pf2.year_in||'').match(/\d{4}/)||[])[0])??(o.pf2&&o.pf2.arc_year)??'')}</td></tr>
-    <tr><td>Серия / тип проекта</td><td>${inp(o,'pf','series', o.s??(o.pf2&&(o.pf2.project||o.pf2.arc_series))??'')}</td></tr>
-    <tr><td>Этажность</td><td>${inp(o,'pf','floors', (o.pf2&&(o.pf2.arc_floors||o.pf2.floors_txt))??'')}</td></tr>
-    <tr><td>Конструктивная схема</td><td>${inp(o,'pf','konstr', (o.pf2&&o.pf2.konstr)||'')}</td></tr>
-    <tr><td>Тип фундамента</td><td>${sel(o,'pf','fund','', ['','свайный, без ростверка','свайный с ростверком','ленточный','плитный','столбчатый','иной'])}</td></tr>
-    <tr><td>Принцип использования ММГ (СП 25.13330, п. 5.4)</td><td>${sel(o,'pf','princip','', ['','I — с сохранением мёрзлого состояния','II — с допущением оттаивания','IIа — с предварительным оттаиванием','иной'])}</td></tr>
-    <tr><td>Расчётная температура основания T<sub>расч</sub></td><td><input class="ed" data-scope="pf" data-k="tcalc" id="tcalcInp" type="number" step="0.1" style="width:90px" value="${edVal(o,'pf','tcalc', TCALC[o.a]!==undefined?TCALC[o.a]:'')}"> °C</td></tr>
-    <tr><td>Термометрических скважин</td><td>${wells.length||fmt(o.nw,' шт.')}${wells.length?' ('+wells.map(esc).join(', ')+')':''}</td></tr>
-    <tr><td>Период наблюдений</td><td>${o.d0||'—'} … ${o.d1||'—'}</td></tr>
-    <tr><td>Организация, ведущая мерзлотный надзор</td><td>${inp(o,'pf','nadzor','')}</td></tr>
     <tr><td>Дата последнего обследования</td><td>${inp(o,'pf','obsled','','date')}</td></tr>
+    <tr><td>Организация, ведущая мерзлотный надзор</td><td>${inp(o,'pf','nadzor','')}</td></tr>
+    <tr><td>Расчётная температура грунта основания T<sub>расч</sub></td><td><input class="ed" data-scope="pf" data-k="tcalc" id="tcalcInp" type="number" step="0.1" style="width:90px" value="${edVal(o,'pf','tcalc', TCALC[o.a]!==undefined?TCALC[o.a]:'')}"> °C</td></tr>
+    <tr><td>Период наблюдений</td><td>${o.d0||'—'} … ${o.d1||'—'}</td></tr>
   </table>
+  <div class="sect">Состав сооружений (по ТЗ НИР, 2025)</div>
+  ${stRows?`<table class="rows static"><thead><tr>
+    <th>Сооружение</th><th style="width:13%">Тип</th><th style="width:9%">Длина, м</th><th style="width:9%">Высота, м</th><th style="width:12%">Отм./гребень</th><th style="width:11%">Ширина гребня, м</th><th style="width:22%">Примечание</th>
+  </tr></thead><tbody>${stRows}</tbody></table>`:'<div class="note">Состав сооружений не заполнен.</div>'}
+  <div class="sect">Контрольно-измерительная аппаратура (КИА)</div>
+  ${Object.keys(kia).length?`<table class="rows static"><thead><tr>
+    <th>Средство наблюдений</th><th style="width:22%">План (проект/паспорт)</th><th style="width:18%">В базе (факт)</th>
+  </tr></thead><tbody>${kiaRows}</tbody></table>`:'<div class="note">Состав КИА — по проекту мониторинга (этап 2 НИР); в базу не внесён. Плановые количества задаются во вкладке «Паспорт ГТМ».</div>'}
   <div class="sect">Источники данных</div>
-  <div class="srcs">${o.src.map(esc).join('<br>')}</div>`;
+  <div class="srcs">${(o.src||[]).map(esc).join('<br>')}</div>`;
   wireEd(o, el, 'pf');
   const tcInp=el.querySelector('#tcalcInp');
   tcInp.addEventListener('change', ()=>{
@@ -1927,7 +1688,7 @@ function tabPassport(o, el){
   if(gA){
     gA.onclick=()=>{
       const la=parseFloat(el.querySelector('#geoLat').value), lo=parseFloat(el.querySelector('#geoLon').value);
-      if(!(la>68.8&&la<69.7&&lo>87.5&&lo<89.2)){ alert('Координаты вне окрестности Норильска — проверьте ввод (WGS-84).'); return; }
+      if(!(la>68.5&&la<69.8&&lo>85.5&&lo<89.3)){ alert('Координаты вне района работ (Норильская промышленная площадка — Дудинка) — проверьте ввод (WGS-84).'); return; }
       GEOVR[o.a]=[+la.toFixed(6), +lo.toFixed(6)];
       localStorage.setItem('gtm_geo', JSON.stringify(GEOVR));
       o.lat=GEOVR[o.a][0]; o.lon=GEOVR[o.a][1]; o.p='уточнено вручную';
@@ -1938,44 +1699,147 @@ function tabPassport(o, el){
     el.querySelector('#geoPosOpen').onclick=()=>{
       if(o.lat==null) return;
       if(!geoMode) toggleGeoMode();
-      map.flyTo([o.lat,o.lon], 19);
+      map.flyTo([o.lat,o.lon], 17);
       if(window.matchMedia('(max-width:900px)').matches) document.getElementById('map').scrollIntoView({behavior:'smooth'});
     };
   }
 }
 
-function tabProject(o, el){
+function tabGtmGts(o, el){
+  const ro=!document.body.classList.contains('role-edit');
+  const kia=(o.gts&&o.gts.kia)||{};
+  const pts=o.points||{};
+  const NET=[
+    ['Термометрические скважины','term','thermal','plan_term'],
+    ['Пьезометрические скважины','piezo','piezo','plan_piezo'],
+    ['Деформационные марки','marks','marks','plan_marks'],
+    ['Реперы (в т.ч. контрольные)','reper','repers','plan_reper'],
+    ['Водомерные рейки','gauge','gauge','plan_gauge'],
+    ['Наблюдательные скважины','obs','obs','plan_obs'],
+  ];
+  const since=new Date(); since.setFullYear(since.getFullYear()-1); const iso=since.toISOString().slice(0,10);
+  const osmN=(osmAll(o.a)||[]).filter(x=>x.date&&x.date>=iso).length;
+  let worst={s:'—'};
+  const WORST={'ТРЕБУЕТСЯ ДООСНАСТКА':4,'НЕДОСТАТОЧНО':2,'НОРМА':1,'—':0};
+  const badge=(plan,fact)=>{
+    if(plan===null||plan===undefined||plan===''||isNaN(+plan)) return {s:'—'};
+    if(fact>=+plan&&+plan>0) return {s:'НОРМА'};
+    return {s: fact?'НЕДОСТАТОЧНО':'ТРЕБУЕТСЯ ДООСНАСТКА'};
+  };
+  const netRows=NET.map(([nm,k,pk,pkInp])=>{
+    const planKia=kia[k];
+    const plan=planKia!==undefined&&planKia!==null?planKia:edVal(o,'gtm',pkInp,'');
+    const fact=(pts[pk]||[]).length;
+    const b=badge(plan,fact);
+    if(WORST[b.s]>WORST[worst.s]) worst=b;
+    return `<tr><td>${nm}</td>
+      <td>${planKia!==undefined&&planKia!==null?('<b>'+planKia+'</b>'):inp(o,'gtm',pkInp,'','number')}</td>
+      <td><b>${fact}</b></td><td>${gtmBadge(b)}</td></tr>`;
+  }).join('');
+  const conclCol=worst.s==='НОРМА'?GTM_COL.ok:(worst.s==='НЕДОСТАТОЧНО'?GTM_COL.warn:(worst.s==='—'?GTM_COL.na:GTM_COL.bad));
   el.innerHTML=`
-  <div class="normref">Реестр проектной и исполнительной документации: состав разделов — ПП РФ № 87; шифры документов — ГОСТ 21.1101-2013 (СПДС); перечень техдокументации МКД — ПП РФ № 491 (п. 24–26).</div>
-  <table class="rows"><thead><tr>
-    <th style="width:32%">Наименование документа</th><th style="width:14%">Шифр</th><th style="width:18%">Разработчик</th><th style="width:8%">Год</th><th style="width:8%">Стадия</th><th>Примечание</th><th></th>
-  </tr></thead><tbody></tbody></table>
-  <button class="addrow">+ добавить документ</button>`;
-  renderRows(o, el, 'docs', ['name','shifr','org','year','stage','note'], {stage:['','П','Р','РД','ИД','ЭД']});
+  <div class="normref">ФНП «Требования к обеспечению безопасности ГТС» (приказ Ростехнадзора от 08.05.2024 № 151) — контроль и мониторинг показателей состояния ГТС; СП 25.13330.2020 (основания на ММГ); ГОСТ 25358-2020 (температура грунтов); ГОСТ 24846-2019 (деформации); ГОСТ 53778-2010. Состав сети и периодичность — по проекту мониторинга (ТЗ НИР, этап 2): деформации дамб (вертикальные и горизонтальные), температурный режим тела и основания дамб, уровень грунтовых вод.</div>
+  <div class="sect">Сеть наблюдений — план / факт ${ro?'<span class="note">(редактирование плановых количеств — в режиме оператора)</span>':''}</div>
+  <table class="rows static"><thead><tr>
+    <th>Средство наблюдений</th><th style="width:22%">План (КИА / проект)</th><th style="width:14%">Факт в базе</th><th style="width:22%">Заключение</th>
+  </tr></thead><tbody>${netRows}</tbody></table>
+  <div class="sect">Периодичность наблюдений (устанавливается проектом мониторинга ГТС)</div>
+  <table class="kv">
+    <tr><td>Термометрия (тело и основание дамб)</td><td>${sel(o,'gtm','freq_term','',['','2 раза в год (конец лета, середина зимы)','4 раза в год','1 раз в месяц','иная по проекту'])}</td></tr>
+    <tr><td>Пьезометрия / уровень грунтовых вод</td><td>${sel(o,'gtm','freq_piezo','',['','1 раз в месяц','2 раза в месяц','ежедекадно','иная по проекту'])}</td></tr>
+    <tr><td>Геодезические наблюдения (деформации)</td><td>${sel(o,'gtm','freq_geod','',['','2 раза в год','4 раза в год','1 раз в месяц','иная по проекту'])}</td></tr>
+    <tr><td>Осмотры сооружений</td><td>${sel(o,'gtm','freq_osm','',['','ежемесячно','еженедельно','2 раза в год (весенний, осенний)','иная по проекту'])}</td></tr>
+    <tr><td>Факт: осмотры за 12 мес.</td><td><b>${osmN}</b> <span class="note">— журнал осмотров (📋)</span></td></tr>
+  </table>
+  <div style="margin:10px 0; padding:9px 12px; border-radius:6px; background:#f6f7f9; border-left:4px solid ${conclCol}">
+    <b>Заключение по обеспеченности мониторингом: <span style="color:${conclCol}">${worst.s==='—'?'НЕТ ДАННЫХ (плановый состав КИА не задан)':worst.s}</span></b>
+    <div class="note">Плановый состав КИА принимается из паспорта/декларации ГТС и проекта мониторинга (этап 2 НИР); фактические ряды появятся после загрузки журналов замеров (вкладки «Термометрия», «Пьезометрия», «Деформации»).</div>
+  </div>
+  <div class="noprint" style="display:flex; gap:8px; flex-wrap:wrap">
+    <button class="wbtn" id="gtmGoKK">→ Контрольные критерии</button>
+    <button class="wbtn" id="gtmGoTherm">→ Термометрия</button>
+    <button class="wbtn" id="gtmGoPiezo">→ Пьезометрия</button>
+    <button class="wbtn" id="gtmGoGeod">→ Деформации</button>
+    <button class="wbtn" id="gtmGoPass">→ Паспорт ГТС</button>
+  </div>`;
+  wireEd(o, el, 'gtm');
+  el.querySelectorAll('.ed[data-scope="gtm"]').forEach(i2=>i2.addEventListener('change',()=>renderTab(o)));
+  el.querySelector('#gtmGoKK').onclick=()=>{curTab='kk'; renderDetail(o);};
+  el.querySelector('#gtmGoTherm').onclick=()=>{curTab='geoterm'; renderDetail(o);};
+  el.querySelector('#gtmGoPiezo').onclick=()=>{curTab='piezo'; renderDetail(o);};
+  el.querySelector('#gtmGoGeod').onclick=()=>{curTab='geod'; renderDetail(o);};
+  el.querySelector('#gtmGoPass').onclick=()=>{curTab='passport'; renderDetail(o);};
 }
 
-function tabIGI(o, el){
-  const grunts=o.igi_grunts||(((o.pf2||{}).grunts||'').trim());
-  const meaningful=grunts&&!/не (предостав|представ)|отсутств/i.test(grunts)&&grunts.length>20;
-  const p=o.pf2||{};
+function tabKK(o, el){
   el.innerHTML=`
-  <div class="normref">СП 47.13330.2016 «Инженерные изыскания для строительства»; СП 11-105-97 (ч. II — мерзлотные грунты); классификация грунтов — ГОСТ 25100-2020; отчёт ИГИ — по схеме СП 47.13330 (прил. В).</div>
-  <div class="sect">Инженерно-геологические условия основания</div>
-  <table class="kv">
-    <tr><td>Грунты основания</td><td>${meaningful?esc(grunts):'Отчёты ИГИ заказчиком не предоставлены (по материалам мерзлотного надзора)'}</td></tr>
-    ${p.princip?`<tr><td>Принцип использования ММГ</td><td>${esc(p.princip)}</td></tr>`:''}
-    ${o.ngc?`<tr><td>Глубина НГК / T на НГК</td><td>${o.ngc.h} м / ${o.ngc.t} °C (по рядам замеров)</td></tr>`:''}
-    ${p.fund?`<tr><td>Фундаменты (по отчёту)</td><td>${esc(p.fund)}</td></tr>`:''}
-  </table>
-  <div class="note">При наличии отчётов инженерно-геологических изысканий по объекту — зарегистрируйте их ниже и внесите ИГЭ.</div>
-  <div class="sect">Реестр отчётов ИГИ</div>
+  <div class="normref">ФЗ-117 «О безопасности ГТС» (ст. 3 — критерии безопасности; ст. 9 — декларация безопасности); ГОСТ Р 59873-2021 «ГТС. Методика установления контрольных критериев» (К1 — предупреждающий, К2 — предельный); ФНП (приказ Ростехнадзора от 08.05.2024 № 151) — порядок установления критериев. Критерии утверждаются в составе декларации безопасности ГТС.</div>
+  <div class="note">Контрольные критерии по объектам принимаются из деклараций безопасности ГТС ПАО «ГМК «Норильский никель» — запрашиваются у заказчика. Ниже — редактируемый реестр критериев по объекту.</div>
   <table class="rows"><thead><tr>
+    <th style="width:20%">Параметр / сооружение</th><th style="width:24%">Диагностический показатель</th><th style="width:12%">К1 (предупреждающий)</th><th style="width:12%">К2 (предельный)</th><th style="width:14%">Периодичность</th><th>Источник (декларация, проект)</th><th></th>
+  </tr></thead><tbody></tbody></table>
+  <button class="addrow">+ добавить критерий</button>`;
+  renderRows(o, el, 'kk', ['param','pokaz','k1','k2','period','src']);
+}
+
+function tabPiezo(o, el){
+  const pts=(o.points&&o.points.piezo)||[];
+  el.innerHTML=`
+  <div class="normref">Наблюдения за уровнем и напором подземных вод — по программе мониторинга ГТС (ТЗ НИР, этап 2: уровень грунтовых вод); обработка рядов — по аналогии с ГОСТ 24846-2019.</div>
+  ${pts.length?`<div class="sect">Пьезометры объекта</div><div class="note">${pts.map(esc).join(', ')}</div>`:'<div class="note">Состав пьезометров принимается по проекту мониторинга (этап 2 НИР). Замеры вносятся в таблицу ниже.</div>'}
+  <div class="sect">Замеры уровня грунтовых вод</div>
+  <table class="rows"><thead><tr>
+    <th style="width:15%">Дата</th><th style="width:18%">Пьезометр</th><th style="width:18%">Уровень (отметка), м</th><th>Примечание</th><th></th>
+  </tr></thead><tbody></tbody></table>
+  <button class="addrow">+ добавить замер</button>
+  <div class="sect">График уровня грунтовых вод во времени</div>
+  <canvas class="plot" id="ugvChart"></canvas>`;
+  renderRows(o, el, 'ugv', ['date','point','lvl','note']);
+  const c=cardOf(o.a); const byP={};
+  (c.ugv||[]).forEach(r=>{
+    const v=parseFloat(String(r.lvl||'').replace(',','.'));
+    if(r.date&&!isNaN(v)&&String(r.lvl).trim()!==''){ const k=r.point||'?'; (byP[k]=byP[k]||{xs:[],ys:[]}); byP[k].xs.push(r.date); byP[k].ys.push(v); }
+  });
+  const list=Object.entries(byP).map(([m,s],i)=>({label:m, xs:s.xs, ys:s.ys, color:DATE_COLORS[i%DATE_COLORS.length]})).filter(s=>s.ys.length>=2);
+  const cv=document.getElementById('ugvChart');
+  if(list.length){ drawTrend(cv, list, 'ugv'); } else { cv.style.display='none'; cv.previousElementSibling.style.display='none'; }
+}
+
+function tabClimate(o, el){
+  const cl=DB.climate||{};
+  el.innerHTML=`
+  <div class="normref">Прогноз температурного режима оснований с учётом климатических изменений — теплотехническое моделирование (ТЗ НИР, этап 3): период ${esc(cl.modeling_period||'2025–2050')}, шаг не более 1 года; климатические сценарии МГИК (IPCC): ${(cl.scenarios||[]).map(esc).join(', ')||'—'}.</div>
+  <table class="kv">
+    <tr><td>Горизонт прогноза</td><td><b>${esc(String(cl.horizon||2050))} г.</b></td></tr>
+    <tr><td>Климатические сценарии</td><td>${(cl.scenarios||[]).map(esc).join(' · ')||'—'}</td></tr>
+    <tr><td>Период моделирования</td><td>${esc(cl.modeling_period||'—')}</td></tr>
+    <tr><td>Статус работ</td><td>${esc(cl.status||'в разработке')}</td></tr>
+  </table>
+  <div class="note">По итогам моделирования для каждого объекта будут построены прогнозные поля температур и карты рисков деградации мерзлоты в основании сооружений (ТЗ НИР). Прогноз по фактическим рядам замеров объекта (до ${esc(String(cl.horizon||2050))} г.) — во вкладке «Термометрия» после загрузки журналов замеров (этап 2).</div>
+  <div class="noprint" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+    <button class="wbtn" id="clMeteo">🌦 Открыть метеоданные</button>
+    <button class="wbtn" id="clGoTherm">→ Термометрия (ряды и прогноз)</button>
+  </div>`;
+  el.querySelector('#clMeteo').onclick=()=>meteoOpen();
+  el.querySelector('#clGoTherm').onclick=()=>{curTab='geoterm'; renderDetail(o);};
+}
+
+function tabGtsDocs(o, el){
+  el.innerHTML=`
+  <div class="normref">Состав документации ГТС: паспорт ГТС, декларация безопасности, критерии безопасности, инструкция по эксплуатации — ФЗ-117, ФНП (приказ Ростехнадзора от 08.05.2024 № 151); проектная и исполнительная документация — ПП РФ № 87, шифры — ГОСТ 21.1101-2013; отчёты ИГИ — СП 47.13330.2016.</div>
+  <div class="sect">Реестр документации ГТС</div>
+  <table class="rows" id="docsTbl"><thead><tr>
+    <th style="width:32%">Наименование документа</th><th style="width:14%">Шифр / №</th><th style="width:18%">Разработчик / организация</th><th style="width:8%">Год</th><th style="width:8%">Стадия</th><th>Примечание</th><th></th>
+  </tr></thead><tbody></tbody></table>
+  <button class="addrow" id="docsAdd">+ добавить документ</button>
+  <div class="sect">Реестр отчётов инженерно-геологических изысканий</div>
+  <table class="rows" id="igiTbl"><thead><tr>
     <th style="width:22%">Отчёт ИГИ / инв. №</th><th style="width:8%">Год</th><th style="width:18%">Организация</th><th style="width:13%">Скважины ИГИ</th><th style="width:19%">Грунты (ИГЭ)</th><th style="width:8%">УГВ, м</th><th>Примечание</th><th></th>
   </tr></thead><tbody></tbody></table>
-  <button class="addrow">+ добавить отчёт ИГИ</button>`;
-  renderRows(o, el, 'igi', ['report','year','org','wells','grunt','ugv','note']);
+  <button class="addrow" id="igiAdd">+ добавить отчёт ИГИ</button>`;
+  renderRows2(o, el.querySelector('#docsTbl'), 'docs', ['name','shifr','org','year','stage','note'], {stage:['','П','Р','РД','ИД','ЭД']}, el.querySelector('#docsAdd'));
+  renderRows2(o, el.querySelector('#igiTbl'), 'igi', ['report','year','org','wells','grunt','ugv','note'], null, el.querySelector('#igiAdd'));
 }
-
 function tabGeoterm(o, el){
   const st=statusOf(o);
   const wells=o.prof?Object.keys(o.prof):[];
@@ -2019,9 +1883,7 @@ function tabGeoterm(o, el){
     <div class="sect">Прогноз температуры основания до 2050 г. (среднее по всем скважинам)</div>
     <div class="note" style="margin:0 0 2px">Глубина прогноза: <span id="fcBtns"></span></div>
     <canvas class="plot" id="fcChart"></canvas>
-    <div class="note">Прогноз оценочный: сплошная линия — ряд наблюдений; штриховая — линейная экстраполяция наблюдаемого тренда; пунктир — тренд с климатической поправкой потепления воздуха Арктической зоны ≈ +0,35 °C/декаду (сценарий SSP2-4.5, оценочно) с затуханием по глубине (5 м — ×0,6; 10 м — ×0,8; 15 м — ×0,9). Красная линия — 0 °C (граница мёрзлого состояния). Подлежит уточнению теплотехническим расчётом.</div>
-    <div class="sect">Несущая способность вмороженной сваи в динамике F_d(t) · СП 25.13330.2020, прил. В</div>
-    <div id="bearingBody"></div>`
+    <div class="note">Прогноз оценочный: сплошная линия — ряд наблюдений; штриховая — линейная экстраполяция наблюдаемого тренда; пунктир — тренд с климатической поправкой потепления воздуха Арктической зоны ≈ +0,35 °C/декаду (сценарий SSP2-4.5, оценочно) с затуханием по глубине (5 м — ×0,6; 10 м — ×0,8; 15 м — ×0,9). Красная линия — 0 °C (граница мёрзлого состояния). Подлежит уточнению теплотехническим расчётом.</div>`
   : '<div class="empty" style="text-align:left;padding:8px 0">Числовые замеры по объекту в файлах не найдены — запись зарезервирована в структуре БД.<br>Замеры можно добавить через «⬆ Загрузка данных» в шапке.</div>';
   if(o.prof){
     const wb=document.getElementById('wellBtns');
@@ -2071,173 +1933,9 @@ function tabGeoterm(o, el){
       fcb.appendChild(b);
     });
     drawForecast(document.getElementById('fcChart'), o, fcDepth);
-    renderBearing(o);
   }
 }
 
-/* ---------- Краткосрочный план ремонтов МКД (публичный Power BI регионального оператора капремонта) ----------
-   Источник отключён (независимый проект ГТМ ГТС; модуль капремонта МКД неактивен).
-   Автообновление: при входе, если данные старше 7 дней; ручное — кнопка «⟳ Обновить» во вкладке. */
-const KRP_URL=''; // отключено: источник Power BI (капремонт МКД) не относится к проекту ГТМ ГТС
-const KRP_KEY='', KRP_DS='', KRP_MODEL=0;
-const KRP_COLS=['УНДКП','Год КП (текущий)','Адрес','Адрес сокращенный','Вид работ','ВР группа','ВР сокращенный','Подрядная организация','Управляющая организация','Дата начала работ по договору СМР','СМР дата начала работ','СМР дата окончания работ','СМР_начало_фильтр','СМР_завершение_фильтр','%СМР_фильтр','статус 6.0','Статус МКД','Стоимость договора СМР','Публичные комментарии'];
-function krpBody(){
-  const sel=KRP_COLS.map(c=>({Column:{Expression:{SourceRef:{Source:'к'}},Property:c},Name:'КР23_25.'+c}));
-  const inner={Version:2,From:[{Name:'к',Entity:'КР23_25',Type:0}],Select:sel,
-    Where:[{Condition:{In:{Expressions:[{Column:{Expression:{SourceRef:{Source:'к'}},Property:'Муниципальное образование'}}],Values:[[{Literal:{Value:"'город Норильск'"}}]]}}}]};
-  return {version:'1.0.0',queries:[{Query:{Commands:[{SemanticQueryDataShapeCommand:{Query:inner,
-    Binding:{Primary:{Groupings:[{Projections:KRP_COLS.map((_,i)=>i)}]},DataReduction:{DataVolume:4,Primary:{Window:{Count:30000}}},Version:1},ExecutionMetricsKind:1}}]},
-    QueryId:'',ApplicationContext:{DatasetId:KRP_DS,Sources:[]}}],cancelQueries:[],modelId:KRP_MODEL};
-}
-function krpDecode(d){
-  const ds=d.results[0].result.data.dsr.DS[0], vd=ds.ValueDicts||{}, dm=ds.PH[0].DM0;
-  let schema=null; for(const r of dm){ if(r.S){ schema=r.S; break; } }
-  const n=schema.length, out=[]; let prev=null;
-  for(const row of dm){
-    const vals=row.C||[], R=row.R||0, N=row['Ø']||0, res=[]; let ci=0;
-    for(let i=0;i<n;i++){
-      const col=schema[i];
-      if(N&(1<<i)){ res.push(null); continue; }
-      if(R&(1<<i)){ res.push(prev?prev[i]:null); continue; }
-      let v=ci<vals.length?vals[ci]:null; ci++;
-      if(v!==null&&col.DN){ const dct=vd[col.DN]||[]; v=(typeof v==='number'&&v>=0&&v<dct.length)?dct[v]:null; }
-      res.push(v);
-    }
-    out.push(res); prev=res;
-  }
-  return out;
-}
-function krpDate(v){ return (typeof v==='number'&&v>1e10)?new Date(v).toISOString().slice(0,10):(typeof v==='string'?v:null); }
-const KRP_TW=['улица','ул.','ул','проспект','пр-кт','пр-т','пр','пр.','проезд','пр-д','площадь','пл.','пл','набережная','наб.','наб','шоссе','ш.','ш','переулок','пер.','пер','км.','км'];
-function krpStreet(s){
-  s=String(s||'').toLowerCase().replace(/ё/g,'е').trim();
-  KRP_TW.sort((a,b)=>b.length-a.length).forEach(w=>{ s=s.replace(new RegExp('(^|\\s)'+w.replace(/[.]/g,'\\.')+'(?=\\s|$)','g'),' '); });
-  s=s.replace(/\s+/g,' ').replace(/^[ .,]+|[ .,]+$/g,'');
-  return {'б.хмельницкого':'богдана хмельницкого','б хмельницкого':'богдана хмельницкого','лауретов':'лауреатов','комсомольсая':'комсомольская','м.кравца':'михаила кравца','кравца':'михаила кравца','московская д':'московская'}[s]||s;
-}
-function krpHouse(h){
-  h=String(h||'').toLowerCase().replace(/ё/g,'е').replace('к.','к').trim();
-  const m=h.match(/^(\d+)\s*[-–/]?\s*([а-яa-z])?/);
-  if(!m) return h;
-  const tr={a:'а',b:'б',v:'в',g:'г',d:'д',k:'к',m:'м',p:'п'};
-  return m[1]+(tr[m[2]]||m[2]||'');
-}
-function krpAddr(a){
-  if(!a||typeof a!=='string') return null;
-  const parts=a.split(',').map(p=>p.trim());
-  let street='',house='';
-  for(const p of parts){
-    const pl=p.toLowerCase();
-    if(/^(ул\.|улица|пр-кт|проспект|пл\.|площадь|наб\.|набережная|проезд|пр-д|ш\.|шоссе|пер\.|переулок|км)\s/.test(pl)) street=p;
-    else if(pl.startsWith('д.')||pl.startsWith('д ')) house=p.slice(2).trim();
-  }
-  if(!street){ const m=a.match(/^(.*?)\s+(\d[^\s]*)$/); if(m){ street=m[1]; house=m[2]; } }
-  if(!street||!house) return null;
-  return krpStreet(street)+'|'+krpHouse(house);
-}
-let KRP_BUSY=false;
-async function krpRefresh(manual){
-  if(!KRP_URL) return; // источник Power BI отключён
-  if(KRP_BUSY) return; KRP_BUSY=true;
-  try{
-    const r=await fetch(KRP_URL,{method:'POST',headers:{'Content-Type':'application/json;charset=UTF-8','X-PowerBI-ResourceKey':KRP_KEY,'Accept':'application/json'},body:JSON.stringify(krpBody())});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const d=await r.json();
-    const rows=krpDecode(d).map(rw=>{
-      const rec={}; KRP_COLS.forEach((c,i)=>rec[c]=rw[i]);
-      return {work:rec['Вид работ']||rec['ВР сокращенный']||'', grp:rec['ВР группа']||'',
-        year:rec['Год КП (текущий)'], start:krpDate(rec['СМР дата начала работ'])||krpDate(rec['Дата начала работ по договору СМР']),
-        end:krpDate(rec['СМР дата окончания работ']), pct:rec['%СМР_фильтр'],
-        status:rec['статус 6.0']||rec['Статус МКД']||'', contractor:rec['Подрядная организация']||'',
-        uk:rec['Управляющая организация']||'', cost:rec['Стоимость договора СМР'],
-        comment:rec['Публичные комментарии']||'', _key:krpAddr(rec['Адрес'])||krpAddr(rec['Адрес сокращенный']),
-        _addr:rec['Адрес']||rec['Адрес сокращенный']||''};
-    });
-    // индекс объектов базы
-    const idx={};
-    DB.objects.forEach(o=>{
-      const m=o.a.match(/^(.*?)\s+(\d[^\s]*)/);
-      if(m) idx[krpStreet(m[1])+'|'+krpHouse(m[2])]=o.a;
-    });
-    const byAddr={}, unm=new Set();
-    rows.forEach(it=>{
-      const a=it._key&&idx[it._key];
-      if(a){ delete it._key; (byAddr[a]=byAddr[a]||[]).push(it); }
-      else if(it._addr) unm.add(it._addr);
-    });
-    const upd=new Date().toISOString().slice(0,16).replace('T',' ');
-    DB.krp_upd=upd; DB.krp_unm=[...unm].sort();
-    DB.objects.forEach(o=>{ o.krp=byAddr[o.a]||[]; });
-    localStorage.setItem('gtm_krp', JSON.stringify({upd, data:byAddr, unm:DB.krp_unm}));
-    if(curObj&&curTab==='krplan') renderDetail(curObj);
-    if(manual) alert('План ремонтов обновлён: '+upd+' · строк по городу: '+rows.length+', сопоставлено объектам: '+Object.keys(byAddr).length);
-  }catch(e){
-    if(manual) alert('Не удалось обновить данные Power BI: '+e.message+'\nПоказаны ранее загруженные данные.');
-  }finally{ KRP_BUSY=false; }
-}
-function krpLoadLocal(){
-  try{
-    const l=JSON.parse(localStorage.getItem('gtm_krp')||'null');
-    if(!l||!l.upd) return;
-    if(!DB.krp_upd||l.upd>DB.krp_upd){
-      DB.krp_upd=l.upd; DB.krp_unm=l.unm||[];
-      DB.objects.forEach(o=>{ if(l.data[o.a]) o.krp=l.data[o.a]; });
-    }
-  }catch(e){}
-}
-function krpAuto(){
-  const upd=DB.krp_upd?new Date(DB.krp_upd.replace(' ','T')):null;
-  const stale=!upd||(Date.now()-upd.getTime())>7*864e5;
-  if(stale) krpRefresh(false);
-}
-function tabKrp(o, el){
-  const items=o.krp||[];
-  const today=new Date().toISOString().slice(0,10);
-  function stBadge(it){
-    const pct=it.pct===null||it.pct===undefined?null:+it.pct;
-    if(pct!==null&&pct>=100) return '<b style="color:#1a7f37">выполнено 100%</b>';
-    if(it.end&&it.end<today) return `<b style="color:#b3261e">просрочено${pct!==null?' ('+pct+'%)':''}</b>`;
-    if(pct) return `<b style="color:#a86400">в работе ${pct}%</b>`;
-    return '<span style="color:#667">не начато</span>';
-  }
-  // группировка: год → вид работ
-  const byYear={};
-  items.forEach(it=>{
-    const y=(String(it.year||'').match(/\d{4}/)||['—'])[0];
-    (byYear[y]=byYear[y]||[]).push(it);
-  });
-  let body='';
-  Object.keys(byYear).sort().forEach(y=>{
-    const rows=byYear[y];
-    const byGrp={};
-    rows.forEach(it=>{ (byGrp[it.grp||it.work||'прочее']=byGrp[it.grp||it.work||'прочее']||[]).push(it); });
-    body+=`<div class="sect">Краткосрочный план ${y} г. · позиций: ${rows.length}</div>`;
-    Object.keys(byGrp).sort().forEach(g=>{
-      body+=`<div style="margin:4px 0 2px; font-weight:600; font-size:12px; color:var(--mut)">${esc(g)}</div>
-      <table class="rows static"><thead><tr>
-        <th>Вид работ</th><th style="width:11%">Начало по договору</th><th style="width:11%">Завершение по договору</th><th style="width:13%">Факт. выполнение</th><th style="width:16%">Подрядная организация</th><th style="width:12%">Стоимость СМР, ₽</th><th>Комментарий</th>
-      </tr></thead><tbody>${byGrp[g].map(it=>`<tr>
-        <td>${esc(it.work)}${it.status?` <span class="note">${esc(it.status)}</span>`:''}</td>
-        <td>${esc(it.start||'—')}</td><td>${esc(it.end||'—')}</td>
-        <td>${stBadge(it)}${it.pct?`<div style="background:#e5e7eb;border-radius:3px;height:4px;margin-top:2px"><div style="background:${it.pct>=100?'#1a7f37':'#a86400'};width:${Math.min(100,it.pct)}%;height:4px;border-radius:3px"></div></div>`:''}</td>
-        <td>${esc(it.contractor||'—')}</td>
-        <td>${it.cost?Number(it.cost).toLocaleString('ru-RU'):'—'}</td>
-        <td style="font-size:11px">${esc(it.comment||'')}</td>
-      </tr>`).join('')}</tbody></table>`;
-    });
-  });
-  const unm=(DB.krp_unm&&DB.krp_unm.length)?`<div class="note" style="margin-top:8px">Адресов краткосрочного плана вне базы мониторинга: ${DB.krp_unm.length}: ${DB.krp_unm.map(a=>esc(String(a).replace('г. Норильск, ',''))).join('; ')}</div>`:'';
-  el.innerHTML=`
-  <div class="normref">Источник: публичный отчёт Power BI регионального оператора капитального ремонта Красноярского края (краткосрочный план, срез «город Норильск»). Раздел информативный; учёт ремонтов по ГОСТ 31937-2024 и СП 497.1325800.2020 — во вкладке «Ремонты». Обновлено: <b>${esc(DB.krp_upd||'—')}</b> · автообновление при входе, если данные старше 7 дней.
-  <button class="wbtn noprint" id="krpUpd" style="float:right">⟳ Обновить сейчас</button></div>
-  ${items.length?body:`<div class="note" style="margin:10px 0">По этому адресу позиций краткосрочного плана ремонтов нет.${unm?'':''}</div>`}
-  ${unm}`;
-  el.querySelector('#krpUpd').onclick=async()=>{
-    const b=el.querySelector('#krpUpd'); b.textContent='⟳ Обновление…'; b.disabled=true;
-    await krpRefresh(true);
-    if(curObj){ curTab='krplan'; renderDetail(curObj); }
-  };
-}
 
 /* ---------- динамика несущей способности сваи: рендер и график ---------- */
 function drawBearing(cv, bd){
@@ -2370,88 +2068,6 @@ function gtmCalc(o){
     frTemp:fr(tempDates.size,tempReq), frGeod:fr(geodDates.size,geodReq),
     frOsmT:fr(osmN,osmReq), frOsmS:fr(osmN,2)};
 }
-function tabGtm(o, el){
-  const g=gtmCalc(o);
-  const vc=ventCheck(o);
-  const ro=!document.body.classList.contains('role-edit');
-  const WORST={'ТРЕБУЕТСЯ ДООСНАСТКА':4,'НЕ ПРОВОДЯТСЯ':3,'НЕДОСТАТОЧНО':2,'НОРМА':1,'—':0};
-  const all=[g.eqWells,g.eqMarks,g.eqHgw,g.frTemp,g.frGeod,g.frOsmT,g.frOsmS,vc.st];
-  const worst=all.reduce((a,b)=>WORST[b.s]>WORST[a.s]?b:a);
-  const recs=[];
-  if(g.eqWells.s==='ТРЕБУЕТСЯ ДООСНАСТКА') recs.push(`оборудовать термометрические скважины в количестве не менее ${g.wellsReq} (не менее 2 % общего числа свай) — СП 25.13330.2020, прил. М, табл. М.1`);
-  else if(g.eqWells.s==='НЕДОСТАТОЧНО') recs.push(`оборудовать дополнительно ${g.wellsReq-g.wellsFact} термометрич. скважин(у) до нормативных ${g.wellsReq} — СП 25.13330.2020, прил. М, табл. М.1`);
-  if(g.eqMarks.s==='ТРЕБУЕТСЯ ДООСНАСТКА') recs.push(`установить постоянные геодезические марки (не менее ${g.marksReq}) на угловых фундаментах, в средней части по осям и по обе стороны осадочных швов — СП 25.13330.2020, прил. М, табл. М.1`);
-  else if(g.eqMarks.s==='НЕДОСТАТОЧНО') recs.push(`установить дополнительно ${g.marksReq-g.marksFact} геодезич. марок до нормативных ${g.marksReq} — СП 25.13330.2020, прил. М, табл. М.1`);
-  if(g.eqHgw.s==='ТРЕБУЕТСЯ ДООСНАСТКА') recs.push('оборудовать 2 гидрогеологические скважины (внутри и снаружи контура здания) — СП 25.13330.2020, прил. М, табл. М.1');
-  if(g.frTemp.s!=='НОРМА') recs.push(`восстановить режимные замеры температуры грунта: требуется ${g.tempReq} раз(а) в год (${g.princip==='I'?'в конце летнего периода и в середине зимы':'по табл. 9.1 для принципа II'}) — СП 497.1325800.2020, табл. 9.1`);
-  if(g.frGeod.s!=='НОРМА') recs.push(`восстановить геодезические наблюдения за осадками: требуется ${g.geodReq} раз(а) в год — СП 497.1325800.2020, табл. 9.1`);
-  if(g.frOsmS.s!=='НОРМА') recs.push('провести сезонные (весенний и осенний) осмотры — СП 497.1325800.2020, п. 4.7');
-  if(vc.st.s==='НЕДОСТАТОЧНО'||vc.st.s==='ТРЕБУЕТСЯ ДООСНАСТКА') recs.push(`привести вентиляцию подполья в соответствие с нормами (${vc.st.d}) — Правила № 170, п. 4.1.4; СП 25.13330.2020, разд. 6.3, прил. Д`);
-  const conclCol=worst.s==='НОРМА'?GTM_COL.ok:(worst.s==='НЕДОСТАТОЧНО'?GTM_COL.warn:GTM_COL.bad);
-  el.innerHTML=`
-  <div class="normref">СП 25.13330.2020 «Основания и фундаменты на вечномерзлых грунтах» (действующая редакция с Изм. № 1, 2, 3), разд. 15, прил. М (табл. М.1 — состав сети наблюдений); СП 497.1325800.2020 «…Правила эксплуатации», разд. 4 (осмотры) и разд. 9, табл. 9.1 (периодичность измерений в период эксплуатации); Правила № 170, п. 4.1.4 (продухи подполья). Данные о фактическом оснащении и циклах наблюдений синхронизированы с разделами «Геотермика», «Геодезия», «Цокольное ограждение» и журналом осмотров (📋).</div>
-  <div class="sect">Исходные данные ${ro?'<span class="note">(редактирование — в режиме оператора)</span>':''}</div>
-  <table class="kv">
-    <tr><td>Принцип использования ММГ</td><td><b>${g.princip}</b> <span class="note">(задаётся в «Паспорте объекта»; продолжительность мониторинга: ${g.princip==='I'?'весь период эксплуатации':'5–10 лет'} — СП 497.1325800.2020, п. 9.6)</span></td></tr>
-    <tr><td>Общее число свай / столбчатых фундаментов</td><td>${inp(o,'gtm','n_piles', o.np||'','number')} <span class="note">— база нормы «не менее 2 %» (табл. М.1)${o.nps&&!edVal(o,'gtm','n_piles','')?'; автозаполнено: '+esc(o.nps):''}</span></td></tr>
-    <tr><td>Число осадочных швов</td><td>${inp(o,'gtm','n_seams','','number')}</td></tr>
-    <tr><td>Малое здание (ширина ≤ 6 м и длина ≤ 10 м)</td><td>${sel(o,'gtm','small_b','',['','нет','да'])} <span class="note">— освобождает от ГГ-скважин (табл. М.1, сноска 5)</span></td></tr>
-    <tr><td>Класс ответственности (ГОСТ 27751)</td><td>${sel(o,'gtm','klass','нормальный',['нормальный','повышенный'])}</td></tr>
-    <tr><td>Гидрогеологические скважины, факт</td><td>${inp(o,'gtm','hgw_fact','','number')}</td></tr>
-  </table>
-  <div class="sect">Обеспеченность средствами мониторинга — СП 25.13330.2020, прил. М, табл. М.1</div>
-  <table class="rows static"><thead><tr>
-    <th>Средство наблюдений</th><th style="width:26%">Требуется по нормам</th><th style="width:12%">Фактически</th><th style="width:20%">Заключение</th>
-  </tr></thead><tbody>
-    <tr><td>Термометрические скважины <span class="note">(синхрон.: «Геотермика»)</span></td>
-      <td>не менее 2 % числа фундаментов${g.nPiles?` = ${g.wellsReq} (от ${g.nPiles} свай)`:' — задайте число свай'}; у наружных рядов и посредине здания</td>
-      <td><b>${g.wellsFact}</b></td><td>${gtmBadge(g.eqWells)} <span class="note">${g.eqWells.d}</span></td></tr>
-    <tr><td>Деформационные (геодезические) марки <span class="note">(синхрон.: «Геодезия»)</span></td>
-      <td>угловые + средние по осям + у осадочных швов = ${g.marksReq}${g.nSeams?` (швов: ${g.nSeams})`:''}</td>
-      <td><b>${g.marksFact}</b></td><td>${gtmBadge(g.eqMarks)} <span class="note">${g.eqMarks.d}</span></td></tr>
-    <tr><td>Гидрогеологические скважины</td>
-      <td>${g.hgwReq===0?'не требуются (малые размеры здания)':'не менее 2 (внутри и снаружи контура)'}</td>
-      <td><b>${g.hgwFact===null?'—':g.hgwFact}</b></td><td>${gtmBadge(g.eqHgw)} <span class="note">${g.eqHgw.d}</span></td></tr>
-  </tbody></table>
-  <div class="sect">Периодичность наблюдений — СП 497.1325800.2020 (разд. 4, табл. 9.1)${g.age!==null?` · возраст объекта: ${g.age} лет`:''}</div>
-  <table class="rows static"><thead><tr>
-    <th>Вид наблюдений</th><th style="width:30%">Требуется по нормам</th><th style="width:18%">Факт (12 мес.)</th><th style="width:20%">Заключение</th>
-  </tr></thead><tbody>
-    <tr><td>Текущие осмотры фундаментных конструкций (п. 4.6)</td>
-      <td>${g.age!==null&&g.age<=3?'первые 3 года — еженедельно (повыш. класс — ежедневно)':'ежемесячно'}</td>
-      <td>${g.osmN} осмотр(ов)</td><td>${gtmBadge(g.frOsmT)} <span class="note">${g.frOsmT.d}</span></td></tr>
-    <tr><td>Сезонные осмотры (п. 4.7)</td>
-      <td>2 раза в год (весенний, осенний)</td>
-      <td>${g.osmN} осмотр(ов)</td><td>${gtmBadge(g.frOsmS)} <span class="note">${g.frOsmS.d}</span></td></tr>
-    <tr><td>Температура грунта (табл. 9.1) <span class="note">(синхрон.: «Геотермика»)</span></td>
-      <td>${g.princip==='I'?'2 раза в год (конец лета, середина зимы)':(g.tempReq===4?'1-й год — ежеквартально':'1 раз в год')}</td>
-      <td>${g.tempFact} цикл(ов) замеров</td><td>${gtmBadge(g.frTemp)} <span class="note">${g.frTemp.d}</span></td></tr>
-    <tr><td>Деформации (осадки) фундаментов (табл. 9.1) <span class="note">(синхрон.: «Геодезия»)</span></td>
-      <td>${g.age!==null&&g.age<=3?'первые 3 года — не реже 4 раз в год':'2 раза в год'}</td>
-      <td>${g.geodFact} цикл(ов) нивелирования</td><td>${gtmBadge(g.frGeod)} <span class="note">${g.frGeod.d}</span></td></tr>
-    <tr><td>Температура воздуха в проветриваемом подполье (табл. 9.1)</td>
-      <td>первые 2 года эксплуатации — 2 раза в месяц${g.age!==null&&g.age>2?' <span class="note">(период истёк — контроль по программе)</span>':''}</td>
-      <td colspan="2">${inp(o,'gtm','air_fact','')} <span class="note">— замеров за 12 мес. (ручной учёт)</span></td></tr>
-    <tr><td>Состояние вентиляции подполья (продухи) <span class="note">(синхрон.: «Цокольное ограждение»)</span></td>
-      <td>исправны, открыты; ΣS ≈ 1/400 S пола; ≥ 2 на секцию; противоположные стены — Правила № 170, п. 4.1.4; СП 25.13330.2020, прил. Д</td>
-      <td>${vc.F0!==null?((vc.n!==null?vc.n+' продух(а), ':'')+'ΣS = '+vc.F0.toFixed(2)+' м²'):(vc.n!==null?vc.n+' продух(а)':'—')}</td>
-      <td>${gtmBadge(vc.st)} <span class="note">${esc(vc.st.d)}</span></td></tr>
-  </tbody></table>
-  <div style="margin:10px 0; padding:9px 12px; border-radius:6px; background:#f6f7f9; border-left:4px solid ${conclCol}">
-    <b>Заключение по обеспеченности мониторингом: <span style="color:${conclCol}">${worst.s==='НОРМА'?'ОБЕСПЕЧЕН (НОРМА)':worst.s}</span></b>
-    ${recs.length?`<ul style="margin:6px 0 2px 18px">${recs.map(r=>`<li style="margin:2px 0">${esc(r)}</li>`).join('')}</ul>`:'<div class="note">Сеть наблюдений и периодичность соответствуют требованиям СП 25.13330.2020 (прил. М) и СП 497.1325800.2020 (табл. 9.1).</div>'}
-  </div>
-  <div class="noprint" style="display:flex; gap:8px; flex-wrap:wrap">
-    <button class="wbtn" id="gtmGoTherm">→ Геотермика (скважины, замеры)</button>
-    <button class="wbtn" id="gtmGoGeod">→ Геодезия (марки, осадки)</button>
-    <button class="wbtn" id="gtmGoPass">→ Паспорт объекта (принцип, год)</button>
-  </div>`;
-  wireEd(o, el, 'gtm');
-  el.querySelectorAll('.ed[data-scope="gtm"]').forEach(i2=>i2.addEventListener('change',()=>renderTab(o)));
-  el.querySelector('#gtmGoTherm').onclick=()=>{curTab='geoterm'; renderDetail(o);};
-  el.querySelector('#gtmGoGeod').onclick=()=>{curTab='geod'; renderDetail(o);};
-  el.querySelector('#gtmGoPass').onclick=()=>{curTab='passport'; renderDetail(o);};
-}
 
 function tabGeod(o, el){
   const g=o.geod;
@@ -2468,7 +2084,7 @@ function tabGeod(o, el){
     const gm=geodMetrics(o);
     const gmNote=gm?` Макс. скорость последнего цикла: <b>${gm.maxSpeed.toFixed(1)} мм/год</b>; макс. суммарная осадка: <b>${gm.maxOsad.toFixed(1)} мм</b>. Учитывается в статусе объекта (пороги — «⚙ Пороги»).`:'';
     builtin=`
-    <div class="sect">Геодезические наблюдения (архив ООО «ЖКС») · марок: ${marks.length}</div>
+    <div class="sect">Геодезические наблюдения (архивные ряды) · марок: ${marks.length}</div>
     <table class="rows static"><thead><tr>
       <th>Марка</th><th style="width:12%">Замеров</th><th style="width:22%">Период</th><th style="width:18%">Осадка с нач. набл., мм</th><th style="width:16%">Ср. скорость, мм/год</th>
     </tr></thead><tbody>${rows.map(r=>`<tr${r===worst?' style="background:#f7dcd7"':''}><td>${esc(r.m)}</td><td>${r.n}</td><td>${r.d0} … ${r.d1}</td><td><b>${r.osad}</b></td><td>${r.speed!==null?r.speed.toFixed(1):'—'}</td></tr>`).join('')}</tbody></table>
@@ -2506,27 +2122,21 @@ function tabGeod(o, el){
 }
 
 function tabExpl(o, el){
-  const rep=o.expl_report;
-  const repBlock=rep&&rep.length?`
-  <div class="sect">Выявленные нарушения в эксплуатации (отчёт ${o.report_year_full||''} г.)</div>
-  <table class="kv">${rep.map(t=>`<tr><td colspan="2">${escT(t)}</td></tr>`).join('')}</table>
-  ${reportSrc(o)}`:'';
   const dx=(CARD[o.a]&&CARD[o.a].defx)||{};
   const autoLines=(dx.expl||[]).concat(dx.repairs||[]);
   const autoBlock=autoLines.length?`
   <div class="sect">Из отчётов, загруженных оператором (нарушения/ремонты)</div>
   <table class="kv">${autoLines.map(t=>`<tr><td colspan="2">${escT(t)}</td></tr>`).join('')}</table>`:'';
   el.innerHTML=`
-  <div class="normref">СП 497.1325800.2020 «…Правила эксплуатации»; ГОСТ 31937-2024 (обследование и мониторинг); СП 25.13330.2020 (разд. 13); ВСН 01-89.</div>
-  ${repBlock}
+  <div class="normref">ФНП «Требования к обеспечению безопасности ГТС» (приказ Ростехнадзора от 08.05.2024 № 151) — техническое обслуживание и текущий ремонт ГТС; ГОСТ 31937-2024 (обследование и мониторинг); СП 25.13330.2020 (мерзлотные основания). Осмотры — журнал по кнопке 📋 в заголовке карточки.</div>
   ${autoBlock}
-  <div class="sect">Текущие условия (редактируемые поля)</div>
+  <div class="sect">Текущее состояние (редактируемые поля)</div>
   <table class="kv">
-    <tr><td>Температура воздуха в подполе, °C</td><td>${inp(o,'ex','tpodpol','')}</td></tr>
-    <tr><td>Вентиляция подпола (продухи)</td><td>${sel(o,'ex','vent','', ['','в порядке','частично заложены','заложены','не предусмотрены'])}</td></tr>
-    <tr><td>Состояние отмостки / цоколя</td><td>${sel(o,'ex','otmost','', ['','удовлетворительное','локальные повреждения','разрушена','отсутствует'])}</td></tr>
-    <tr><td>Протечки инженерных сетей</td><td>${sel(o,'ex','leak','', ['','нет','единичные (устранены)','регулярные','постоянные'])}</td></tr>
-    <tr><td>Снегонакопление у цоколя</td><td>${sel(o,'ex','sneg','', ['','убирается регулярно','убирается нерегулярно','не убирается'])}</td></tr>
+    <tr><td>Состояние гребня и откосов</td><td>${sel(o,'ex','crest','', ['','удовлетворительное','локальные повреждения','разрушение'])}</td></tr>
+    <tr><td>Фильтрация через тело / основание</td><td>${sel(o,'ex','filtr','', ['','не выявлена','очаговая','интенсивная'])}</td></tr>
+    <tr><td>Дренажные устройства</td><td>${sel(o,'ex','dren','', ['','исправны','частично засорены','не работают'])}</td></tr>
+    <tr><td>Водосброс / водопропускные сооружения</td><td>${sel(o,'ex','spill','', ['','исправен','требует ремонта','не работает'])}</td></tr>
+    <tr><td>Наледи / термокарст на площадке</td><td>${sel(o,'ex','naled','', ['','нет','локальные','значительные'])}</td></tr>
     <tr><td>Последний осмотр (дата)</td><td>${inp(o,'ex','osmotr','','date')}</td></tr>
     <tr><td>Примечания по эксплуатации</td><td><textarea class="ed" data-scope="ex" data-k="note" rows="2">${esc(edVal(o,'ex','note',''))}</textarea></td></tr>
   </table>`;
@@ -2537,7 +2147,7 @@ function tabPhoto(o, el){
   const c=cardOf(o.a); c.photos=c.photos||[];
   const arch=o.photos||[];
   el.innerHTML=`
-  <div class="normref">Фотофиксация — ГОСТ 31937-2024 (материалы к отчёту об обследовании): общие виды, цоколь и отмостка, подпол, устья термометрических скважин, дефекты. Фото из отчётов хранятся в базе; добавленные вручную — локально в браузере.</div>
+  <div class="normref">Фотофиксация — ГОСТ 31937-2024 (материалы к отчёту об обследовании): общие виды сооружения, гребень и откосы дамб, устья скважин и пьезометров, дефекты. Фото из отчётов хранятся в базе; добавленные вручную — локально в браузере.</div>
   ${arch.length?`<div class="sect">Из годового отчёта ${o.report_year_full||''} г. · ${arch.length} фото</div>
   <div class="photos">${arch.map(p=>`<figure><img src="${p}" loading="lazy"><figcaption><span>отчёт ${o.report_year_full||''}</span></figcaption></figure>`).join('')}</div>`:''}
   <div class="sect">Добавленные вручную</div>
@@ -2617,7 +2227,7 @@ function tabRepairs(o, el){
   const grp={};
   shown.forEach(r=>{ (grp[r.y]=grp[r.y]||[]).push(r); });
   el.innerHTML=`
-  <div class="normref">Сведения о выполненных ремонтах фундаментов, несущих конструкций, обустройству подполья и цокольного ограждения — из годовых отчётов мерзлотного надзора ООО «НПО «Фундамент» (группировка по годам); учёт — по ГОСТ 31937-2024 и СП 497.1325800.2020.</div>
+  <div class="normref">Сведения о ремонтах и работах на сооружениях ГТС — из отчётов эксплуатирующей организации и мерзлотного надзора (группировка по годам); учёт — по ГОСТ 31937-2024, ФНП (приказ Ростехнадзора от 08.05.2024 № 151).</div>
   ${years.length?`<div class="wells" id="repYears"></div>`:''}
   ${rows.length? Object.keys(grp).sort((a,b)=>b-a).map(y=>`
     <div class="sect">${y} год · ${grp[y].length} запис.</div>
@@ -3468,27 +3078,26 @@ repModal.addEventListener('click',e=>{ if(e.target===repModal) repModal.style.di
 
 function repAssessTable(o, tasks){
   const a=assess(o), sd=statusDetail(o);
-  let h=`<h2>${esc(o.a)} — район ${esc(o.d||'—')}, УК: ${esc(effectiveUK(o))} · статус: ${sd.status||'нет данных'} · категория техсостояния: <span class="cat">${a.cat}</span> (балл ${a.total===null?'—':a.total})</h2>`;
+  let h=`<h2>${esc(o.a)} — предприятие ${esc(o.d||'—')} · статус: ${sd.status||'нет данных'} · категория техсостояния: <span class="cat">${a.cat}</span> (балл ${a.total===null?'—':a.total})</h2>`;
   if(tasks.has('passport')){
-    const p=o.pf2||{};
-    h+=`<h3 style="font-size:12.5px">Паспорт объекта</h3><table>
-      <tr><td>Проект / серия</td><td>${esc(p.project||p.arc_series||'—')}</td><td>Год ввода</td><td>${esc(p.year_in||p.arc_year||o.y||'—')}</td></tr>
-      <tr><td>Фундаменты</td><td colspan="3">${esc(p.fund||'—')}</td></tr>
-      <tr><td>Принцип использования ММГ</td><td>${esc(p.princip||'—')}</td><td>НГК</td><td>${o.ngc?o.ngc.h+' м, T='+o.ngc.t+' °C':'—'}</td></tr></table>`;
+    const g=o.gts||{};
+    h+=`<h3 style="font-size:12.5px">Паспорт ГТС</h3><table>
+      <tr><td>Тип ГТС</td><td>${esc(g.type||'—')}</td><td>Класс ГТС</td><td>${esc(g.klass||'—')}</td></tr>
+      <tr><td>Местоположение</td><td colspan="3">${esc(g.location||'—')}</td></tr>
+      <tr><td>Состав сооружений</td><td>${(g.structures||[]).length} ед.</td><td>НГК</td><td>${o.ngc?o.ngc.h+' м, T='+o.ngc.t+' °C':'—'}</td></tr></table>`;
   }
   if(tasks.has('gtm')){
-    const g=gtmCalc(o);
-    const row=(n,req,fact,st)=>`<tr><td>${n}</td><td>${req}</td><td>${fact}</td><td><b>${st.s}</b> <span style="color:#666">(${st.d})</span></td></tr>`;
-    h+=`<h3 style="font-size:12.5px">Паспорт геотехнического мониторинга — СП 25.13330.2020 (прил. М, табл. М.1); СП 497.1325800.2020 (разд. 4, табл. 9.1)</h3>
+    const kia=(o.gts&&o.gts.kia)||{};
+    const pts=o.points||{};
+    const krow=(n,plan,fact)=>`<tr><td>${n}</td><td>${plan===null||plan===undefined?'—':plan}</td><td>${fact}</td></tr>`;
+    h+=`<h3 style="font-size:12.5px">Паспорт геотехнического мониторинга — сеть наблюдений (КИА): план (паспорт/проект) / факт в базе</h3>
     <table>
-      <tr><td colspan="4"><b>Принцип использования ММГ: ${g.princip}</b>; мониторинг: ${g.princip==='I'?'весь период эксплуатации':'5–10 лет'} (п. 9.6 СП 497.1325800.2020)</td></tr>
-      ${row('Термометрические скважины', g.wellsReq===null?'не менее 2 % числа свай':'≥ '+g.wellsReq+' (2 % от '+(g.nPiles||'—')+' свай)', g.wellsFact, g.eqWells)}
-      ${row('Деформационные марки', '≥ '+g.marksReq+' (углы, оси, швы)', g.marksFact, g.eqMarks)}
-      ${row('Гидрогеологические скважины', g.hgwReq===0?'не требуются':'≥ 2', g.hgwFact===null?'—':g.hgwFact, g.eqHgw)}
-      ${row('Температура грунта', g.tempReq+' раз(а)/год', g.tempFact+' цикл(ов)/12 мес.', g.frTemp)}
-      ${row('Деформации (осадки)', g.geodReq+' раз(а)/год', g.geodFact+' цикл(ов)/12 мес.', g.frGeod)}
-      ${row('Текущие осмотры (п. 4.6)', 'ежемесячно', g.osmN+'/12 мес.', g.frOsmT)}
-      ${row('Сезонные осмотры (п. 4.7)', '2 раза/год', g.osmN+'/12 мес.', g.frOsmS)}
+      ${krow('Термометрические скважины', kia.term, (pts.thermal||[]).length)}
+      ${krow('Пьезометрические скважины', kia.piezo, (pts.piezo||[]).length)}
+      ${krow('Деформационные марки', kia.marks, (pts.marks||[]).length)}
+      ${krow('Реперы (в т.ч. контрольные)', (kia.reper||0)+(kia.kreper||0)||kia.reper, (pts.repers||[]).length)}
+      ${krow('Водомерные рейки', kia.gauge, (pts.gauge||[]).length)}
+      ${krow('Наблюдательные скважины', kia.obs, (pts.obs||[]).length)}
     </table>`;
   }
   const sect=(key,title,score,notes)=>{
@@ -3512,7 +3121,7 @@ function repAssessTable(o, tasks){
   return h;
 }
 function conclText(a,sd){
-  if(sd.status==='КРИТИЧНО') return 'Состояние недопустимое/предельное: требуются противоаварийные и компенсирующие мероприятия по восстановлению работоспособности основания и фундаментов (см. вкладку «Планы» карточки объекта), усиленный режим мониторинга; при дальнейшем росте показателей — внеочередное обследование с привлечением специализированной организации (ГОСТ 31937-2024, СП 497.1325800.2020).';
+  if(sd.status==='КРИТИЧНО') return 'Состояние недопустимое/предельное: требуются противоаварийные и компенсирующие мероприятия по восстановлению безопасного состояния сооружений ГТС и их оснований (учёт — во вкладке «Ремонты и работы» карточки объекта), усиленный режим мониторинга; при дальнейшем росте показателей — внеочередное обследование с привлечением специализированной организации (ГОСТ 31937-2024, ФЗ-117, ФНП приказ Ростехнадзора № 151).';
   if(sd.status==='РИСК') return 'Состояние ограниченно работоспособное: плановые ремонтные мероприятия по устранению выявленных дефектов, усиление контроля (ежеквартальные замеры), устранение источников теплового воздействия на основание.';
   if(sd.status==='НОРМА') return 'Состояние работоспособное: продолжить режимные наблюдения по установленному графику.';
   return 'Недостаточно данных для оценки — требуется восстановление/организация мониторинга.';
@@ -3530,8 +3139,8 @@ document.getElementById('repGen').onclick=()=>{
   } else {
     const rows=registryRows();
     h+=`<h2 style="font-size:14px">Оценка объектов реестра РИСК/КРИТИЧНО (${rows.length})</h2>
-    <table><thead><tr><th>№</th><th>Адрес</th><th>Район</th><th>УК</th><th>Статус</th><th>Баллы: грунты / прочность / дефекты</th><th>Категория</th></tr></thead><tbody>`+
-    rows.map((r,n)=>{ const a=assess(r.o); return `<tr><td>${n+1}</td><td>${esc(r.o.a)}</td><td>${esc(r.o.d||'')}</td><td>${esc(effectiveUK(r.o))}</td><td>${r.sd.status}</td><td>${a.sG??'—'} / ${a.sS??'—'} / ${a.sD??'—'}</td><td>${a.cat}</td></tr>`; }).join('')+'</tbody></table>';
+    <table><thead><tr><th>№</th><th>Объект ГТС</th><th>Предприятие</th><th>Статус</th><th>Баллы: грунты / прочность / дефекты</th><th>Категория</th></tr></thead><tbody>`+
+    rows.map((r,n)=>{ const a=assess(r.o); return `<tr><td>${n+1}</td><td>${esc(r.o.a)}</td><td>${esc(r.o.d||'')}</td><td>${r.sd.status}</td><td>${a.sG??'—'} / ${a.sS??'—'} / ${a.sD??'—'}</td><td>${a.cat}</td></tr>`; }).join('')+'</tbody></table>';
   }
   out.innerHTML=h; out.style.display='block';
 };
@@ -3540,202 +3149,7 @@ document.getElementById('repPrint').onclick=()=>{
   document.body.classList.add('printing'); window.print(); document.body.classList.remove('printing');
 };
 
-/* ---------- планы мероприятий (вкладка карточки) ---------- */
-const PLAN_RULES=[
-  [/разрушение защитного слоя/i,'Восстановление защитного слоя бетона ремонтным составом (типа ЭМАКО)','текущий'],
-  [/трещин/i,'Расшивка и заделка трещин методом инъецирования ремонтными составами','текущий'],
-  [/корроз|обнажен|оголен/i,'Очистка и антикоррозионная защита арматуры с восстановлением защитного слоя','текущий'],
-  [/скол|деструкц/i,'Восстановление повреждённого бетона ремонтным составом','текущий'],
-  [/налед/i,'Устранение течей сетей ТВСиК/канализации, удаление наледи, восстановление планировки подполья','противоаварийный'],
-  [/зазор|снегозанос/i,'Заделка зазоров цокольного ограждения, восстановление отмостки','текущий'],
-  [/продух/i,'Очистка и восстановление вентиляционных продухов','текущий'],
-];
-function draftPlans(o){
-  const c=cardOf(o.a);
-  if((c.planRep&&c.planRep.length)||(c.planAv&&c.planAv.length)) return false;
-  const rep=[], av=[]; const seen=new Set();
-  Object.entries(o.defects||{}).forEach(([code,rows])=>{
-    rows.forEach(([m,s])=>{
-      PLAN_RULES.forEach(([rx,mer,kind])=>{
-        if(rx.test(s)){
-          const key=code+mer;
-          if(!seen.has(key)){
-            seen.add(key);
-            rep.push({elem:DEF_TITLES[code]||code, def:s.slice(0,120)+(s.length>120?'…':''), mer, kind,
-                      prio: statusOf(o)==='КРИТИЧНО'?'высокий':'плановый', srok:'', note:''});
-          }
-        }
-      });
-    });
-  });
-  const sd=statusDetail(o);
-  sd.reasons.forEach(r=>{
-    if(/температура|НГК/.test(r.text)) av.push({mer:'Термостабилизация основания: восстановление теплового режима подполья (вентиляция, устранение источников тепла), усиленный мониторинг', obsn:r.text, prio:'немедленно', srok:'1 мес', ctrl:'ежемесячные замеры'});
-    if(/тренд/.test(r.text)) av.push({mer:'Анализ причин потепления основания; ежеквартальный контроль температур', obsn:r.text, prio:'высокий', srok:'квартал', ctrl:'ежеквартально'});
-    if(/осадк/.test(r.text)) av.push({mer:'Внеочередное обследование; проект усиления фундаментов (подпорные сваи, инъецирование грунта) по СП 25.13330', obsn:r.text, prio:'немедленно', srok:'1 мес', ctrl:'геодезия ежемесячно'});
-  });
-  if(rep.length) c.planRep=rep;
-  if(av.length) c.planAv=av;
-  saveCARD();
-  return rep.length+av.length>0;
-}
-function tabPlans(o, el){
-  el.innerHTML=`
-  <div class="normref">Планы формируются по выявленным дефектам и сработавшим правилам статуса; структура — по СП 497.1325800.2020 (мероприятия при эксплуатации на ММГ) и ГОСТ 31937-2024. Строки редактируются.</div>
-  <button class="addrow" id="planDraft" style="border-style:solid">⚙ Сформировать проект плана автоматически (по дефектам и статусу)</button>
-  <button class="addrow" id="planWord" style="border-style:solid; border-color:var(--c-centr); color:var(--c-centr)">⬇ Оформить подробный план в Word (по действующим нормам)</button>
-  <button class="addrow" id="planXls" style="border-style:solid; border-color:var(--c-centr); color:var(--c-centr)">⬇ Выгрузить план в Excel (в работу УК)</button>
-  <div class="sect">План текущего / капитального ремонта</div>
-  <table class="rows"><thead><tr>
-    <th style="width:14%">Элемент</th><th style="width:26%">Дефект / повреждение</th><th style="width:26%">Мероприятие</th><th style="width:10%">Вид</th><th style="width:9%">Приоритет</th><th style="width:8%">Срок</th><th>Примечание</th><th></th>
-  </tr></thead><tbody></tbody></table>
-  <button class="addrow">+ добавить мероприятие</button>
-  <div class="sect">План противоаварийных / компенсирующих мероприятий (восстановление работоспособности основания и фундаментов)</div>
-  <table class="rows"><thead><tr>
-    <th style="width:30%">Мероприятие</th><th style="width:26%">Обоснование (правило)</th><th style="width:10%">Приоритет</th><th style="width:8%">Срок</th><th>Контроль</th><th></th>
-  </tr></thead><tbody></tbody></table>
-  <button class="addrow">+ добавить мероприятие</button>`;
-  const tbls=el.querySelectorAll('table.rows');
-  renderRows2(o, tbls[0], 'planRep', ['elem','def','mer','kind','prio','srok','note'], {kind:['текущий','капитальный'], prio:['плановый','высокий','немедленно']}, el.querySelectorAll('.addrow')[1]);
-  renderRows2(o, tbls[1], 'planAv', ['mer','obsn','prio','srok','ctrl'], {prio:['плановый','высокий','немедленно']}, el.querySelectorAll('.addrow')[2]);
-  el.querySelector('#planDraft').onclick=()=>{ if(draftPlans(o)) renderDetail(o); else alert('План уже содержит строки (очистите для повторной генерации) или нет данных для формирования.'); };
-  el.querySelector('#planWord').onclick=()=>exportPlanWord(o);
-  el.querySelector('#planXls').onclick=()=>exportPlanXls(o);
-}
-
-/* ---------- выгрузка плана мероприятий в Excel ---------- */
-function exportPlanXls(o){
-  const c=cardOf(o.a);
-  if(!(c.planRep&&c.planRep.length)&&!(c.planAv&&c.planAv.length)) draftPlans(o);
-  const rep=c.planRep||[], av=c.planAv||[];
-  if(!rep.length&&!av.length){ alert('План пуст — сначала сформируйте проект плана или добавьте строки.'); return; }
-  const wb=XLSX.utils.book_new();
-  const head1=['№','Элемент','Дефект / повреждение','Мероприятие','Вид','Приоритет','Срок','Примечание'];
-  const ws1=XLSX.utils.aoa_to_sheet([['План текущего / капитального ремонта — '+o.a+', г. Норильск · УК: '+effectiveUK(o)+' · сформирован '+new Date().toLocaleDateString('ru-RU')],[],head1]
-    .concat(rep.map((r,i)=>[i+1,r.elem,r.def,r.mer,r.kind,r.prio,r.srok,r.note])));
-  ws1['!cols']=[{wch:4},{wch:20},{wch:40},{wch:46},{wch:12},{wch:10},{wch:10},{wch:24}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'План ремонта');
-  const head2=['№','Мероприятие','Обоснование (сработавшее правило)','Приоритет','Срок','Контроль'];
-  const ws2=XLSX.utils.aoa_to_sheet([['План противоаварийных / компенсирующих мероприятий (восстановление работоспособности основания и фундаментов) — '+o.a],[],head2]
-    .concat(av.map((r,i)=>[i+1,r.mer,r.obsn,r.prio,r.srok,r.ctrl])));
-  ws2['!cols']=[{wch:4},{wch:50},{wch:50},{wch:12},{wch:10},{wch:22}];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Противоаварийные мероприятия');
-  XLSX.writeFile(wb, 'План_мероприятий_'+o.a.replace(/[\s\/]+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
-
-/* ---------- пакетная выгрузка планов: один файл на УК со всеми домами ---------- */
-function plansBookForUk(uk){
-  const objs=DB.objects.filter(o=>effectiveUK(o)===uk);
-  const repRows=[], avRows=[], withPlans=[];
-  objs.forEach(o=>{
-    const c=cardOf(o.a);
-    if(!(c.planRep&&c.planRep.length)&&!(c.planAv&&c.planAv.length)) draftPlans(o);
-    const rep=c.planRep||[], av=c.planAv||[];
-    if(!rep.length&&!av.length) return;
-    withPlans.push({o:o, rep:rep, av:av});
-    rep.forEach((r,i)=>repRows.push([o.a, i+1, r.elem, r.def, r.mer, r.kind, r.prio, r.srok, r.note]));
-    av.forEach((r,i)=>avRows.push([o.a, i+1, r.mer, r.obsn, r.prio, r.srok, r.ctrl]));
-  });
-  if(!withPlans.length) return null;
-  const dateStr=new Date().toLocaleDateString('ru-RU');
-  const wb=XLSX.utils.book_new();
-  const ws0=XLSX.utils.aoa_to_sheet([
-    ['Комплект планов мероприятий — '+uk+', г. Норильск'],
-    ['Сформирован: '+dateStr+' · ГТМ ГТС ЗФ ПАО «ГМК «Норильский никель»'],
-    [],
-    ['Объектов УК в базе', objs.length],
-    ['Объектов с планами мероприятий', withPlans.length],
-    ['Мероприятий по текущему/капитальному ремонту', repRows.length],
-    ['Противоаварийных / компенсирующих мероприятий', avRows.length],
-    [],
-    ['Адрес','Район','Статус','Мероприятий']
-  ].concat(withPlans.map(x=>[x.o.a, x.o.d||'', statusOf(x.o)||'—', x.rep.length+x.av.length])));
-  ws0['!cols']=[{wch:34},{wch:14},{wch:12},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws0, 'Сводка');
-  const ws1=XLSX.utils.aoa_to_sheet([['План текущего / капитального ремонта — объекты '+uk+' · '+dateStr],[],
-    ['Адрес','№','Элемент','Дефект / повреждение','Мероприятие','Вид','Приоритет','Срок','Примечание']].concat(repRows));
-  ws1['!cols']=[{wch:26},{wch:4},{wch:20},{wch:40},{wch:46},{wch:12},{wch:10},{wch:10},{wch:24}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'План ремонта');
-  const ws2=XLSX.utils.aoa_to_sheet([['План противоаварийных / компенсирующих мероприятий (восстановление работоспособности основания и фундаментов) — объекты '+uk+' · '+dateStr],[],
-    ['Адрес','№','Мероприятие','Обоснование (сработавшее правило)','Приоритет','Срок','Контроль']].concat(avRows));
-  ws2['!cols']=[{wch:26},{wch:4},{wch:50},{wch:50},{wch:12},{wch:10},{wch:22}];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Противоаварийные');
-  return {wb:wb, nObj:withPlans.length, nAll:objs.length, nRep:repRows.length, nAv:avRows.length};
-}
-function exportPlansUK(){
-  const fuk=document.getElementById('regUK').value;
-  const uks=fuk?[fuk]:UK_LIST.concat(['Не определена']);
-  if(!fuk && !confirm('УК не выбрана в фильтре: будет сформировано по одному файлу на каждую управляющую компанию (до '+uks.length+' файлов; браузер может запросить разрешение на несколько скачиваний). Продолжить?')) return;
-  const noPlans=[];
-  uks.forEach((u,k)=>{
-    setTimeout(()=>{
-      const r=plansBookForUk(u);
-      if(r) XLSX.writeFile(r.wb, 'Планы_мероприятий_'+u.replace(/[«»\\/?*\[\]:]/g,'').replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
-      else noPlans.push(u);
-      if(k===uks.length-1){
-        alert('Пакетная выгрузка завершена.'+(noPlans.length?('\nБез планов (нет дефектов/статусов для формирования): '+noPlans.join(', ')):''));
-      }
-    }, k*500);
-  });
-}
-
-/* ---------- экспорт плана мероприятий в Word ---------- */
-async function exportPlanWord(o){
-  if(!window.docx){ alert('Библиотека Word не загрузилась (нужен интернет). Попробуйте ещё раз.'); return; }
-  const c=cardOf(o.a);
-  if(!(c.planRep&&c.planRep.length)&&!(c.planAv&&c.planAv.length)) draftPlans(o);
-  const rep=c.planRep||[], av=c.planAv||[];
-  const a=assess(o), sd=statusDetail(o), p=o.pf2||{};
-  const {Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType} = window.docx;
-  const T=(t,opts)=>new Paragraph({children:[new TextRun(Object.assign({text:String(t??'—'),font:'Times New Roman',size:22},opts||{}))], spacing:{after:80}});
-  const H=(t)=>new Paragraph({children:[new TextRun({text:t,bold:true,font:'Times New Roman',size:26})], spacing:{before:220,after:120}});
-  const cell=(t,b)=>new TableCell({children:[new Paragraph({children:[new TextRun({text:String(t??'—'),bold:!!b,font:'Times New Roman',size:18})]})]});
-  const tbl=(head,rows)=>new Table({width:{size:100,type:WidthType.PERCENTAGE},
-    rows:[new TableRow({children:head.map(h=>cell(h,true)), tableHeader:true}),
-          ...rows.map(r=>new TableRow({children:r.map(x=>cell(x))}))]});
-  const kids=[
-    new Paragraph({alignment:AlignmentType.CENTER, children:[new TextRun({text:'ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель»', bold:true, font:'Times New Roman', size:24})]}),
-    new Paragraph({alignment:AlignmentType.CENTER, children:[new TextRun({text:'ПЛАН МЕРОПРИЯТИЙ ПО ВОССТАНОВЛЕНИЮ И ПОДДЕРЖАНИЮ РАБОТОСПОСОБНОСТИ ОСНОВАНИЯ И ФУНДАМЕНТОВ', bold:true, font:'Times New Roman', size:28})], spacing:{before:200,after:200}}),
-    T(`Объект: ${o.a}, район ${o.d||'—'}, г. Норильск`),
-    T(`Управляющая организация: ${effectiveUK(o)}`),
-    T(`Дата составления: ${new Date().toLocaleDateString('ru-RU')} · Составлено в ГИС-базе геотехнического мониторинга зданий`),
-    H('1. Общие сведения об объекте'),
-    tbl(['Параметр','Значение'],[
-      ['Проект / серия', p.project||p.arc_series||'—'],
-      ['Год ввода в эксплуатацию', p.year_in||p.arc_year||o.y||'—'],
-      ['Фундаменты', p.fund||'—'],
-      ['Принцип использования ММГ', p.princip||'—'],
-      ['Глубина НГК / T на уровне НГК', o.ngc?`${o.ngc.h} м / ${o.ngc.t} °C`:'—'],
-      ['Термометрических скважин', o.prof?Object.keys(o.prof).length:'—'],
-      ['Период наблюдений', `${o.d0||'—'} … ${o.d1||'—'}`]]),
-    H('2. Оценка технического состояния'),
-    T(`Статус (превентивный): ${sd.status||'нет данных'}. Категория технического состояния: ${a.cat} (балл ${a.total===null?'—':a.total}).`),
-    T('Методика: балльная оценка (100 − штрафные баллы) по направлениям «грунты основания», «прочность (деформации)», «дефекты и повреждения»; итог — минимальный балл. Категории — по ГОСТ 31937-2024.'),
-    ...sd.reasons.map(r=>T(`— ${r.text}`)),
-    H('3. Выявленные дефекты и повреждения (по последнему отчёту мерзлотного надзора)'),
-    ...(o.defects? Object.entries(o.defects).map(([code,rows])=>T(`${({fund_piles:'Сваи',fund_rostverk:'Ростверк / балки',fund_ogolovki:'Оголовки свай',cok_perekrytie:'Плиты цокольного перекрытия',cok_ograd:'Цокольное ограждение',podpol:'Подполье'})[code]||code}: выявлено ${rows.length}`)).concat([]) : [T('Дефекты в отчётах не зарегистрированы / отчёты отсутствуют.')]),
-    H('4. План текущего / капитального ремонта'),
-    rep.length? tbl(['Элемент','Дефект / повреждение','Мероприятие','Вид','Приоритет','Срок','Примечание'],
-                    rep.map(r=>[r.elem,r.def,r.mer,r.kind,r.prio,r.srok,r.note]))
-              : T('Мероприятия не сформированы.'),
-    H('5. План противоаварийных / компенсирующих мероприятий (восстановление работоспособности основания и фундаментов)'),
-    av.length? tbl(['Мероприятие','Обоснование','Приоритет','Срок','Контроль'],
-                   av.map(r=>[r.mer,r.obsn,r.prio,r.srok,r.ctrl]))
-             : T('Мероприятия не требуются / не сформированы.'),
-    H('6. Контроль исполнения'),
-    T('Режимные геотермические наблюдения — по ГОСТ 25358-2020 (ежеквартально, оформление по прил. Д); геодезические наблюдения за осадками — по ГОСТ 24846-2019; визуальные обследования — по ГОСТ 31937-2024.'),
-    H('Нормативная база'),
-    T('ГОСТ 31937-2024; ГОСТ 25358-2020; ГОСТ 24846-2019; ГОСТ 25100-2020; СП 25.13330.2020; СП 497.1325800.2020; ВСН 01-89; МДК 2-03.2003.'),
-    T(''), T('Составил: ________________    Проверил: ________________    Утвердил: ________________'),
-  ];
-  const doc=new Document({sections:[{children:kids}]});
-  const blob=await Packer.toBlob(doc);
-  const a2=document.createElement('a');
-  a2.href=URL.createObjectURL(blob);
-  a2.download='План_мероприятий_'+o.a.replace(/[\s\/]+/g,'_')+'.docx';
-  a2.click();
-}
-/* renderRows с явной таблицей и кнопкой (не пересекается со static-таблицами) */
+/* ---------- таблицы с добавлением строк (привязка к конкретной таблице) ---------- */
 function renderRows2(o, tbl, scope, keys, selects, addBtn){
   const c=cardOf(o.a); c[scope]=c[scope]||[];
   const tb=tbl.querySelector('tbody');
@@ -3765,11 +3179,10 @@ function renderRows2(o, tbl, scope, keys, selects, addBtn){
 
 const regModal=document.getElementById('regModal');
 function registryRows(){
-  const fd=document.getElementById('regD').value, fuk=document.getElementById('regUK').value;
+  const fd=document.getElementById('regD').value;
   const rows=[];
   DB.objects.forEach((o,i)=>{
     if(fd&&o.d!==fd) return;
-    if(fuk&&effectiveUK(o)!==fuk) return;
     const sd=statusDetail(o);
     if(sd.status!=='РИСК'&&sd.status!=='КРИТИЧНО') return;
     const gm=geodMetrics(o);
@@ -3780,11 +3193,11 @@ function registryRows(){
   return rows;
 }
 function regSheetAoa(rows){
-  const head=['№','Адрес','Район','Управляющая компания','Статус','Причины (сработавшие правила)','Скважин','Начало наблюдений','Последний замер','Макс. суммарная осадка, мм','Макс. скорость осадки, мм/год','Глубина НГК, м','T на НГК, °C','Последний осмотр','Категория по осмотру'];
+  const head=['№','Объект ГТС','Предприятие','Статус','Причины (сработавшие правила)','Скважин','Начало наблюдений','Последний замер','Макс. суммарная осадка, мм','Макс. скорость осадки, мм/год','Глубина НГК, м','T на НГК, °C','Последний осмотр','Категория по осмотру'];
   return [head].concat(rows.map((r,n)=>{
     const gm=r.gm;
     const os=osmLatest(r.o.a);
-    return [n+1, r.o.a, r.o.d||'', effectiveUK(r.o), r.sd.status,
+    return [n+1, r.o.a, r.o.d||'', r.sd.status,
       r.sd.reasons.map(x=>x.text).join('; '),
       r.o.prof?Object.keys(r.o.prof).length:'', (r.o.d0||''), (r.o.d1||''),
       gm?+gm.maxOsad.toFixed(1):'', gm?+gm.maxSpeed.toFixed(1):'',
@@ -3794,24 +3207,24 @@ function regSheetAoa(rows){
 }
 function regSheet(rows){
   const ws=XLSX.utils.aoa_to_sheet(regSheetAoa(rows));
-  ws['!cols']=[{wch:4},{wch:26},{wch:12},{wch:26},{wch:11},{wch:70},{wch:6},{wch:11},{wch:11},{wch:12},{wch:12},{wch:9},{wch:9},{wch:12},{wch:22}];
+  ws['!cols']=[{wch:4},{wch:38},{wch:10},{wch:11},{wch:70},{wch:6},{wch:11},{wch:11},{wch:12},{wch:12},{wch:9},{wch:9},{wch:12},{wch:22}];
   return ws;
 }
 function renderRegTable(){
   const rows=registryRows();
   const nc=rows.filter(r=>r.sd.status==='КРИТИЧНО').length;
-  const fd=document.getElementById('regD').value, fuk=document.getElementById('regUK').value;
+  const fd=document.getElementById('regD').value;
   const covN=osmCoverage12m();
   document.getElementById('regSummary').textContent=
     `Сформирован ${new Date().toLocaleDateString('ru-RU')} · КРИТИЧНО: ${nc} · РИСК: ${rows.length-nc}`+
-    (fd?` · район: ${fd}`:'')+(fuk?` · УК: ${fuk}`:'')+` · всего объектов в базе: ${DB.objects.length}`+
+    (fd?` · предприятие: ${fd}`:'')+` · всего объектов в базе: ${DB.objects.length}`+
     ` · охват осмотрами за 12 мес.: ${covN} из ${DB.objects.length} (${Math.round(100*covN/DB.objects.length)}%). Пороги — текущие настройки «⚙ Пороги».`;
   const t=document.getElementById('regTable');
-  t.innerHTML=`<thead><tr><th>№</th><th>Адрес</th><th>Район</th><th>УК</th><th>Статус</th><th>Причины (сработавшие правила)</th><th>Скв.</th><th>Период набл.</th><th>Осадка макс., мм</th><th>Скорость, мм/год</th><th>Последний осмотр</th></tr></thead><tbody>`+
+  t.innerHTML=`<thead><tr><th>№</th><th>Объект ГТС</th><th>Предприятие</th><th>Статус</th><th>Причины (сработавшие правила)</th><th>Скв.</th><th>Период набл.</th><th>Осадка макс., мм</th><th>Скорость, мм/год</th><th>Последний осмотр</th></tr></thead><tbody>`+
     rows.map((r,n)=>{
       const os=osmLatest(r.o.a);
       return `<tr class="${r.sd.status==='КРИТИЧНО'?'crit':'risk'}" data-i="${r.i}">
-      <td>${n+1}</td><td><b>${esc(r.o.a)}</b></td><td>${esc(r.o.d||'—')}</td><td>${esc(effectiveUK(r.o))}</td>
+      <td>${n+1}</td><td><b>${esc(r.o.a)}</b></td><td>${esc(r.o.d||'—')}</td>
       <td><b style="color:${SCOL[r.sd.status]}">${r.sd.status}</b></td>
       <td>${r.sd.reasons.map(x=>esc(x.text)).join('; ')}</td>
       <td>${r.o.prof?Object.keys(r.o.prof).length:'—'}</td>
@@ -3824,12 +3237,7 @@ function renderRegTable(){
   });
 }
 function openRegistry(){
-  const ukSel=document.getElementById('regUK');
-  if(!ukSel.options.length){
-    ukSel.innerHTML='<option value="">Все УК</option>'+UK_LIST.concat(['Не определена']).map(u=>`<option>${esc(u)}</option>`).join('');
-    ukSel.onchange=renderRegTable;
-    document.getElementById('regD').onchange=renderRegTable;
-  }
+  document.getElementById('regD').onchange=renderRegTable;
   renderRegTable();
   regModal.style.display='block';
 }
@@ -3839,58 +3247,11 @@ regModal.addEventListener('click',e=>{ if(e.target===regModal) regModal.style.di
 document.getElementById('regExport').onclick=()=>{
   const rows=registryRows();
   if(!rows.length){ alert('По текущим фильтрам объектов нет — выгружать нечего.'); return; }
-  const fd=document.getElementById('regD').value, fuk=document.getElementById('regUK').value;
+  const fd=document.getElementById('regD').value;
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, regSheet(rows), 'Реестр РИСК-КРИТИЧНО');
-  const suffix=(fuk||fd)?('_'+(fuk||fd).replace(/[«»\s]/g,'_')):'';
-  XLSX.writeFile(wb, 'Реестр_РИСК_КРИТИЧНО_Норильск'+suffix+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
-};
-document.getElementById('regExportUK').onclick=()=>{
-  const fd=document.getElementById('regD').value;
-  const all=registryRows();
-  if(!all.length){ alert('По текущим фильтрам объектов нет — выгружать нечего.'); return; }
-  const byUk={};
-  all.forEach(r=>{ const u=effectiveUK(r.o); (byUk[u]=byUk[u]||[]).push(r); });
-  const wb=XLSX.utils.book_new();
-  Object.keys(byUk).sort().forEach(u=>{
-    let name=u.replace(/[«»\\/?*\[\]:]/g,'').slice(0,31);
-    XLSX.utils.book_append_sheet(wb, regSheet(byUk[u]), name);
-  });
-  XLSX.writeFile(wb, 'Ведомости_РИСК_КРИТИЧНО_по_УК'+(fd?'_'+fd:'')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
-};
-document.getElementById('regPlansUK').onclick=exportPlansUK;
-/* ---------- ведомость охвата осмотрами по УК ---------- */
-document.getElementById('regCoverageUK').onclick=()=>{
-  const now=new Date();
-  const cut=m=>{ const d=new Date(now); d.setMonth(d.getMonth()-m); return d.toISOString().slice(0,10); };
-  const c3=cut(3), c6=cut(6), c12=cut(12);
-  const wb=XLSX.utils.book_new();
-  const sumRows=[['УК','Домов в базе','Осмотрено за 3 мес.','% за 3 мес.','За 6 мес.','% за 6 мес.','За 12 мес.','% за 12 мес.','Без осмотра за 12 мес.']];
-  const notRows=[['УК','Район','Адрес','Статус объекта','Последний осмотр']];
-  UK_LIST.concat(['Не определена']).forEach(u=>{
-    const objs=DB.objects.filter(o=>effectiveUK(o)===u);
-    if(!objs.length) return;
-    let n3=0, n6=0, n12=0;
-    objs.forEach(o=>{
-      const s=osmLatest(o.a);
-      const d=s&&s.date;
-      if(d&&d>=c3) n3++;
-      if(d&&d>=c6) n6++;
-      if(d&&d>=c12) n12++;
-      else notRows.push([u, o.d||'', o.a, statusOf(o)||'без замеров', s&&s.date?s.date:'ни разу']);
-    });
-    sumRows.push([u, objs.length, n3, Math.round(100*n3/objs.length), n6, Math.round(100*n6/objs.length), n12, Math.round(100*n12/objs.length), objs.length-n12]);
-  });
-  const dt=new Date().toISOString().slice(0,10);
-  const ws0=XLSX.utils.aoa_to_sheet([['Охват текущими осмотрами по управляющим компаниям — г. Норильск'],
-    ['Сформирован: '+new Date().toLocaleDateString('ru-RU')+' · ГТМ ГТС ЗФ ПАО «ГМК «Норильский никель»'],
-    ['Осмотры засчитываются по сводкам завершённых осмотров (раздел 📋 карточки объекта, общий контур).'],[]].concat(sumRows));
-  ws0['!cols']=[{wch:34},{wch:11},{wch:15},{wch:10},{wch:10},{wch:10},{wch:10},{wch:11},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws0, 'Охват по УК');
-  const ws1=XLSX.utils.aoa_to_sheet([['Объекты без завершённого осмотра за последние 12 месяцев — для планирования'],[]].concat(notRows));
-  ws1['!cols']=[{wch:30},{wch:12},{wch:26},{wch:13},{wch:14}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'Неосмотренные 12 мес');
-  XLSX.writeFile(wb, 'Охват_осмотрами_по_УК_'+dt+'.xlsx');
+  const suffix=fd?('_'+fd.replace(/[«»\s]/g,'_')):'';
+  XLSX.writeFile(wb, 'Реестр_РИСК_КРИТИЧНО_ГТС_Норникель'+suffix+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
 };
 
 /* ---------- настройки порогов ---------- */
@@ -3899,12 +3260,11 @@ document.getElementById('gear').onclick=()=>{
   setEl.style.display=setEl.style.display==='block'?'none':'block';
   sTcrit.value=TH.tcrit; sDepth.value=TH.depth; sTrend.value=TH.trend; sTrendDepth.value=TH.trendDepth; sAbove.value=TH.above;
   sGRisk.value=TH.geodRiskSpeed; sGCrit.value=TH.geodCritSpeed; sGTotal.value=TH.geodCritTotal;
-  sBearR.value=TH.bearRisk; sBearC.value=TH.bearCrit;
 };
 document.getElementById('sSave').onclick=()=>{
   TH={tcrit:+sTcrit.value, depth:+sDepth.value, trend:+sTrend.value, trendDepth:+sTrendDepth.value, above:+sAbove.value,
       geodRiskSpeed:+sGRisk.value, geodCritSpeed:+sGCrit.value, geodCritTotal:+sGTotal.value,
-      bearRisk:+sBearR.value, bearCrit:+sBearC.value};
+      bearRisk:TH.bearRisk, bearCrit:TH.bearCrit};
   saveTH(); setEl.style.display='none';
   drawMarkers(); renderStats(); renderList(); if(curObj) renderDetail(curObj);
 };
@@ -4316,7 +3676,7 @@ function tabCalc(o, el){
     const dm=parseDims(o), pv=parseVent(o);
     body.innerHTML=`<div class="sect">Модуль вентилирования подполья (тепловой баланс)</div>
     <table class="kv">
-      ${F('A','площадь подполья','м²', ci.areaPod||(dm&&dm.A), dm?'по габаритам в осях (паспорт)':'из архива ЖКС')}
+      ${F('A','площадь подполья','м²', ci.areaPod||(dm&&dm.A), dm?'по габаритам в осях (паспорт)':'из архива эксплуатации')}
       ${F('P','периметр здания','м', dm?dm.P:'', dm?'2×(a+b) по габаритам (паспорт)':'')}
       ${F('F0','существующая площадь продухов','м²', pv.F0!==null?pv.F0:'', pv.F0!==null?('паспорт: '+(pv.n?pv.n+' продуха, ':'')+'сечение/площадь'):'число продухов × сечение')}
       ${F('qin','поступление тепла в подполье (пол+трубы)','Вт/м²','3.5','типовое для проветриваемого подполья')}
@@ -4421,7 +3781,7 @@ function tabCalc(o, el){
   }
 }
 
-/* ---------- телефонограммы (скрытый раздел, свой доступ) ---------- */
+/* ---------- замечания и предписания (скрытый раздел, свой доступ) ---------- */
 const TG_PWH='86551b783a42adbab63463e091b77083bc72cd51b9a77fb8a8e8c3d3c9b5d25a'; // пароль раздела
 let TG=JSON.parse(localStorage.getItem('gtm_tg_v1')||'{"users":[],"recs":{}}');
 function saveTG(){ try{ localStorage.setItem('gtm_tg_v1', JSON.stringify(TG)); }catch(e){ alert('Хранилище переполнено — данные не сохранены.'); } }
@@ -4476,8 +3836,8 @@ async function tgRender(o){
   // 1) пароль раздела
   if(sessionStorage.getItem('gtm_tg_ok')!=='1'){
     el.innerHTML=`
-      <h2 style="font-size:16px">🔒 ${TG_VIEW==='insp'?'Текущий осмотр — чек-лист':'Телефонограммы'} — ${esc(o.a)}</h2>
-      <div class="normref">Раздел предписаний и отчётов об устранении. Доступ: управляющая компания и организация мерзлотно-технического надзора.</div>
+      <h2 style="font-size:16px">🔒 ${TG_VIEW==='insp'?'Текущий осмотр — чек-лист':'Замечания и предписания'} — ${esc(o.a)}</h2>
+      <div class="normref">Раздел предписаний и отчётов об устранении. Доступ: эксплуатирующая организация и органы надзора (мерзлотно-технический / Ростехнадзор).</div>
       <div style="max-width:340px; margin:18px auto; text-align:center">
         <input type="password" id="tgPw" placeholder="Пароль раздела" style="width:100%; margin-bottom:8px">
         <button id="tgEnter" style="width:100%; padding:7px; background:var(--bg); color:#fff; border:none; border-radius:6px; cursor:pointer">Войти в раздел</button>
@@ -4521,7 +3881,7 @@ async function tgRender(o){
     if(sbMode()){
       el.innerHTML=`
         <h2 style="font-size:16px">Вход исполнителя — общий реестр</h2>
-        <div class="normref">Реестр телефонограмм общий для всех пользователей (Supabase). Регистрация подтверждается письмом на email — без перехода по ссылке из письма вход невозможен.</div>
+        <div class="normref">Реестр замечаний и предписаний общий для всех пользователей (Supabase). Регистрация подтверждается письмом на email — без перехода по ссылке из письма вход невозможен.</div>
         <div style="max-width:420px">
           <div style="display:grid; gap:8px; margin:10px 0">
             <input id="sbEmail" type="email" placeholder="Электронная почта">
@@ -4609,7 +3969,7 @@ async function tgRender(o){
     return;
   }
   if(TG_VIEW==='insp'){ inspView(o); return; }
-  // 3) реестр телефонограмм объекта (базовые из писем ЖКС + пользовательские)
+  // 3) реестр предписаний объекта (базовые из писем надзора + пользовательские)
   const baseRecs=(o.tg||[]).map(r=>({...r, base:true}));
   let extraRecs, ovrMap={};
   if(sbMode()){
@@ -4639,13 +3999,13 @@ async function tgRender(o){
   const stats={выдано:0, 'в работе':0, устранено:0, просрочено:0};
   recs.forEach(r=>stats[tgStatus(r)]++);
   el.innerHTML=`
-    <h2 style="font-size:16px">Телефонограммы — ${esc(o.a)}</h2>
-    <div class="normref">${sbMode()?'Общий реестр (Supabase)':'Локальный режим (этот браузер)'} · Исполнитель: <b>${esc(u.name)}</b> · ${esc(u.org)} · ${u.role==='надзор'?'надзорная организация':'УК'} · ${esc(u.email)} ✔ · <a href="#" id="tgReauth" style="color:var(--c-centr)">сменить пользователя</a> · <a href="#" id="goInsp" style="color:var(--c-centr)">📋 текущий осмотр</a></div>
+    <h2 style="font-size:16px">Замечания и предписания — ${esc(o.a)}</h2>
+    <div class="normref">${sbMode()?'Общий реестр (Supabase)':'Локальный режим (этот браузер)'} · Исполнитель: <b>${esc(u.name)}</b> · ${esc(u.org)} · ${u.role==='надзор'?'надзорная организация':'эксплуатирующая организация'} · ${esc(u.email)} ✔ · <a href="#" id="tgReauth" style="color:var(--c-centr)">сменить пользователя</a> · <a href="#" id="goInsp" style="color:var(--c-centr)">📋 текущий осмотр</a></div>
     <div style="display:flex; gap:14px; font-size:12.5px; margin:6px 0">
       <span>выдано: <b>${stats['выдано']}</b></span><span>в работе: <b>${stats['в работе']}</b></span>
       <span>устранено: <b style="color:var(--ok)">${stats['устранено']}</b></span><span>просрочено: <b style="color:var(--crit)">${stats['просрочено']}</b></span>
     </div>
-    ${u.role==='надзор'?`<button class="addrow" id="tgNew" style="border-style:solid">+ Новая телефонограмма (предписание)</button><div id="tgNewArea"></div>`:'<div class="note">Новые предписания выдаёт надзорная организация; УК отчитывается в записях ниже.</div>'}
+    ${u.role==='надзор'?`<button class="addrow" id="tgNew" style="border-style:solid">+ Новое предписание</button><div id="tgNewArea"></div>`:'<div class="note">Новые предписания выдаёт надзорная организация; эксплуатирующая организация отчитывается в записях ниже.</div>'}
     <div id="tgList"></div>`;
   document.getElementById('tgReauth').onclick=e=>{ e.preventDefault();
     if(sbMode()){ TG_SESS=null; sessionStorage.removeItem('gtm_tg_sess'); }
@@ -4660,7 +4020,7 @@ async function tgRender(o){
         <div style="display:flex; gap:8px; flex-wrap:wrap">
           <label style="font-size:12px">Дата запроса <input type="date" id="tgDate" value="${new Date().toISOString().slice(0,10)}"></label>
           <label style="font-size:12px">Срок устранения <input type="date" id="tgDeadline"></label>
-          <label style="font-size:12px">Ответственная УК <select id="tgUk">${UK_LIST.map(x=>'<option>'+esc(x)+'</option>').join('')}</select></label>
+          <label style="font-size:12px">Ответственная организация <select id="tgUk">${['ТОФ','НМЗ','НОФ','Дудинка','иная'].map(x=>'<option>'+esc(x)+'</option>').join('')}</select></label>
         </div>
         <button id="tgSave" style="padding:6px 14px; background:var(--c-centr); color:#fff; border:none; border-radius:6px; cursor:pointer">Зарегистрировать предписание</button>
       </div>`;
@@ -4686,7 +4046,7 @@ async function tgRender(o){
     const div=document.createElement('div');
     div.className='tg-rec';
     div.innerHTML=`
-      <div class="tg-head"><b>${rr.base?'Письмо ЖКС №':'Предписание №'}${String(rr.id).slice(-6)}</b><span class="note">${rr.date?('от '+esc(rr.date)):'дата не установлена'}</span>
+      <div class="tg-head"><b>${rr.base?'Письмо надзорного органа №':'Предписание №'}${String(rr.id).slice(-6)}</b><span class="note">${rr.date?('от '+esc(rr.date)):'дата не установлена'}</span>
         <span class="tg-status tg-${st.replace(' ','')}">${st.toUpperCase()}</span>
         <span class="note">ответств.: ${esc(rr.uk||'—')} · срок: ${esc(rr.deadline||'—')}</span></div>
       <div style="font-size:12.5px; margin-top:5px"><b>Нарушение:</b> ${escT(rr.violation)}</div>
@@ -4740,111 +4100,47 @@ async function tgRender(o){
 }
 
 /* ---------- текущий осмотр: интерактивный чек-лист (скрытый раздел, надзорная организация) ---------- */
+/* --- чек-лист текущего осмотра сооружений ГТС (Этап 1 НИР) --- */
 const INSP_SEC_BLD=[
- {id:'B',t:'Фундаменты и основание',norm:'СП 497.1325800.2020; ГОСТ 31937-2024; СП 25.13330.2020',items:[
-  ['Сваи: нет обнажения, коррозии, разрушения, признаков выпучивания (визуально доступные участки)','ГОСТ 31937-2024'],
-  ['Балки ростверка: нет трещин, прогибов, разрушения защитного слоя бетона, оголения арматуры','ГОСТ 31937-2024'],
-  ['Оголовки свай: нет разрушения бетона, коррозии закладных деталей, смещений','ГОСТ 31937-2024'],
-  ['Нет визуальных признаков неравномерной осадки (крен, перекос проёмов, свежие трещины)','СП 25.13330.2020'],
-  ['Деформационные марки и маяки на трещинах сохранны и доступны для наблюдений','ГОСТ 24846-2019'],
-  ['Устья термометрических скважин закрыты, промаркированы, доступны для замеров','ГОСТ 25358-2020']]},
- {id:'C',t:'Подполье / технический этаж',norm:'СП 497.1325800.2020; Правила № 170',items:[
-  ['Температура воздуха в подполье соответствует проектному тепловому режиму (замер, °C)','СП 497.1325800.2020'],
-  ['Нет наледей и обмерзания конструкций и грунта основания','СП 497.1325800.2020'],
-  ['Нет затопления / подтопления грунта основания','СП 497.1325800.2020'],
-  ['Подполье не захламлено, не используется под склад или мастерские','Правила № 170'],
-  ['Нет самовольных врезок, перепланировок, вскрытий грунта','ПП РФ № 491'],
-  ['Вводы инженерных коммуникаций исправны, без протечек','Правила № 170'],
-  ['Лазы в подполье закрыты и исправны, доступ контролируется','Правила № 170'],
-  ['Освещение подполья / техэтажа исправно (безопасность осмотров)','Правила № 170']]},
- {id:'D',t:'Цокольное ограждение и вентиляция подполья',norm:'СП 497.1325800.2020',items:[
-  ['Цокольное ограждение без трещин, разрушений, отклонений от вертикали','ГОСТ 31937-2024'],
-  ['Продухи / вентканалы в наличии, не загромождены; сезонное положение соответствует проектному режиму','СП 497.1325800.2020'],
-  ['Модуль вентилирования подполья соответствует проектному значению (подсчёт продухов)','СП 497.1325800.2020'],
-  ['Нет самовольных устройств (короба, витрины, рекламные конструкции), закрывающих продухи','ПП РФ № 491']]},
- {id:'E',t:'Цокольное перекрытие',norm:'ГОСТ 31937-2024; СП 497.1325800.2020',items:[
-  ['Плиты и балки цокольного перекрытия без трещин, прогибов, коррозии арматуры','ГОСТ 31937-2024'],
-  ['Нет следов увлажнения, промерзания, разрушения теплоизоляции перекрытия','СП 497.1325800.2020']]},
- {id:'F',t:'Стены, фасад, лоджии',norm:'ГОСТ 31937-2024; СП 13-102-2003',items:[
-  ['Трещины в наружных стенах: характер, раскрытие и развитие (по маякам) зафиксированы','ГОСТ 31937-2024'],
-  ['Лоджии и балконы: нет отклонений от вертикали, разрушения ограждений и сопряжений','СП 13-102-2003'],
-  ['Межпанельные швы герметичны, герметизация без разрушений','Правила № 170'],
-  ['Отделка цоколя без отслоений и разрушений','Правила № 170']]},
- {id:'G',t:'Крыша и водоотвод',norm:'Правила № 170; ПП РФ № 290',items:[
-  ['Кровля без повреждений и следов протечек','Правила № 170'],
-  ['Наружные водостоки исправны; отвод воды организован от здания','СП 497.1325800.2020'],
-  ['Нет опасных наледей и сосулек над входами и тротуарами (в зимний период)','ПП РФ № 290'],
-  ['Вентиляционные каналы и оголовки на крыше без разрушений','Правила № 170']]},
- {id:'K',t:'Подъезды и места общего пользования',norm:'ПП РФ № 290; Правила № 170',items:[
-  ['Входные двери, доводчики и освещение подъездов исправны','ПП РФ № 290'],
-  ['Лестничные марши и перила без повреждений','ПП РФ № 290'],
-  ['Оконные блоки мест общего пользования без разрушений','ПП РФ № 290']]},
- {id:'H',t:'Отмостка и прилегающая территория',norm:'СП 497.1325800.2020',items:[
-  ['Отмостка без трещин и просадок; уклон от здания сохранён','СП 497.1325800.2020'],
-  ['Нет провалов грунта и термокарстовых просадок у здания','СП 497.1325800.2020'],
-  ['Поверхностные воды отводятся от здания, застойных вод нет','СП 497.1325800.2020'],
-  ['Колодцы инженерных сетей у здания без разрушений, не залиты','Правила № 170']]},
- {id:'I',t:'Инженерные системы (влияние на тепловой режим основания)',norm:'СП 497.1325800.2020',items:[
-  ['Нет аварий и протечек трубопроводов в подполье','СП 497.1325800.2020'],
-  ['Теплоизоляция трубопроводов отопления и ГВС в подполье исправна','СП 497.1325800.2020'],
-  ['Нет сброса воды из канализации / водостока в подполье','СП 497.1325800.2020']]}
+ {id:'B',t:'Тело дамбы / плотины и мерзлотное состояние',norm:'ФЗ-117; ФНП № 151; ГОСТ 31937-2024; СП 25.13330.2020',items:[
+  ['Откосы и гребень без оползней, продольных и поперечных трещин, просадок и деформаций','ГОСТ 31937-2024'],
+  ['Нет признаков деградации мерзлоты основания: термокарстовых просадок, западин, суффозионных воронок','СП 25.13330.2020'],
+  ['Нет наледей и обмерзания на откосах и в теле сооружения','ФНП № 151'],
+  ['Деформационные марки, реперы и маяки сохранны и доступны для наблюдений','ГОСТ 24846-2019'],
+  ['Устья термометрических скважин закрыты, промаркированы, доступны для замеров','ГОСТ 25358-2020'],
+  ['Пьезометры исправны, промаркированы, доступны для замеров','ФНП № 151']]},
+ {id:'C',t:'Гребень и откосы',norm:'ФНП № 151; ГОСТ 31937-2024',items:[
+  ['Гребень: ширина и отметки соответствуют проекту, нет просадок и размывов','ФНП № 151'],
+  ['Крепление откосов без разрушений, выветривания, размыва','ГОСТ 31937-2024'],
+  ['Бермы и дренажные призмы в проектном состоянии','ФНП № 151'],
+  ['Нет древесно-кустарниковой растительности и захламления на гребне и откосах','ФНП № 151']]},
+ {id:'D',t:'Фильтрация, дренаж и пьезометрия',norm:'ФЗ-117; ФНП № 151',items:[
+  ['Нет очаговой или интенсивной фильтрации через тело и основание (мокрые пятна, истечения, суффозия)','ФЗ-117'],
+  ['Дренажные устройства исправны, не засорены, отвод воды организован','ФНП № 151'],
+  ['Замеры по пьезометрам выполнены по графику, ряды ведутся','ФНП № 151']]},
+ {id:'E',t:'Водосбросные и водопропускные сооружения',norm:'ФНП № 151; ГОСТ 31937-2024',items:[
+  ['Водосброс / водопропуск исправен, пропускная способность не снижена','ФНП № 151'],
+  ['Быстротоки, колодцы, трубы без разрушений и засорения','ГОСТ 31937-2024'],
+  ['Нет подпора и перелива выше проектных отметок','ФЗ-117']]},
+ {id:'F',t:'КИА и пункты наблюдений',norm:'ФНП № 151; ГОСТ 24846-2019',items:[
+  ['Состав КИА соответствует проекту мониторинга (скважины, пьезометры, марки, реперы, рейки)','ФНП № 151'],
+  ['Режимные наблюдения выполняются с проектной периодичностью, журналы ведутся','ФНП № 151'],
+  ['Средства измерений поверены / калиброваны','ФНП № 151']]},
+ {id:'G',t:'Площадка и прилегающая территория',norm:'ФНП № 151; СП 25.13330.2020',items:[
+  ['Нет термокарста, провалов и просадок на площадке и в охранной зоне','СП 25.13330.2020'],
+  ['Поверхностные воды отводятся от сооружений, застойных вод нет','СП 25.13330.2020'],
+  ['Ограждение, знаки безопасности и проезды в исправном состоянии','ФНП № 151'],
+  ['Нет несанкционированных работ и складирования в охранной зоне','ФЗ-117']]},
+ {id:'H',t:'Трубопроводы и эстакады (для ГТС гидротранспорта)',norm:'ФНП № 151; СП 25.13330.2020',items:[
+  ['Опоры эстакад без кренов, осадок и повреждений','ГОСТ 31937-2024'],
+  ['Нет протечек трубопроводов и намокания грунта основания','СП 25.13330.2020'],
+  ['Термометрические скважины у опор доступны, замеры ведутся','ГОСТ 25358-2020']]},
+ {id:'I',t:'Документация и режимные наблюдения',norm:'ФЗ-117; ФНП № 151; ПП РФ № 1892',items:[
+  ['Паспорт ГТС, декларация безопасности и инструкция по эксплуатации актуальны','ФЗ-117'],
+  ['Критерии безопасности К1/К2 утверждены и контролируются (ГОСТ Р 59873-2021)','ГОСТ Р 59873-2021'],
+  ['Журналы замеров и осмотров ведутся, сведения передаются в базу ГТМ','ФНП № 151']]}
 ];
-/* --- чек-лист обследования отдельной квартиры в МКД --- */
-const INSP_SEC_KV=[
- {id:'A',t:'Общие положения и допуск',norm:'ЖК РФ (ст. 161); ПП РФ № 491',items:[
-  ['Согласие собственника/нанимателя на осмотр получено, присутствует представитель УК','ПП РФ № 491'],
-  ['Цель обследования зафиксирована (заявка, протечка, трещины, приёмка работ)','ГОСТ 31937-2024']]},
- {id:'B',t:'Несущие конструкции квартиры',norm:'ГОСТ 31937-2024; СП 13-102-2003',items:[
-  ['Несущие стены без трещин, выколов, разрушений (иначе — характер, раскрытие мм, направление)','ГОСТ 31937-2024'],
-  ['Перекрытия (потолок/пол) без трещин, прогибов, отслоения защитного слоя','СП 13-102-2003'],
-  ['Перемычки и балки без трещин и провисания','СП 13-102-2003'],
-  ['Стыки панелей и швы без раскрытия и смещения','Правила № 170'],
-  ['Деформационные швы в пределах квартиры в исправном состоянии','СП 25.13330.2020']]},
- {id:'C',t:'Ненесущие конструкции и отделка',norm:'ГОСТ 31937-2024',items:[
-  ['Перегородки без трещин и отклонений от вертикали','ГОСТ 31937-2024'],
-  ['Отделка стен и потолков без отслоений','Правила № 170'],
-  ['Напольные покрытия без отслоений, вспучивания, просадки пола','ГОСТ 31937-2024']]},
- {id:'D',t:'Проёмы (признаки деформации здания)',norm:'ГОСТ 31937-2024; СП 25.13330.2020',items:[
-  ['Двери без перекоса, свободно открываются/закрываются','ГОСТ 31937-2024'],
-  ['Окна без перекоса, без трещин по углам проёмов','ГОСТ 31937-2024'],
-  ['Нет диагональных трещин от углов проёмов (признак неравномерной осадки)','СП 25.13330.2020']]},
- {id:'E',t:'Влажностный режим',norm:'Правила № 170; СП 497.1325800.2020',items:[
-  ['Нет следов протечек (сверху, по стоякам)','ПП РФ № 491'],
-  ['Нет промерзания/конденсата на наружных стенах (мостики холода)','СП 497.1325800.2020'],
-  ['Нет плесени и грибкового поражения','Правила № 170']]},
- {id:'F',t:'Балкон / лоджия',norm:'ГОСТ 31937-2024; СП 13-102-2003',items:[
-  ['Балкон без отклонения от вертикали и нарушения сопряжения со стеной','ГОСТ 31937-2024'],
-  ['Ограждение балкона устойчиво, без разрушений','СП 13-102-2003'],
-  ['Нет протечек и разрушения гидроизоляции балкона','Правила № 170']]},
- {id:'G',t:'Инженерные системы квартиры',norm:'ПП РФ № 491; СП 497.1325800.2020',items:[
-  ['Стояки и разводка без протечек, исправны','ПП РФ № 491'],
-  ['Отопление исправно; приборы не отключены самовольно (влияние на тепловой режим основания)','СП 497.1325800.2020']]}
-];
-function inspSecs(cur){ return (cur&&cur.kind==='kv')?INSP_SEC_KV:INSP_SEC_BLD; }
-/* --- мероприятия по пунктам квартирного чек-листа --- */
-const INSP_RECS_KV={
- A0:'Повторный визит при отсутствии согласия/доступа; зафиксировать отказ (ПП РФ № 491). Срок: 2 нед.',
- A1:'Зафиксировать цель и основание обследования в акте. Срок: при актировании.',
- B0:'Установить маяки на трещины, наблюдение за развитием; при раскрытии свыше 0,3 мм или развитии — инструментальное обследование и проект усиления (ГОСТ 31937-2024; СП 25.13330.2020). Срок: 2 нед.',
- B1:'Инструментальное обследование перекрытия; по результатам — проект усиления (СП 13-102-2003). Срок: 1 мес.',
- B2:'Обследование перемычек/балок; при провисании — немедленное разгружение и усиление (ГОСТ 31937-2024). Срок: немедленно.',
- B3:'Восстановить герметизацию/замоноличивание стыков и швов (Правила № 170). Срок: 1 мес.',
- B4:'Обследовать деформационный шов, восстановить заполнение (СП 25.13330.2020). Срок: 1 мес.',
- C0:'Восстановление перегородок — плановое (внутри квартиры — зона ответственности собственника). Срок: 1 мес.',
- C1:'Восстановление отделки — плановое (зона собственника; причину устранить по общему имуществу). Срок: 1 мес.',
- C2:'Обследовать просадку пола совместно с геодезией объекта — возможный признак осадки (СП 25.13330.2020). Срок: 2 нед.',
- D0:'Зафиксировать перекос (фото, отвес); сопоставить с геодезическими рядами объекта (ГОСТ 24846-2019). Срок: 2 нед.',
- D1:'Зафиксировать перекос окон; при развитии — инструментальная проверка (ГОСТ 31937-2024). Срок: 1 мес.',
- D2:'Диагональные трещины от углов проёмов — признак неравномерной осадки: установить маяки, усилить геодезический контроль, оценить основание (СП 25.13330.2020). Срок: немедленно.',
- E0:'Установить и устранить источник протечки; стояки/кровля — общее имущество, устранение УК (ПП РФ № 491). Срок: немедленно.',
- E1:'Устранить мостик холода/промерзание наружной стены, восстановить теплоизоляцию (СП 497.1325800.2020). Срок: 1 мес.',
- E2:'Устранить увлажнение, обработать поражённые участки (Правила № 170). Срок: 2 нед.',
- F0:'Ограничить эксплуатацию балкона; инструментальное обследование сопряжения, проект восстановления (ГОСТ 31937-2024). Срок: немедленно.',
- F1:'Восстановить ограждение балкона — безопасность (СП 13-102-2003). Срок: немедленно.',
- F2:'Восстановить гидроизоляцию и водоотвод балкона (Правила № 170). Срок: 1 мес.',
- G0:'Устранить протечки стояков/разводки — общее имущество, УК (ПП РФ № 491). Срок: немедленно.',
- G1:'Восстановить исправность отопления; самовольное отключение приборов недопустимо — влияние на тепловой режим подполья и основания (СП 497.1325800.2020). Срок: 2 нед.'
-};
+function inspSecs(cur){ return INSP_SEC_BLD; }
 const INSP_ST={ok:'норма',warn:'замечание',viol:'нарушение'};
 let INSP=JSON.parse(localStorage.getItem('gtm_insp_v1')||'{}');
 function saveINSP(){ try{ localStorage.setItem('gtm_insp_v1', JSON.stringify(INSP)); return true; }catch(e){ alert('Хранилище переполнено — уменьшите количество или размер фотографий. Изменения НЕ сохранены.'); return false; } }
@@ -5073,51 +4369,42 @@ function polishComment(raw){
 }
 /* --- мероприятия по пунктам чек-листа (для автогенерации итогов) --- */
 const INSP_RECS={
- B0:'Осмотреть все доступные сваи; при коррозии/разрушении — восстановить защитные покрытия, при выпучивании — проект восстановления (СП 25.13330.2020). Срок: 1 мес.',
- B1:'Восстановить защитный слой балок ростверка ремонтным составом; при оголении арматуры — её антикоррозийная обработка (ГОСТ 31937-2024; СП 13-102-2003). Срок: 1 мес.',
- B2:'Восстановить оголовки свай и закладные детали (ГОСТ 31937-2024). Срок: 1 мес.',
- B3:'Усилить геодезический контроль — нивелирование по маркам ежемесячно (ГОСТ 24846-2019); при развитии деформаций — внеочередное инструментальное обследование (ГОСТ 31937-2024). Срок: немедленно.',
- B4:'Восстановить/установить деформационные марки и маяки, возобновить цикл наблюдений (ГОСТ 24846-2019). Срок: 2 нед.',
- B5:'Привести устья термометрических скважин в надлежащее состояние, восстановить маркировку, возобновить режимные замеры (ГОСТ 25358-2020). Срок: 2 нед.',
- C0:'Привести температурный режим подполья к проектному: отрегулировать вентилирование, устранить источники тепла (СП 497.1325800.2020). Срок: немедленно (2 нед).',
- C1:'Удалить наледи, установить и устранить источник увлажнения и промерзания (СП 497.1325800.2020). Срок: немедленно.',
- C2:'Устранить подтопление грунта основания, организовать отвод вод (СП 497.1325800.2020). Срок: немедленно.',
- C3:'Освободить подполье от посторонних предметов, прекратить использование не по назначению (Правила № 170). Срок: 1 мес.',
- C4:'Демонтировать самовольные врезки/перепланировки, восстановить грунт основания (ПП РФ № 491). Срок: 1 мес.',
- C5:'Устранить протечки вводов инженерных коммуникаций (Правила № 170). Срок: 2 нед.',
- C6:'Привести лазы в подполье в исправное состояние, ограничить доступ посторонних (Правила № 170). Срок: 2 нед.',
- C7:'Восстановить освещение подполья (Правила № 170). Срок: 1 мес.',
- D0:'Восстановить цокольное ограждение, заделать трещины (ГОСТ 31937-2024). Срок: 1 мес.',
- D1:'Освободить продухи/вентканалы; привести сезонное положение к проектному режиму (СП 497.1325800.2020). Срок: 2 нед.',
- D2:'Привести модуль вентилирования подполья к проектному значению (СП 497.1325800.2020). Срок: 1 мес.',
- D3:'Демонтировать самовольные конструкции, закрывающие продухи (ПП РФ № 491). Срок: 2 нед.',
- E0:'Выполнить инструментальное обследование цокольного перекрытия; по результатам — проект усиления (ГОСТ 31937-2024). Срок: 1 мес.',
- E1:'Устранить увлажнение, восстановить теплоизоляцию цокольного перекрытия (СП 497.1325800.2020). Срок: 1 мес.',
- F0:'Установить маяки на трещины, организовать наблюдение за их развитием; по результатам — проект ремонта/усиления стен (ГОСТ 31937-2024). Срок: 2 нед.',
- F1:'Восстановить ограждения лоджий/балконов и их сопряжения (СП 13-102-2003). Срок: 1 мес.',
- F2:'Восстановить герметизацию межпанельных швов (Правила № 170). Срок: 1 мес.',
- F3:'Восстановить отделку цоколя (Правила № 170). Срок: ближайший тёплый сезон.',
- G0:'Отремонтировать кровлю, устранить протечки (Правила № 170). Срок: 1 мес.',
- G1:'Восстановить наружные водостоки и организованный отвод воды от здания (СП 497.1325800.2020). Срок: 1 мес.',
- G2:'Немедленно удалить наледи/сосульки над входами, организовать регулярную очистку (ПП РФ № 290). Срок: немедленно.',
- G3:'Восстановить вентиляционные каналы и оголовки на крыше (Правила № 170). Срок: 1 мес.',
- H0:'Восстановить отмостку с уклоном от здания (СП 497.1325800.2020). Срок: 1 мес.',
- H1:'Засыпать провалы грунта с послойным уплотнением, установить причину просадок (СП 497.1325800.2020). Срок: немедленно.',
- H2:'Организовать отвод поверхностных вод от здания (СП 497.1325800.2020). Срок: 1 мес.',
- H3:'Восстановить колодцы инженерных сетей, устранить их затопление (Правила № 170). Срок: 1 мес.',
- I0:'Устранить аварии и протечки трубопроводов в подполье (СП 497.1325800.2020). Срок: немедленно.',
- I1:'Восстановить теплоизоляцию трубопроводов отопления и ГВС в подполье (СП 497.1325800.2020). Срок: 2 нед.',
- I2:'Прекратить сброс воды в подполье, восстановить исправность канализации/водостока (СП 497.1325800.2020). Срок: немедленно.',
- K0:'Отремонтировать входные двери, доводчики и освещение подъездов (ПП РФ № 290). Срок: 1 мес.',
- K1:'Восстановить лестничные марши и перила (ПП РФ № 290). Срок: 1 мес.',
- K2:'Отремонтировать оконные блоки мест общего пользования (ПП РФ № 290). Срок: 1 мес.'
+ B0:'Внеочередное инструментальное обследование деформированного участка; при развитии — проект противоаварийных мероприятий, усиление контроля по критериям К1/К2 (ГОСТ 31937-2024; ГОСТ Р 59873-2021). Срок: немедленно.',
+ B1:'Теплотехническая оценка основания, восстановление мёрзлого состояния (термостабилизация), засыпка просадок с послойным уплотнением (СП 25.13330.2020). Срок: немедленно.',
+ B2:'Удалить наледи, установить и устранить источник увлажнения (СП 25.13330.2020). Срок: немедленно.',
+ B3:'Восстановить/установить марки и реперы, возобновить цикл наблюдений (ГОСТ 24846-2019; ГОСТ 53778-2010). Срок: 2 нед.',
+ B4:'Привести устья термометрических скважин в надлежащее состояние, восстановить маркировку, возобновить режимные замеры (ГОСТ 25358-2020). Срок: 2 нед.',
+ B5:'Восстановить пьезометры, возобновить замеры уровня по графику (ФНП № 151). Срок: 2 нед.',
+ C0:'Восстановить проектные отметки и ширину гребня (проектные работы) (ФНП № 151). Срок: 1 мес.',
+ C1:'Восстановить крепление откосов (ГОСТ 31937-2024). Срок: ближайший тёплый сезон.',
+ C2:'Восстановить бермы и дренажные призмы до проектного состояния (ФНП № 151). Срок: 1 мес.',
+ C3:'Очистить гребень и откосы от растительности и захламления (ФНП № 151). Срок: 1 мес.',
+ D0:'Установить характер и источники фильтрации (пьезометрия, шурфовка); при интенсивной фильтрации — противофильтрационные мероприятия по проекту (ФЗ-117). Срок: немедленно.',
+ D1:'Восстановить дренажные устройства, организовать отвод воды (ФНП № 151). Срок: 1 мес.',
+ D2:'Восстановить график пьезометрических наблюдений, вести ряды (ФНП № 151). Срок: 2 нед.',
+ E0:'Восстановить водосброс/водопропуск, обеспечить проектную пропускную способность (ФНП № 151). Срок: немедленно в паводкоопасный период.',
+ E1:'Восстановить быстротоки, колодцы и трубы, очистить от засорения (ГОСТ 31937-2024). Срок: 1 мес.',
+ E2:'Устранить подпор/перелив, привести уровенный режим к проектному (ФЗ-117). Срок: немедленно.',
+ F0:'Дооснастить объект КИА до состава проекта мониторинга (ФНП № 151). Срок: 1 мес.',
+ F1:'Восстановить режимные наблюдения с проектной периодичностью (ФНП № 151). Срок: 2 нед.',
+ F2:'Провести поверку/калибровку средств измерений (ФНП № 151). Срок: 1 мес.',
+ G0:'Засыпать провалы и просадки с послойным уплотнением, установить причину (СП 25.13330.2020). Срок: немедленно.',
+ G1:'Организовать отвод поверхностных вод от сооружений (СП 25.13330.2020). Срок: 1 мес.',
+ G2:'Восстановить ограждение, знаки безопасности и проезды (ФНП № 151). Срок: 1 мес.',
+ G3:'Прекратить несанкционированные работы в охранной зоне, уведомить надзор (ФЗ-117). Срок: немедленно.',
+ H0:'Инструментальное обследование опор эстакад; при крене — проект восстановления (ГОСТ 31937-2024). Срок: немедленно.',
+ H1:'Устранить протечки трубопроводов, просушить/восстановить грунт основания (СП 25.13330.2020). Срок: немедленно.',
+ H2:'Возобновить замеры по термоскважинам у опор (ГОСТ 25358-2020). Срок: 2 нед.',
+ I0:'Актуализировать паспорт ГТС, декларацию безопасности и инструкцию по эксплуатации (ФЗ-117; ПП РФ № 1892). Срок: 1 мес.',
+ I1:'Установить/утвердить критерии К1/К2 в составе декларации безопасности (ГОСТ Р 59873-2021). Срок: 1 мес.',
+ I2:'Восстановить ведение журналов замеров и осмотров, передачу сведений в базу ГТМ (ФНП № 151). Срок: 2 нед.'
 };
 function genConclusion(o, cur){
   const c=inspCounts(cur);
   const gm2=geodMetrics(o);
   const sd2=statusDetail(o);
-  const KV=cur.kind==='kv';
-  const RECS=KV?INSP_RECS_KV:INSP_RECS;
+  const KV=false; // квартирный режим исключён — только осмотры сооружений ГТС
+  const RECS=INSP_RECS;
   const viols=[], warns=[];
   inspSecs(cur).forEach(s=>s.items.forEach((it,ix)=>{
     const r=cur.items[s.id+ix];
@@ -5127,7 +4414,7 @@ function genConclusion(o, cur){
   }));
   const pp=e=>e.key[0]+'.'+(+e.key.slice(1)+1);
   const L=[];
-  L.push(`${KV?'ИТОГИ ОБСЛЕДОВАНИЯ КВАРТИРЫ':'ИТОГИ ОСМОТРА'}${KV&&cur.head.kv?(' — '+cur.head.kv):''} (${cur.head.date}${cur.head.time?', '+cur.head.time:''}). Осмотрено ${c.done} из ${c.tot} пунктов чек-листа. Выявлено: нарушений — ${c.viol}${c.viol?(' (пп. '+viols.map(pp).join(', ')+')'):''}; замечаний — ${c.warn}${c.warn?(' (пп. '+warns.map(pp).join(', ')+')'):''}.`);
+  L.push(`ИТОГИ ОСМОТРА СООРУЖЕНИЙ ГТС (${cur.head.date}${cur.head.time?', '+cur.head.time:''}). Осмотрено ${c.done} из ${c.tot} пунктов чек-листа. Выявлено: нарушений — ${c.viol}${c.viol?(' (пп. '+viols.map(pp).join(', ')+')'):''}; замечаний — ${c.warn}${c.warn?(' (пп. '+warns.map(pp).join(', ')+')'):''}.`);
   // исходное состояние и история объекта — только факты из карточки ГИС-базы
   const hist=[];
   if(o.d0&&o.d1) hist.push(`геотермические наблюдения ${o.d0.slice(0,4)}–${o.d1.slice(0,4)} гг. (${o.prof?Object.keys(o.prof).length:0} скв.)`);
@@ -5141,7 +4428,7 @@ function genConclusion(o, cur){
   if(viols.length){
     L.push('', 'НАРУШЕНИЯ И МЕРОПРИЯТИЯ ПО УСТРАНЕНИЮ:');
     viols.forEach((v,i)=>{
-      const rec=RECS[v.key]||'Устранить нарушение силами УК, контроль — надзорная организация. Срок: 1 мес.';
+      const rec=RECS[v.key]||'Устранить нарушение силами эксплуатирующей организации, контроль — надзор (мерзлотно-технический / Ростехнадзор). Срок: 1 мес.';
       L.push(`${i+1}. ${v.sec.t}: ${v.it[0].charAt(0).toLowerCase()+v.it[0].slice(1)}${v.r.cm?('. Фактическое состояние: '+v.r.cm.replace(/\.?$/,'.')):''} Мероприятие: ${rec}`);
     });
   }
@@ -5154,14 +4441,14 @@ function genConclusion(o, cur){
   }
   let cat=cur.concl.cat;
   if(!cat) cat=viols.some(v=>v.key[0]==='B')?'недопустимое':(viols.length?'ограниченно работоспособное':'работоспособное');
-  const needInstr=KV?viols.some(v=>v.key[0]==='B'):viols.some(v=>v.key[0]==='B'||v.key==='E0'||v.key==='F0');
+  const needInstr=viols.some(v=>v.key[0]==='B'||v.key==='E0');
   // прогноз — только по фактическим рядам наблюдений
   const fc=[];
   if(gm2&&gm2.maxSpeed>1) fc.push(`при сохранении скорости ${gm2.maxSpeed.toFixed(1)} мм/год дополнительная осадка за 5 лет составит ≈${(gm2.maxSpeed*5).toFixed(0)} мм (суммарная ≈${(gm2.maxOsad+gm2.maxSpeed*5).toFixed(0)} мм)`);
   sd2.reasons.filter(r=>/тренд|температур/i.test(r.text)).forEach(r=>fc.push(r.text));
   if(fc.length) L.push('', 'ПРОГНОЗ (по фактическим рядам наблюдений): '+fc.join('; ')+'.');
   L.push('', `Категория технического состояния — ${cat} (ГОСТ 31937-2024).`);
-  if(needInstr) L.push('Требуется инструментальное обследование (ГОСТ 31937-2024): уточнение характера, причин и опасности деформаций; при необходимости — проект усиления/восстановления основания и фундаментов (СП 25.13330.2020; СП 497.1325800.2020).');
+  if(needInstr) L.push('Требуется инструментальное обследование (ГОСТ 31937-2024): уточнение характера, причин и опасности деформаций; при необходимости — проект восстановления сооружений и их оснований (СП 25.13330.2020; ФНП № 151).');
   L.push('Контроль: режимные геотермические наблюдения — по ГОСТ 25358-2020 (ежеквартально); геодезические наблюдения за осадками — по ГОСТ 24846-2019; повторный осмотр — после устранения нарушений, не позднее установленных сроков.');
   return {text:L.join('\n'), cat:cat, instr:needInstr};
 }
@@ -5225,7 +4512,7 @@ async function llmComment(o, it, key, raw){
   if(!sbMode()||!TG_SESS||!TG_SESS.access_token) return null;
   try{
     const gm=geodMetrics(o), sd=statusDetail(o);
-    const ctx={ address:o.a, district:o.d, uk:effectiveUK(o), status:sd.status,
+    const ctx={ address:o.a, district:o.d, uk:o.d||'—', status:sd.status,
       status_reasons:sd.reasons.map(r=>r.text),
       ngc:o.ngc||null, tcalc:TCALC[o.a]!==undefined?TCALC[o.a]:null,
       geod: gm?{max_speed_mm_year:+gm.maxSpeed.toFixed(1), max_total_mm:+gm.maxOsad.toFixed(1), marks:Object.keys(o.geod||{}).length}:null,
@@ -5280,21 +4567,20 @@ function inspView(o){
   if(!INSP_CUR){
     el.innerHTML=`
       <h2 style="font-size:16px">📋 Текущий осмотр — ${esc(o.a)}</h2>
-      <div class="normref">Исполнитель: <b>${esc(u.name)}</b> · ${esc(u.org)} · ${u.role==='надзор'?'надзорная организация':'УК (просмотр)'} · <a href="#" id="goTg" style="color:var(--c-centr)">📞 телефонограммы</a></div>
-      <div class="normref">Чек-лист текущего осмотра общего имущества МКД: ФЗ-384 (ст. 36); ЖК РФ (ст. 161); ПП РФ № 491; ПП РФ № 290; Правила № 170 (разд. 3); ГОСТ 31937-2024; СП 13-102-2003; СП 497.1325800.2020. Обследование квартиры: ЖК РФ; ПП РФ № 491; ГОСТ 31937-2024; СП 13-102-2003 — с учётом влияния на основание (СП 497.1325800.2020). Комментарии: диктовка 🎤 (русский), редактор ✍ — технически выверенный текст с терминологией норм; итоги и рекомендации со сроками формируются автоматически кнопкой «✍ Итоги и рекомендации». Фото — с геопривязкой (EXIF/GPS). Погода — «🌡» (Open-Meteo по координатам объекта).</div>
-      ${RO?'<div class="note">УК доступен просмотр актов; проведение осмотра — организация мерзлотно-технического надзора.</div>':`<div style="display:flex; gap:8px; flex-wrap:wrap"><button class="addrow" id="inspNew" style="border-style:solid">+ Текущий осмотр (общее имущество)</button><button class="addrow" id="inspNewKv" style="border-style:solid">+ Обследование квартиры</button></div>`}
+      <div class="normref">Исполнитель: <b>${esc(u.name)}</b> · ${esc(u.org)} · ${u.role==='надзор'?'надзорная организация':'эксплуатация (просмотр)'} · <a href="#" id="goTg" style="color:var(--c-centr)">📞 замечания и предписания</a></div>
+      <div class="normref">Чек-лист текущего осмотра сооружений ГТС: ФЗ-117 «О безопасности ГТС»; ФНП (приказ Ростехнадзора от 08.05.2024 № 151); ГОСТ 31937-2024; СП 25.13330.2020; ГОСТ 25358-2020; ГОСТ 24846-2019; ГОСТ Р 59873-2021. Комментарии: диктовка 🎤 (русский), редактор ✍ — технически выверенный текст с терминологией норм; итоги и рекомендации со сроками формируются автоматически кнопкой «✍ Итоги и рекомендации». Фото — с геопривязкой (EXIF/GPS). Погода — «🌡» (Open-Meteo по координатам объекта).</div>
+      ${RO?'<div class="note">Эксплуатирующей организации доступен просмотр актов; проведение осмотра — организация мерзлотно-технического надзора.</div>':`<div style="display:flex; gap:8px; flex-wrap:wrap"><button class="addrow" id="inspNew" style="border-style:solid">+ Текущий осмотр сооружений</button></div>`}
       <div id="inspHist"></div>`;
     document.getElementById('goTg').onclick=e=>{ e.preventDefault(); TG_VIEW='tg'; tgRender(o); };
     if(!RO){
       document.getElementById('inspNew').onclick=()=>{ const cur=newInsp(o,u,'bld'); inspList(o).push(cur); INSP_CUR=cur; saveINSP(); inspView(o); };
-      document.getElementById('inspNewKv').onclick=()=>{ const cur=newInsp(o,u,'kv'); inspList(o).push(cur); INSP_CUR=cur; saveINSP(); inspView(o); };
     }
     const h=document.getElementById('inspHist');
     if(!list.length){ h.innerHTML='<div class="note" style="margin-top:10px">Осмотры по объекту ещё не проводились.</div>'; return; }
     list.slice().reverse().forEach(cur=>{
       const c=inspCounts(cur);
       const div=document.createElement('div'); div.className='insp-hist';
-      div.innerHTML=`<b>${cur.kind==='kv'?'🚪 Квартира':'🏢 Общее имущество'} от ${esc(cur.head.date)} ${esc(cur.head.time||'')}</b>${cur.kind==='kv'&&cur.head.kv?(' · '+esc(cur.head.kv)):''} · ${cur.status==='завершён'?'<b style="color:var(--ok)">завершён</b>':'черновик'} · осмотрено ${c.done}/${c.tot}${c.viol?` · <b style="color:var(--crit)">нарушений: ${c.viol}</b>`:''}${c.warn?` · замечаний: ${c.warn}`:''}<br><span class="note">провёл: ${esc(cur.by)} (${esc(cur.byOrg)})</span>`;
+      div.innerHTML=`<b>🏢 Осмотр сооружений от ${esc(cur.head.date)} ${esc(cur.head.time||'')}</b> · ${cur.status==='завершён'?'<b style="color:var(--ok)">завершён</b>':'черновик'} · осмотрено ${c.done}/${c.tot}${c.viol?` · <b style="color:var(--crit)">нарушений: ${c.viol}</b>`:''}${c.warn?` · замечаний: ${c.warn}`:''}<br><span class="note">провёл: ${esc(cur.by)} (${esc(cur.byOrg)})</span>`;
       const bb=document.createElement('div'); bb.style.cssText='margin-top:6px; display:flex; gap:6px; flex-wrap:wrap';
       const open=document.createElement('button'); open.className='wbtn'; open.textContent=RO?'Открыть (просмотр)':'Открыть';
       open.onclick=()=>{ INSP_CUR=cur; inspView(o); };
@@ -5314,25 +4600,21 @@ function inspView(o){
 }
 /* --- форма чек-листа --- */
 function inspForm(o, cur, RO){
-  const KV=cur.kind==='kv';
+  const KV=false; // только осмотры сооружений ГТС
   const el=document.getElementById('tgBody');
   el.innerHTML=`
-    <h2 style="font-size:16px">${KV?'🚪 Обследование квартиры':'📋 Текущий осмотр'} — ${esc(o.a)}</h2>
-    <div class="normref">${RO?'Просмотр (УК)':'Проводит'}: <b>${esc(cur.by)}</b> · ${esc(cur.byOrg)} · ${cur.status==='завершён'?'<b style="color:var(--ok)">завершён</b>':'черновик'} · <a href="#" id="inspBack" style="color:var(--c-centr)">← к списку осмотров</a></div>
+    <h2 style="font-size:16px">📋 Текущий осмотр — ${esc(o.a)}</h2>
+    <div class="normref">${RO?'Просмотр (эксплуатация)':'Проводит'}: <b>${esc(cur.by)}</b> · ${esc(cur.byOrg)} · ${cur.status==='завершён'?'<b style="color:var(--ok)">завершён</b>':'черновик'} · <a href="#" id="inspBack" style="color:var(--c-centr)">← к списку осмотров</a></div>
     <div class="insp-sec" style="padding:10px 12px">
-      <div class="sect" style="margin-top:0">Общие сведения (${KV?'ЖК РФ ст. 161; ПП РФ № 491':'ГОСТ 31937-2024; Правила № 170, п. 3.1'})</div>
-      ${KV?`<div style="display:flex; gap:10px; flex-wrap:wrap; font-size:12.5px; margin-bottom:6px">
-        <label style="flex:1">Квартира (подъезд, этаж, №) <input id="ihKv" style="width:100%" placeholder="под. 2, эт. 4, кв. 46" value="${esc(cur.head.kv||'')}" ${RO?'disabled':''}></label>
-        <label style="flex:1">Заявитель / собственник <input id="ihZayav" style="width:100%" value="${esc(cur.head.zayav||'')}" ${RO?'disabled':''}></label>
-      </div>`:''}
+      <div class="sect" style="margin-top:0">Общие сведения (ГОСТ 31937-2024; ФНП № 151)</div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; font-size:12.5px">
         <label>Дата <input type="date" id="ihDate" value="${cur.head.date}" ${RO?'disabled':''}></label>
         <label>Время <input type="time" id="ihTime" value="${cur.head.time||''}" ${RO?'disabled':''}></label>
-        ${KV?'':`<label>t° наружного воздуха, °C <input id="ihTemp" style="width:70px" value="${esc(cur.head.tempAir||'')}" ${RO?'disabled':''}></label>
-        <label>t° в подполье, °C <input id="ihTempP" style="width:70px" value="${esc(cur.head.tempPodpol||'')}" ${RO?'disabled':''}></label>`}
+        <label>t° наружного воздуха, °C <input id="ihTemp" style="width:70px" value="${esc(cur.head.tempAir||'')}" ${RO?'disabled':''}></label>
+        <label>t° воздуха у сооружения, °C <input id="ihTempP" style="width:70px" value="${esc(cur.head.tempPodpol||'')}" ${RO?'disabled':''}></label>
       </div>
-      ${KV?'':`<input id="ihWeather" style="width:100%; margin-top:6px" placeholder="Погодные условия (облачность, осадки, ветер)" value="${esc(cur.head.weather||'')}" ${RO?'disabled':''}>
-      ${RO?'':'<button class="wbtn" id="ihWx" style="margin-top:6px" title="Текущая погода или архив на дату осмотра — Open-Meteo, по координатам объекта">🌡 Загрузить погодные данные</button>'}`}
+      <input id="ihWeather" style="width:100%; margin-top:6px" placeholder="Погодные условия (облачность, осадки, ветер)" value="${esc(cur.head.weather||'')}" ${RO?'disabled':''}>
+      ${RO?'':'<button class="wbtn" id="ihWx" style="margin-top:6px" title="Текущая погода или архив на дату осмотра — Open-Meteo, по координатам объекта">🌡 Загрузить погодные данные</button>'}
       <input id="ihComm" style="width:100%; margin-top:6px" placeholder="Состав комиссии (ФИО, должность, организация)" value="${esc(cur.head.commission||'')}" ${RO?'disabled':''}>
     </div>
     <div class="insp-prog"><div id="inspBar"></div></div>
@@ -5506,7 +4788,7 @@ async function exportInspWord(o, cur){
     rows:[new TableRow({children:head.map(h=>cell(h,true)),tableHeader:true}),
           ...rows.map(r=>new TableRow({children:r.map(x=>cell(x))}))]});
   const c=inspCounts(cur);
-  const KV=cur.kind==='kv';
+  const KV=false; // акт осмотра сооружений ГТС
   const rows=[]; let n=0;
   inspSecs(cur).forEach(sec=>sec.items.forEach((it,ix)=>{
     const r=(cur.items[sec.id+ix])||{}; n++;
@@ -5520,14 +4802,14 @@ async function exportInspWord(o, cur){
   }));
   const kids=[
     new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:'ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель»',font:'Times New Roman',size:22})]}),
-    new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:KV?'АКТ ОБСЛЕДОВАНИЯ КВАРТИРЫ В МНОГОКВАРТИРНОМ ДОМЕ':'АКТ ТЕКУЩЕГО ОСМОТРА ОБЩЕГО ИМУЩЕСТВА МНОГОКВАРТИРНОГО ДОМА',bold:true,font:'Times New Roman',size:28})],spacing:{before:200,after:160}}),
+    new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:'АКТ ТЕКУЩЕГО ОСМОТРА СООРУЖЕНИЙ ГТС',bold:true,font:'Times New Roman',size:28})],spacing:{before:200,after:160}}),
     T(`№ ${String(cur.id).slice(1)} · г. Норильск · ${cur.head.date}`),
-    T(`Объект: МКД по адресу: г. Норильск, ${o.a} (район ${o.d||'—'})${KV?(' · квартира: '+(cur.head.kv||'—')):''}`),
-    KV?T(`Заявитель / собственник: ${cur.head.zayav||'—'}`):T(`Управляющая организация: ${effectiveUK(o)}`),
+    T(`Объект ГТС: ${o.a} (предприятие: ${o.d||'—'})`),
+    T(`Эксплуатирующая организация: ${o.d||'—'}`),
     T(`Комиссия: ${cur.head.commission||(cur.by+' ('+cur.byOrg+')')}`),
-    KV?T(`Условия обследования: ${cur.head.weather||'—'}`):T(`Условия осмотра: ${cur.head.weather||'—'}; t° наружного воздуха: ${cur.head.tempAir||'—'} °C; t° воздуха в подполье: ${cur.head.tempPodpol||'—'} °C`),
-    T(KV?'Основание: обследование по заявке/в интересах оценки технического состояния (ЖК РФ ст. 161; ПП РФ № 491; ГОСТ 31937-2024; СП 13-102-2003); с учётом влияния на основание на ММГ (СП 497.1325800.2020).':'Основание: содержание общего имущества МКД (ПП РФ № 491; Правила и нормы технической эксплуатации жилищного фонда № 170, разд. 3); правила эксплуатации на многолетнемерзлых грунтах (СП 497.1325800.2020).'),
-    Hh(KV?'1. Результаты обследования':'1. Результаты осмотра'),
+    T(`Условия осмотра: ${cur.head.weather||'—'}; t° наружного воздуха: ${cur.head.tempAir||'—'} °C`),
+    T('Основание: обеспечение безопасности ГТС (ФЗ-117; ФНП — приказ Ростехнадзора от 08.05.2024 № 151); обследование и мониторинг технического состояния (ГОСТ 31937-2024); основания на многолетнемерзлых грунтах (СП 25.13330.2020).'),
+    Hh('1. Результаты осмотра'),
     tbl(['№','Элемент / содержание проверки (норматив)','Результат','Примечание'],rows),
     Hh('2. Выявленные нарушения и замечания'),
     viol.length?tbl(['Пункт','Нарушение / замечание'],viol):T('Нарушения и замечания не выявлены.'),
@@ -5537,11 +4819,10 @@ async function exportInspWord(o, cur){
     T(`Рекомендации: ${cur.concl.rec||'—'}`),
     T(`Инструментальное обследование: ${cur.concl.instr?'ТРЕБУЕТСЯ (ГОСТ 31937-2024)':'не требуется'}`),
     Hh('Подписи'),
-    T(KV?`От организации мерзлотно-технического надзора: ________________ / ${cur.by} /`:`От организации мерзлотно-технического надзора: ________________ / ${cur.by} /`),
-    T(KV?'Собственник / наниматель квартиры: ________________ /____________/':'От управляющей организации: ________________ /____________/'),
-    ...(KV?[T('Представитель управляющей организации: ________________ /____________/')]:[]),
+    T(`От организации мерзлотно-технического надзора: ________________ / ${cur.by} /`),
+    T('От эксплуатирующей организации: ________________ /____________/'),
     Hh('Нормативная база'),
-    T('ФЗ-384 «Технический регламент о безопасности зданий и сооружений» (ст. 36); ЖК РФ (ст. 161); ПП РФ № 491; ПП РФ № 290; Правила № 170 (разд. 3); ГОСТ 31937-2024; ГОСТ 25358-2020; ГОСТ 24846-2019; СП 13-102-2003; СП 25.13330.2020; СП 497.1325800.2020.')
+    T('ФЗ-117 «О безопасности гидротехнических сооружений»; ПП РФ № 1892 (декларирование); ПП РФ № 1607 (классы ГТС); ФНП «Требования к обеспечению безопасности ГТС» (приказ Ростехнадзора от 08.05.2024 № 151); ГОСТ Р 59873-2021 (критерии К1/К2); ГОСТ 31937-2024; ГОСТ 25358-2020; ГОСТ 24846-2019; ГОСТ 53778-2010; СП 25.13330.2020; СП 47.13330.2016.')
   ];
   const photos=[];
   inspSecs(cur).forEach(sec=>sec.items.forEach((it,ix)=>{ const r=cur.items[sec.id+ix];
@@ -6007,8 +5288,8 @@ setTimeout(()=>{ try{
 }catch(e){} }, 5000); // тихое ежедневное пополнение метеоряда при открытии приложения
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"fnuvqIhDYjvLuvMG"};
-const BUILD="a496b5c9";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"QFsrcghbixXcTsKq"};
+const BUILD="bca8cfe9";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":"наблюдатель"; }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
