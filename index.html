@@ -117,6 +117,7 @@
   table.rows input, table.rows select{width:100%; border:1px solid transparent; background:transparent; padding:2px 4px; font-size:12.3px; font-family:inherit}
   table.rows input:focus, table.rows select:focus{border-color:var(--c-centr); background:#fff; outline:none}
   .addrow{border:1px dashed #b9ae9c; background:none; border-radius:4px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--mut); width:100%; margin-bottom:10px}
+  .navback{border:1px dashed #b9ae9c; background:none; border-radius:4px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--mut); margin-bottom:10px}
   .addrow:hover{color:var(--ink); border-color:var(--c-centr)}
   .delrow{border:none; background:none; color:var(--crit); cursor:pointer; font-size:13px; padding:0 4px}
   .normref{font-size:11px; color:#8a94a0; margin:0 0 10px; font-style:normal}
@@ -1703,7 +1704,7 @@ function renderFacility(f){
   d.innerHTML=`
     <h2>${esc(f.name)}<span class="badge b-card">сооружение</span></h2>
     <div class="rayon">В составе: <b>${esc(o?o.a:'—')}</b> · ${esc(f.sys)} · Сооружение ${idx} из ${sib.length}</div>
-    <div style="margin:6px 0 12px"><button class="addrow" id="facBack">← к карточке ГТС</button></div>
+    <div style="margin:6px 0 12px"><button class="navback" id="facBack">← к карточке ГТС</button></div>
     <div class="sect">Паспорт сооружения</div>
     <table class="kv">
       <tr><td>Наименование</td><td><b>${esc(f.name)}</b></td></tr>
