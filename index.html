@@ -460,54 +460,63 @@
 <div id="uplModal">
   <div class="box">
     <button class="close" id="uplClose">✕</button>
-    <h2>Загрузка данных геотехнического мониторинга</h2>
-    <div class="normref">Структура ведомости замеров — по ГОСТ 25358-2020 (прил. В, Д); оформление журнала мерзлотного надзора — по СП 25.13330.2020 и ВСН 01-89.</div>
-    <div class="cols">
-      <b>Шаблон ведомости (одна строка = одна точка замера):</b><br>
-      <code>Объект ГТС</code> · <code>Площадка</code> · <code>Скважина (шифр)</code> · <code>Дата замера (ДД.ММ.ГГГГ)</code> ·
-      <code>Глубина скважины, м</code> · <code>Глубина точки, м</code> · <code>Температура, °C</code> · <code>Источник (журнал, файл)</code><br>
-      <span style="color:var(--mut)">Температура — со знаком «минус» для отрицательных значений; разделитель десятичных — точка или запятая.
-      Объект определяется по названию ГТС в имени файла или в шапке ведомости («Хвостохранилище ТОФ», «Лебяжье», «ГПХ НМЗ»…). Файлы, не относящиеся к объектам реестра, будут отклонены.</span>
-    </div>
-    <div class="acts">
-      <a class="btn" href="Шаблон_загрузки_замеров.xlsx" download>⬇ Шаблон XLSX</a>
-      <button class="ghost" id="uplCsvTpl">⬇ Шаблон CSV</button>
-      <button id="uplPick">Выбрать файл (xlsx / csv)…</button>
-      <input type="file" id="uplFile" accept=".xlsx,.xls,.csv" style="display:none">
-      <button class="ghost" id="uplExport">Экспорт моих загрузок (JSON)</button>
-      <button class="ghost" id="uplClear" style="border-color:var(--crit); color:var(--crit)">Очистить мои загрузки</button>
-    </div>
-    <div style="margin-top:12px; border-top:1px dashed var(--line); padding-top:10px">
-      <b>Объектная ведомость геотермики — журналы замеров ГТС</b> <span class="note">(цветные ведомости и журналы температур: строка = скважина × дата, глубины по столбцам; выгрузки АСДК: глубины со знаком «минус»). Раскладка распознаётся автоматически и запоминается; недостающая t наружного воздуха догружается из метеоархива на дату замера</span><br>
-      <button id="uplObjPick" style="margin-top:6px">Выбрать объектную ведомость (xlsx)…</button>
+    <h2>Загрузка данных мониторинга ГТС</h2>
+    <div class="normref">Формы ведомостей — по ПБ 03-438-02 (форма 4 — термометрия, форма 5 — уровнемерная решётка, форма 7 — деформации); методика замеров — ГОСТ 25358-2020 и ГОСТ 24846-2019. Объект определяется автоматически по названию ГТС в имени файла или в шапке ведомости («Хвостохранилище ТОФ», «Лебяжье», «ГПХ НМЗ»…); файлы, не относящиеся к объектам реестра, отклоняются.</div>
+
+    <div style="margin-top:10px; border-top:1px solid var(--c-centr); padding-top:10px">
+      <b>🌡 Термометрия — журналы и ведомости температур (xlsx)</b> <span class="note">Цветные объектные ведомости и журналы температур: строка = скважина × дата, глубины по столбцам; выгрузки АСДК: глубины со знаком «минус». Раскладка распознаётся автоматически и запоминается; недостающая t наружного воздуха догружается из метеоархива на дату замера.</span><br>
+      <button id="uplObjPick" style="margin-top:6px">Выбрать журнал термометрии (xlsx)…</button>
       <input type="file" id="uplObjFile" accept=".xlsx,.xls" style="display:none">
-      <span class="note"> Объект определяется по имени файла или по наименованию в шапке («Хвостохранилище ТОФ», «Лебяжье», «ГПХ»…). Расшифровка извлечения показывается полностью (скважины, даты, точки, дубли).</span>
       <details style="margin-top:6px"><summary style="cursor:pointer; font-size:12px; color:var(--c-centr)"><b>Метод расшифровки журналов ГТС</b> (как файл превращается в ряды базы)</summary>
       <div class="note" style="padding:6px 0 2px; line-height:1.55">
       <b>Термометрия.</b> 1) В первых 40 строках ищется строка меток: «Шифр скважины»/«Литер»/«Номер скважины» (в т.ч. опечатка «скавжины») + «Дата замера»/«Дата/время». 2) Правее меток ищется строка глубин — неубывающая серия ≥5 значений 0…60 м; для выгрузок АСДК — убывающая серия отрицательных (0, −0,5, −1…), берётся по модулю. 3) Строки данных: шифр скважины наследуется сверху вниз (объединённые ячейки), записи вида «(ТС-1)» трактуются как псевдоним текущей скважины; строки без даты и без замеров с текстом в левых столбцах — наименования сооружений (дамбы, поля) — становятся префиксом имени ряда «Сооружение · Скважина». 4) Принимаются строки с датой не позднее текущей и ≥2 температурами в диапазоне −60…+60 °C; строки «скважина забита / нет доступа» отбрасываются автоматически. Повторные замеры на ту же дату сливаются.<br>
       <b>Пьезометрия.</b> Сводные ведомости формы 5 (ПБ 03-438-02): строка меток «Дата замера» + «Отметка уровня», строка имён пьезометров («1П-1», «П-5»…); данные ниже, «-» = нет замера; имённая серия «Уровень водоёма (отм.), м» — из столбца отметки уровня. Длинные форматы (ревизионные ведомости, выгрузки АСДК): строка = дата + шифр + показание; повторы дат сливаются (последняя запись).<br>
       <b>Геодезия.</b> Журнал формы 7: блоки «Циклы измерений»; осадка = абс. отметка верха марки минус первая отметка марки, мм; переносятся только циклы с заполненными датами. Форма 8 (плановые смещения X/Y) в схему базы не входит — при необходимости загружается как примечание.<br>
-      <b>Статусы.</b> После загрузки ряды автоматически участвуют в расчёте статуса объекта (пороги — кнопка «⚙ Пороги») и в графиках вкладок «Термометрия», «Пьезометрия», «Геодезия».</div></details>
+      <b>Статусы.</b> После загрузки ряды автоматически участвуют в расчёте статуса объекта (пороги — кнопка «⚙ Пороги») и в графиках вкладок «Термометрия», «Пьезометрия», «Деформации».</div></details>
+      <div style="margin-top:8px; border-top:1px dashed var(--line); padding-top:8px">
+        <b>Разовая ведомость по простому шаблону</b> <span class="note">(одна строка = одна точка замера):</span><br>
+        <code>Объект ГТС</code> · <code>Площадка</code> · <code>Скважина (шифр)</code> · <code>Дата замера (ДД.ММ.ГГГГ)</code> ·
+        <code>Глубина скважины, м</code> · <code>Глубина точки, м</code> · <code>Температура, °C</code> · <code>Источник (журнал, файл)</code><br>
+        <span class="note">Температура — со знаком «минус» для отрицательных значений; разделитель десятичных — точка или запятая.</span><br>
+        <a class="btn" style="display:inline-block; margin-top:6px; border:1px solid var(--c-centr); background:var(--c-centr); color:#fff; border-radius:6px; padding:5px 12px; font-size:12px; text-decoration:none" href="Шаблон_загрузки_замеров.xlsx" download>⬇ Шаблон XLSX</a>
+        <button class="ghost" id="uplCsvTpl" style="border:1px solid var(--c-centr); background:#fff; color:var(--c-centr); border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer">⬇ Шаблон CSV</button>
+        <button id="uplPick" style="border:1px solid var(--c-centr); background:var(--c-centr); color:#fff; border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer">Выбрать файл (xlsx / csv)…</button>
+        <input type="file" id="uplFile" accept=".xlsx,.xls,.csv" style="display:none">
+      </div>
+      <div style="margin-top:8px; border-top:1px dashed var(--line); padding-top:8px">
+        <b>🧠 Ведомость геотермики нестандартного шаблона (xlsx)</b> <span class="note">— универсальный распознаватель структуры + запоминание шаблона за организацией</span><br>
+        <button id="uplUniPick" style="margin-top:6px">Выбрать ведомость (xlsx)…</button>
+        <input type="file" id="uplUniFile" accept=".xlsx,.xls" style="display:none">
+        <div id="tplMemLine" class="note" style="margin-top:4px"></div>
+      </div>
     </div>
-    <div style="margin-top:12px; border-top:1px dashed var(--line); padding-top:10px">
-      <b>📄 Отчёты обследований (Word .docx / PDF)</b> <span class="note">— интеллектуальное распознавание: адрес, фундаменты, сваи/ростверк/оголовки, дефекты, подполье, продухи, условия эксплуатации, ремонты → предпросмотр → перенос в разделы карточки</span><br>
+
+    <div style="margin-top:12px; border-top:1px solid var(--c-centr); padding-top:10px">
+      <b>💧 Пьезометрия — уровнемерная решётка (xlsx)</b> <span class="note">Сводные ведомости формы 5 (ПБ 03-438-02): «Дата замера» + «Отметка уровня» + имена пьезометров по столбцам; а также длинный формат «дата · шифр · показание». Загруженные ряды появляются во вкладке «Пьезометрия» карточки объекта.</span><br>
+      <button id="uplPiezoPick" style="margin-top:6px">Выбрать ведомость пьезометрии (xlsx)…</button>
+      <input type="file" id="uplPiezoFile" accept=".xlsx,.xls" style="display:none">
+    </div>
+
+    <div style="margin-top:12px; border-top:1px solid var(--c-centr); padding-top:10px">
+      <b>📐 Деформации — журналы геодезических наблюдений (xlsx / csv / pdf)</b> <span class="note">Журнал формы 7 (ПБ 03-438-02): циклы измерений, осадка = отметка минус первая отметка марки, мм; распознавание строк «дата · марка · отметка/осадка», автоперенос во вкладку «Деформации» карточки.</span><br>
+      <button id="uplGeodPick" style="margin-top:6px">Выбрать журнал деформаций…</button>
+      <input type="file" id="uplGeodFile" accept=".xlsx,.xls,.csv,.pdf" style="display:none">
+    </div>
+
+    <div style="margin-top:12px; border-top:1px solid var(--c-centr); padding-top:10px">
+      <b>📄 Отчёты и заключения по ГТС (docx / pdf)</b> <span class="note">— распознавание: объект, сооружения, параметры дамбы/отстойника, контрольно-измерительная аппаратура, дефекты, условия эксплуатации, ремонты → предпросмотр → перенос в разделы карточки</span><br>
       <button id="uplRepPick" style="margin-top:6px">Выбрать отчёт (docx / pdf)…</button>
       <input type="file" id="uplRepFile" accept=".docx,.pdf" multiple style="display:none">
     </div>
-    <div style="margin-top:12px; border-top:1px dashed var(--line); padding-top:10px">
-      <b>📐 Ведомости геодезии (Excel / CSV / PDF)</b> <span class="note">— распознавание строк «дата · марка · отметка/осадка», автоперенос во вкладку «Геодезия» карточки</span><br>
-      <button id="uplGeodPick" style="margin-top:6px">Выбрать файл геодезии…</button>
-      <input type="file" id="uplGeodFile" accept=".xlsx,.xls,.csv,.pdf" style="display:none">
-    </div>
-    <div style="margin-top:12px; border-top:1px dashed var(--line); padding-top:10px">
-      <b>🧠 Ведомость геотермики нестандартного шаблона (xlsx)</b> <span class="note">— универсальный распознаватель структуры + запоминание шаблона за организацией</span><br>
-      <button id="uplUniPick" style="margin-top:6px">Выбрать ведомость (xlsx)…</button>
-      <input type="file" id="uplUniFile" accept=".xlsx,.xls" style="display:none">
-      <div id="tplMemLine" class="note" style="margin-top:4px"></div>
-    </div>
+
     <div style="margin-top:12px; border-top:2px solid var(--c-centr); padding-top:10px">
-      <b>📥 Приёмка в центральную базу</b> <span class="note">— каждая загрузка автоматически уходит в центральную БД (Supabase) со статусом «ожидает приёмки»; принятые вливаются в основную базу еженедельной задачей</span>
+      <b>📥 Приёмка в центральную базу — общий реестр (Supabase · GTS_ZFNornik)</b> <span class="note">Каждая загрузка автоматически уходит в общий реестр со статусом «ожидает приёмки». Приёмку выполняет ответственный исполнитель после входа в раздел предписаний (роль «надзор»); принятые данные включаются в основную базу при очередном обновлении публикации.</span>
       <div id="stgList" style="margin-top:6px"></div>
+    </div>
+
+    <div style="margin-top:12px; border-top:1px dashed var(--line); padding-top:10px">
+      <button class="ghost" id="uplExport" style="border:1px solid var(--c-centr); background:#fff; color:var(--c-centr); border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer">Экспорт моих загрузок (JSON)</button>
+      <button class="ghost" id="uplClear" style="border:1px solid var(--crit); background:#fff; color:var(--crit); border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer">Очистить мои загрузки</button>
     </div>
     <div id="upPreview"></div>
     <div id="uplLog"></div>
@@ -1947,7 +1956,12 @@ function tabKK(o, el){
 
 function tabPiezo(o, el){
   const pts=(o.points&&o.points.piezo)||[];
-  const arch=o.ugv||{};
+  const arch=Object.assign({}, o.ugv||{});
+  const up=(cardOf(o.a).ugvUp)||{};
+  for(const k in up){
+    if(!arch[k]) arch[k]=up[k];
+    else{ const seen=new Set(arch[k].map(p=>p[0])); up[k].forEach(p=>{ if(!seen.has(p[0])) arch[k].push(p); }); arch[k].sort((a,b)=>a[0]<b[0]?-1:1); }
+  }
   const archNames=Object.keys(arch).filter(k=>(arch[k]||[]).length>=1);
   el.innerHTML=`
   <div class="normref">Наблюдения за уровнем и напором подземных вод — по программе мониторинга ГТС (ТЗ НИР, этап 2: уровень грунтовых вод); сводные ведомости — форма 5 (ПБ 03-438-02); обработка рядов — по аналогии с ГОСТ 24846-2019.</div>
@@ -3180,6 +3194,124 @@ function showGeodPreview(o, rows, fname, org){
 }
 document.getElementById('uplGeodPick').onclick=()=>document.getElementById('uplGeodFile').click();
 document.getElementById('uplGeodFile').addEventListener('change',async e=>{ if(e.target.files[0]) await handleGeod(e.target.files[0]); e.target.value=''; });
+
+/* ---------- ЗАГРУЗЧИК ПЬЕЗОМЕТРИИ (форма 5 wide / длинный формат) ---------- */
+const PZ_RE=/^\s*\d{0,2}\s*П\s*[-–—]?\s*\d{1,2}[А-Яа-я]?\s*$/;
+function pzDedup(s){ const m={}; s.forEach(p=>{ m[p[0]]=p[1]; }); return Object.entries(m).sort((a,b)=>a[0]<b[0]?-1:1); }
+function pzScan(rows){
+  // wide-формат формы 5 (ПБ 03-438-02): строка меток «Дата замера» + «Отметка уровня»/«Нумерация пьезометров», ниже строка имён («1П-1», «П-5»…)
+  const norm=s=>String(s||'').toLowerCase().replace(/[^а-яa-z0-9]/g,'');
+  for(let li=0; li<Math.min(rows.length,30); li++){
+    const lr=(rows[li]||[]).map(norm);
+    const dateCol=lr.findIndex(c=>c.indexOf('датазамер')>=0);
+    if(dateCol<0) continue;
+    const lvlCol=lr.findIndex(c=>c.indexOf('отметкауров')>=0||c.indexOf('уровеньвод')>=0);
+    const hasPzLbl=lr.some(c=>c.indexOf('нумерацияпьез')>=0||c.indexOf('пьезометр')>=0);
+    if(lvlCol<0&&!hasPzLbl) continue;
+    let nameRow=-1; const pzCols=[];
+    for(let ni=li+1; ni<Math.min(rows.length, li+9); ni++){
+      const r=rows[ni]||[]; const found=[];
+      for(let j=Math.max(dateCol, lvlCol<0?dateCol:lvlCol)+1; j<r.length; j++){
+        if(PZ_RE.test(String(r[j]||''))) found.push([j, String(r[j]).trim().replace(/\s+/g,'')]);
+      }
+      if(found.length>=1){ nameRow=ni; found.forEach(f=>pzCols.push(f)); break; }
+    }
+    if(nameRow<0) continue;
+    const out={};
+    if(lvlCol>=0) out['Уровень водоёма (отм.), м']=[];
+    pzCols.forEach(f=>{ out[f[1]]=[]; });
+    for(let ri=nameRow+1; ri<rows.length; ri++){
+      const r=rows[ri]||[];
+      const iso=parseDateCell(r[dateCol]);
+      if(!iso) continue;
+      if(lvlCol>=0){ const v=parseNum(r[lvlCol]); if(v!==null&&v>0&&v<1000) out['Уровень водоёма (отм.), м'].push([iso, v]); }
+      pzCols.forEach(f=>{ const raw=String(r[f[0]]??'').trim(); if(raw==='-'||raw==='—'||raw==='–') return; const v=parseNum(raw); if(v!==null&&v>=0&&v<100) out[f[1]].push([iso, v]); });
+    }
+    const got=Object.entries(out).filter(kv=>kv[1].length>=1);
+    if(got.length) return got.map(kv=>[kv[0], pzDedup(kv[1])]);
+  }
+  return null;
+}
+function pzLong(rows){
+  // длинный формат: строка = дата + шифр пьезометра + показание
+  let dateCol=-1, nameCol=-1, valCol=-1;
+  for(let ri=0; ri<rows.length; ri++){
+    const r=rows[ri]||[]; if(!r.length) continue;
+    const cD=r.findIndex(v=>parseDateCell(v)!==null);
+    const cN=r.findIndex(v=>PZ_RE.test(String(v||'')));
+    if(cD>=0&&cN>=0){
+      if(dateCol<0){ dateCol=cD; nameCol=cN;
+        valCol=-1;
+        for(let j=0; j<r.length; j++){ if(j===cD||j===cN) continue; const v=parseNum(r[j]); if(v!==null&&v>=0&&v<1000){ valCol=j; break; } }
+      }
+    }
+    if(dateCol>=0) break;
+  }
+  if(dateCol<0||nameCol<0||valCol<0) return null;
+  const out={};
+  for(let ri=0; ri<rows.length; ri++){
+    const r=rows[ri]||[];
+    const iso=parseDateCell(r[dateCol]); const nm=String(r[nameCol]||'').trim().replace(/\s+/g,''); const v=parseNum(r[valCol]);
+    if(!iso||!PZ_RE.test(nm)||v===null||v<0||v>=1000) continue;
+    (out[nm]=out[nm]||[]).push([iso, v]);
+  }
+  const got=Object.entries(out).filter(kv=>kv[1].length>=1);
+  return got.length? got.map(kv=>[kv[0], pzDedup(kv[1])]) : null;
+}
+async function handlePiezo(f){
+  if(!document.body.classList.contains('role-edit')){ alert('Загрузка доступна уровню «оператор».'); return; }
+  upLog('Пьезометрия: '+f.name+' — распознавание…');
+  let wb;
+  try{ wb=XLSX.read(await f.arrayBuffer()); }catch(e){ upLog('✕ '+e.message); return; }
+  let allSeries=[]; let headTxt=f.name;
+  wb.SheetNames.forEach(sn=>{
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, raw:true, defval:''});
+    if(rows.length<3) return;
+    headTxt+=' '+rows.slice(0,6).flat().slice(0,60).join(' ');
+    let got=pzScan(rows)||pzLong(rows);
+    if(got&&got.length){
+      if(wb.SheetNames.length>1) got=got.map(kv=>[sn+' · '+kv[0], kv[1]]);
+      allSeries=allSeries.concat(got);
+    }
+  });
+  if(!allSeries.length){ upLog('✕ рядов пьезометрии не распознано (ожидается форма 5: «Дата замера» + имена пьезометров, либо «дата · шифр · показание»)'); return; }
+  const obj=resolveGtsObj(f.name)||resolveGtsObj(headTxt)||addrFromText(headTxt, f.name);
+  if(!obj){ upLog('✕ объект ГТС не распознан — переименуйте файл по названию ГТС («Пруд-накопитель…», «ГПХ НМЗ»…).'); return; }
+  const n=allSeries.reduce((s,kv)=>s+kv[1].length,0);
+  upLog('  объект: '+obj.a+' · рядов: '+allSeries.length+' · замеров: '+n);
+  showPiezoPreview(obj, allSeries, f.name);
+}
+function showPiezoPreview(o, series, fname){
+  const el=document.getElementById('upPreview');
+  el.innerHTML=`<div style="border:2px solid var(--c-centr); border-radius:8px; padding:12px; margin-top:10px">
+    <b>Пьезометрия:</b> ${esc(fname)} → <b>${esc(o.a)}</b> · рядов: ${series.length}
+    <table class="rows static" style="margin-top:6px; font-size:11.5px"><thead><tr><th>Ряд (пьезометр / створ)</th><th>Замеров</th><th>Период</th><th>Последнее, м</th></tr></thead>
+    <tbody>${series.slice(0,10).map(kv=>{const s=kv[1];return `<tr><td>${esc(kv[0])}</td><td><b>${s.length}</b></td><td>${s[0][0]} — ${s[s.length-1][0]}</td><td>${s[s.length-1][1]}</td></tr>`;}).join('')}${series.length>10?`<tr><td colspan="4" class="note">…и ещё ${series.length-10} рядов</td></tr>`:''}</tbody></table>
+    <div style="margin-top:8px; display:flex; gap:8px">
+      <button class="wbtn" id="pzApply" style="background:#2e7d32; color:#fff; border-color:#2e7d32">✔ Перенести во вкладку «Пьезометрия»</button>
+      <button class="wbtn" id="pzCancel">Отмена</button>
+    </div></div>`;
+  el.querySelector('#pzCancel').onclick=()=>{ el.innerHTML=''; };
+  el.querySelector('#pzApply').onclick=async()=>{
+    const c=cardOf(o.a); c.ugvUp=c.ugvUp||{};
+    let nNew=0, nRow=0;
+    series.forEach(kv=>{
+      const name=kv[0], add=kv[1];
+      const cur=c.ugvUp[name]||[];
+      const seen=new Set(cur.map(p=>p[0]));
+      add.forEach(p=>{ if(!seen.has(p[0])){ cur.push(p); seen.add(p[0]); nNew++; } });
+      cur.sort((a,b)=>a[0]<b[0]?-1:1);
+      c.ugvUp[name]=cur; nRow++;
+    });
+    saveCARD();
+    await stgPush('piezo', o.a, {series}, fname, null);
+    el.innerHTML='';
+    upLog('✔ Пьезометрия: '+nRow+' рядов, добавлено '+nNew+' замеров в «'+o.a+'» (вкладка «Пьезометрия»).');
+    if(curObj===o){ curTab='piezo'; renderDetail(o); }
+  };
+}
+document.getElementById('uplPiezoPick').onclick=()=>document.getElementById('uplPiezoFile').click();
+document.getElementById('uplPiezoFile').addEventListener('change',async e=>{ if(e.target.files[0]) await handlePiezo(e.target.files[0]); e.target.value=''; });
 
 /* ---------- УНИВЕРСАЛЬНАЯ ВЕДОМОСТЬ ГЕОТЕРМИКИ (нестандартный xlsx) ---------- */
 function uniThermParse(rows){
