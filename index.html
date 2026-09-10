@@ -201,6 +201,16 @@
   #niokrModal .stage .files li{margin:1px 0}
   .niokr-lock{max-width:420px; margin:8vh auto; text-align:center}
   .niokr-lock input{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; font-size:14px; margin:10px 0 6px; text-align:center}
+  .nkBadge{color:#fff; border-radius:12px; padding:3px 12px; font-size:11.5px; font-weight:600; white-space:nowrap}
+  .nkStBtn{border:1px solid var(--line); background:#fff; border-radius:5px; padding:2px 9px; font-size:11px; cursor:pointer; margin-left:4px}
+  .nkStBtn:hover{border-color:var(--c-centr); color:var(--c-centr)}
+  .nkDl{border:1px solid var(--c-centr); background:#fff; color:var(--c-centr); border-radius:5px; padding:1px 9px; font-size:11px; cursor:pointer; margin-left:6px}
+  .nkDl:hover{background:var(--c-centr); color:#fff}
+  .nkLnk{display:inline-block; border:1px solid var(--line); border-radius:5px; padding:1px 9px; font-size:11.5px; margin-left:6px; color:var(--c-centr); text-decoration:none}
+  .nkLnk:hover{border-color:var(--c-centr); background:#f3eef8}
+  .nkForm{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:8px 0; font-size:12px}
+  .nkForm select, .nkForm input{border:1px solid var(--line); border-radius:5px; padding:4px 8px; font-size:12px}
+  .nkForm button{border:1px solid var(--c-centr); background:var(--c-centr); color:#fff; border-radius:5px; padding:4px 12px; font-size:12px; cursor:pointer}
   table.reg tr.crit td:first-child{border-left:4px solid var(--crit)}
   table.reg tr.risk td:first-child{border-left:4px solid var(--risk)}
   table.reg tr{cursor:pointer}
@@ -3684,20 +3694,168 @@ ntdModal.addEventListener('click',e=>{ if(e.target===ntdModal) ntdModal.style.di
 
 /* ---------- скрытый раздел «НИОКР 2026 НПО Фундамент» (отдельный пароль) ---------- */
 const niokrModal=document.getElementById('niokrModal');
+/* ===== НИОКР 2026: трекер этапов · документы · живой журнал · связь с исполнителями ===== */
+const NK_ST={notstarted:{t:'не начато',c:'#8a93a3'},started:{t:'начато',c:'#2f6fb2'},control:{t:'сдан на входной контроль',c:'#e08a00'},accepted:{t:'принято Заказчиком',c:'#2e7d32'}};
+const NK_KIND={report:'📕 Отчёт',reestr:'📋 Реестр замечаний',letter:'✉ Письмо',act:'📑 Акт',program:'🗺 Программа',plan:'📅 План',app:'📎 Приложение'};
+const NK_LKIND={status:'🔁 Смена статуса',remark:'⚠ Замечание',change:'✎ Изменение',message:'✉ Сообщение',contact:'👤 Контакт'};
+let NK=null, NK_LOG=[];
+const _nkB64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function _nkKMC(){ return crypto.subtle.importKey('raw',new TextEncoder().encode(sessionStorage.getItem('gtm_niokr')),'PBKDF2',false,['deriveKey']); }
+async function nkEncObj(obj){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const K=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},await _nkKMC(),{name:'AES-GCM',length:256},false,['encrypt']);
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},K,new TextEncoder().encode(JSON.stringify(obj))));
+  const pack=new Uint8Array(28+ct.length); pack.set(salt); pack.set(iv,16); pack.set(ct,28);
+  let bin=''; for(let i=0;i<pack.length;i+=8192) bin+=String.fromCharCode.apply(null,pack.subarray(i,i+8192));
+  return btoa(bin);
+}
+async function nkDecObj(b64){
+  const p=_nkB64(b64);
+  const K=await crypto.subtle.deriveKey({name:'PBKDF2',salt:p.slice(0,16),iterations:150000,hash:'SHA-256'},await _nkKMC(),{name:'AES-GCM',length:256},false,['decrypt']);
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:p.slice(16,28)},K,p.slice(28));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+async function nkLoadLog(){
+  try{
+    const rows=await sbFetch('/rest/v1/niokr_log?select=id,ts,kind,stage,org,payload&order=id.desc&limit=300');
+    NK_LOG=[];
+    for(const r of rows){ let p=null; try{ p=await nkDecObj(r.payload); }catch(e){} NK_LOG.push({id:r.id, ts:r.ts, kind:r.kind, stage:r.stage, org:r.org, p}); }
+  }catch(e){ NK_LOG=null; }
+}
+async function nkPost(kind, stage, org, payload){
+  await sbFetch('/rest/v1/niokr_log',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({kind,stage,org,payload:await nkEncObj(payload)})});
+  await nkLoadLog();
+}
+function nkStageStatus(st){
+  const recs=(NK_LOG||[]).filter(r=>r.kind==='status'&&r.stage===st.n&&r.p&&r.p.st&&NK_ST[r.p.st]);
+  if(recs.length) return {st:recs[0].p.st, note:recs[0].p.note||'', by:recs[0].p.by||'', ts:recs[0].ts, live:true};
+  return {st:st.status, note:st.statusNote||'', ts:null, live:false};
+}
+function nkContacts(){
+  const map={}; (NK.contacts||[]).forEach(c=>{ map[c.name]=c; });
+  (NK_LOG||[]).slice().reverse().forEach(r=>{ if(r.kind==='contact'&&r.p&&r.p.name) map[r.p.name]=r.p; });
+  return Object.values(map);
+}
+const nkPhone=p=>{ let d=String(p||'').replace(/\D/g,''); if(d.length===11&&d[0]==='8') d='7'+d.slice(1); if(d.length===10) d='7'+d; return d; };
+const nkMB=n=>(n/1048576).toFixed(1)+' МБ';
+const nkDate=ts=>{ try{ return new Date(ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ts; } };
+async function nkDownloadDoc(btn, enc, orig){
+  btn.disabled=true; const old=btn.textContent; btn.textContent='⏳ расшифровка…';
+  try{
+    const r=await fetch('niokr_docs/'+enc); if(!r.ok) throw 'HTTP '+r.status;
+    const buf=new Uint8Array(await r.arrayBuffer());
+    const K=await crypto.subtle.deriveKey({name:'PBKDF2',salt:buf.slice(0,16),iterations:150000,hash:'SHA-256'},await _nkKMC(),{name:'AES-GCM',length:256},false,['decrypt']);
+    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:buf.slice(16,28)},K,buf.slice(28));
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([plain])); a.download=orig; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+  }catch(e){ alert('Не удалось расшифровать файл: '+e); }
+  btn.disabled=false; btn.textContent=old;
+}
+async function nkSetStatus(n, st){
+  const note=prompt('Комментарий к смене статуса этапа '+n+' → «'+NK_ST[st].t+'» (необязательно):','')||'';
+  const by=prompt('Ваши фамилия и инициалы (кто зафиксировал):','')||'';
+  try{ await nkPost('status', n, 'АНИИГБ', {st, note, by}); renderNiokrBody(NK); }
+  catch(e){ alert('Журнал недоступен: '+e.message); }
+}
+async function nkAddLog(){
+  const kind=document.getElementById('nkKind').value;
+  const stage=+document.getElementById('nkStage').value||null;
+  const org=document.getElementById('nkOrg').value;
+  const by=document.getElementById('nkBy').value.trim();
+  const text=document.getElementById('nkText').value.trim();
+  if(!text){ alert('Введите текст записи.'); return; }
+  try{ await nkPost(kind, stage, org, {by, text}); renderNiokrBody(NK); }
+  catch(e){ alert('Журнал недоступен: '+e.message); }
+}
+async function nkSaveContact(){
+  const c={name:document.getElementById('nkCName').value.trim(), org:document.getElementById('nkCOrg').value.trim(),
+    role:document.getElementById('nkCRole').value.trim(), phone:document.getElementById('nkCPhone').value.trim(),
+    tg:document.getElementById('nkCTg').value.trim().replace(/^@/,'')};
+  if(!c.name){ alert('Укажите ФИО контакта.'); return; }
+  try{ await nkPost('contact', null, c.org||'Исполнитель', c); renderNiokrBody(NK); }
+  catch(e){ alert('Журнал недоступен: '+e.message); }
+}
+async function nkMsgTo(name){
+  const inp=document.getElementById('nkMsg_'+CSS.escape(name));
+  const text=(inp&&inp.value||'').trim(); if(!text){ alert('Введите текст сообщения.'); return; }
+  const c=nkContacts().find(x=>x.name===name)||{};
+  const ph=nkPhone(c.phone);
+  try{ await nkPost('message', null, 'АНИИГБ', {to:name, channel:ph?'WhatsApp':'—', text}); }catch(e){}
+  if(ph) window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(text),'_blank');
+  else alert('Номер телефона контакта не задан — сообщение записано только в журнал.');
+  renderNiokrBody(NK);
+}
 function renderNiokrBody(N){
+  NK=N;
+  const counts={notstarted:0,started:0,control:0,accepted:0};
+  N.stages.forEach(s=>counts[nkStageStatus(s).st]++);
+  const docsOf=n=>N.docs.filter(d=>d.stage===n);
   document.getElementById('niokrBody').innerHTML=`
     <div class="normref">${esc(N.topic)}<br>${esc(N.contract)} · Заказчик: ${esc(N.customer)} · Исполнитель: <b>${esc(N.executor)}</b> · ${esc(N.year)} г.</div>
+    <div class="note">${esc(N.planNote||'')}<br>🔄 Документы этапов сверяются с рабочими папками ежедневно и заменяются на актуальные версии. Последняя сверка: <b>${N.sync?esc(N.sync.ts.slice(0,10)):'—'}</b> (файлов: ${N.sync?N.sync.files:0}, ${N.sync?nkMB(N.sync.bytes):'—'}).</div>
     <div class="sect">Цель работ</div>
     <div style="font-size:12.8px">${esc(N.goal)}</div>
-    <div class="sect">Этапы НИР и материалы (${N.stages.length})</div>
-    ${N.stages.map(s=>`<div class="stage">
-      <h3>Этап ${s.n}. ${esc(s.name)}</h3>
-      <div style="font-size:12.3px">${esc(s.scope)}</div>
-      <ul class="files">${s.files.map(f=>`<li>📄 ${esc(f)}</li>`).join('')}</ul>
-    </div>`).join('')}
-    <div class="note">${esc(N.note)}</div>`;
+    <div class="sect">Ход выполнения этапов (${N.stages.length}) — <span style="font-weight:400">
+      <span style="color:${NK_ST.accepted.c}">■ принято: ${counts.accepted}</span> · <span style="color:${NK_ST.control.c}">■ на входном контроле: ${counts.control}</span> · <span style="color:${NK_ST.started.c}">■ в работе: ${counts.started}</span> · <span style="color:${NK_ST.notstarted.c}">■ не начато: ${counts.notstarted}</span></span></div>
+    ${N.stages.map(s=>{ const cur=nkStageStatus(s); const docs=docsOf(s.n); return `<div class="stage">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap">
+        <h3 style="flex:1; min-width:260px">Этап ${s.n}. ${esc(s.name)}</h3>
+        <span class="nkBadge" style="background:${NK_ST[cur.st].c}">${NK_ST[cur.st].t}</span>
+      </div>
+      <div class="note">Календарный план: начало — ${esc(s.start)} · входной контроль — ${esc(s.ctrl)} · окончание — <b>${esc(s.end)}</b></div>
+      <div style="font-size:12.3px; margin:4px 0">${esc(s.scope)}</div>
+      <div class="note">Результат работ: ${esc(s.result)}</div>
+      <div class="note">Основание статуса: ${esc(cur.note||'—')}${cur.live?' · <i>журнал, '+nkDate(cur.ts)+(cur.by?', '+esc(cur.by):'')+'</i>':''}</div>
+      <div style="margin:6px 0; font-size:11.5px">Сменить статус:
+        ${Object.keys(NK_ST).map(k=>k===cur.st?`<button class="nkStBtn" style="opacity:.35; cursor:default" disabled>${NK_ST[k].t}</button>`:`<button class="nkStBtn" data-nkst="${s.n}|${k}">${NK_ST[k].t}</button>`).join('')}
+      </div>
+      ${docs.length?`<ul class="files">${docs.map(d=>`<li>${NK_KIND[d.kind]||'📄'} <b>${esc(d.title)}</b>: ${esc(d.orig)} <span class="note">(ред. ${esc(d.date)}, ${nkMB(d.size)})</span>
+        <button class="nkDl" data-nkdl="${esc(d.enc)}|${esc(d.orig)}">⬇ скачать</button></li>`).join('')}</ul>`:'<div class="note">Документы по этапу пока не поступали — появятся при очередной ежедневной сверке.</div>'}
+    </div>`; }).join('')}
+    <div class="sect">Реестр замечаний, изменений и сообщений — живой журнал (общий, Supabase · GTS_ZFNornik)</div>
+    <div class="nkForm">
+      <select id="nkKind"><option value="remark">⚠ Замечание</option><option value="change">✎ Изменение</option><option value="message">✉ Сообщение</option></select>
+      <select id="nkStage"><option value="">— вне этапов —</option>${N.stages.map(s=>`<option value="${s.n}">Этап ${s.n}</option>`).join('')}</select>
+      <select id="nkOrg"><option>АНИИГБ</option><option>Заказчик</option><option>Исполнитель</option></select>
+      <input id="nkBy" placeholder="Автор (фамилия)" style="width:150px">
+      <input id="nkText" placeholder="Текст записи…" style="flex:1; min-width:220px">
+      <button id="nkAdd">＋ Добавить</button>
+    </div>
+    <div id="nkLogList">${nkLogHtml()}</div>
+    <div class="sect">Оперативная связь с исполнителями</div>
+    ${nkContacts().map(c=>{ const ph=nkPhone(c.phone); return `<div class="stage" style="padding:8px 14px">
+      <b>${esc(c.name)}</b> <span class="note">${esc(c.org||'')} · ${esc(c.role||'')}</span><br>
+      <span style="font-size:12.5px">${c.phone?'📞 '+esc(c.phone):'<span class="note">телефон не задан</span>'}</span>
+      ${ph?`<a class="nkLnk" href="tel:+${ph}">позвонить</a><a class="nkLnk" href="https://wa.me/${ph}" target="_blank" rel="noopener">WhatsApp</a><a class="nkLnk" href="sms:+${ph}">SMS</a>`:''}
+      ${c.tg?`<a class="nkLnk" href="https://t.me/${esc(c.tg)}" target="_blank" rel="noopener">Telegram</a>`:''}
+      <div style="display:flex; gap:6px; margin-top:5px"><input id="nkMsg_${esc(c.name)}" placeholder="Текст сообщения…" style="flex:1; font-size:12px; padding:4px 8px; border:1px solid var(--line); border-radius:5px">
+      <button class="nkDl" data-nkmsg="${esc(c.name)}">✉ в WhatsApp + в журнал</button></div>
+    </div>`; }).join('')}
+    <div class="nkForm" style="margin-top:6px">
+      <input id="nkCName" placeholder="ФИО" style="width:160px">
+      <input id="nkCOrg" placeholder="Организация" style="width:170px">
+      <input id="nkCRole" placeholder="Роль / этап" style="width:150px">
+      <input id="nkCPhone" placeholder="Телефон +7…" style="width:140px">
+      <input id="nkCTg" placeholder="Telegram @user" style="width:130px">
+      <button id="nkCSave">👤 Сохранить контакт</button>
+    </div>
+    <div class="note" style="margin-top:8px">Сообщения уходят через ваши собственные приложения (WhatsApp / Telegram / звонок — открываются по клику с готовым текстом); каждая отправка фиксируется в живом журнале раздела. Содержимое журнала и документы этапов передаются и хранятся в зашифрованном виде (пароль раздела НИОКР).</div>`;
+  document.querySelectorAll('#niokrBody [data-nkst]').forEach(b=>b.onclick=()=>{ const [n,k]=b.dataset.nkst.split('|'); nkSetStatus(+n, k); });
+  document.querySelectorAll('#niokrBody [data-nkdl]').forEach(b=>b.onclick=()=>{ const [enc,orig]=b.dataset.nkdl.split('|'); nkDownloadDoc(b, enc, orig); });
+  document.querySelectorAll('#niokrBody [data-nkmsg]').forEach(b=>b.onclick=()=>nkMsgTo(b.dataset.nkmsg));
+  document.getElementById('nkAdd').onclick=nkAddLog;
+  document.getElementById('nkCSave').onclick=nkSaveContact;
   document.getElementById('niokrLock').style.display='none';
   document.getElementById('niokrBody').style.display='block';
+  if(NK_LOG&&NK_LOG._pending){ NK_LOG=null; nkLoadLog().then(()=>{ if(NK===N&&niokrModal.style.display==='block') renderNiokrBody(N); }); }
+}
+function nkLogHtml(){
+  if(NK_LOG===null) return '<div class="note">Журнал временно недоступен (нет связи с общим реестром) — записи появятся при следующем открытии раздела.</div>';
+  const rows=NK_LOG.filter(r=>r.kind!=='status'&&r.kind!=='contact').slice(0,100);
+  if(!rows.length) return '<div class="note">Записей пока нет. Добавьте первую — замечание, изменение или сообщение исполнителю.</div>';
+  return `<table class="rows static" style="font-size:11.8px"><thead><tr><th style="width:88px">Дата</th><th style="width:120px">Вид</th><th style="width:70px">Этап</th><th style="width:150px">Автор / орг.</th><th>Текст</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${nkDate(r.ts)}</td><td>${NK_LKIND[r.kind]||esc(r.kind)}</td><td>${r.stage?'Этап '+r.stage:'—'}</td><td>${r.p?esc(r.p.by||''):'?'} · ${esc(r.org||'')}</td><td>${r.p?esc(r.p.text||(r.p.to?('→ '+r.p.to+' ['+(r.p.channel||'')+']: '+(r.p.text||'')):'')):'<i>(нет ключа)</i>'}</td></tr>`).join('')}
+  </tbody></table>`;
 }
 async function niokrUnlock(pwd){
   const errEl=document.getElementById('niokrErr'); errEl.textContent='';
@@ -3710,6 +3868,7 @@ async function niokrUnlock(pwd){
     const txt=await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
     const N=JSON.parse(txt);
     sessionStorage.setItem('gtm_niokr',pwd);
+    NK_LOG=[]; NK_LOG._pending=true;
     renderNiokrBody(N);
   }catch(e){ errEl.textContent='Неверный пароль раздела'; }
 }
