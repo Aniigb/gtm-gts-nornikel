@@ -785,10 +785,10 @@ window.addEventListener('orientationchange', ()=>{ map.invalidateSize(); if(curO
 const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'});
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
-const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов':thermGroup},{position:'topright'}).addTo(map);
-map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); });
-map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); });
+const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup();
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup},{position:'topright'}).addTo(map);
+map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); });
+map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); });
 
 /* ---------- слои гидрологической модели поверхностного стока (D8): город — ЦМР Copernicus 30 м; Оганер — ЦМР 5 см (тест) ---------- */
 const hydroSets={
@@ -891,6 +891,21 @@ async function fpToggle(on){
     }
     if(!map.hasLayer(fpGroup)) fpGroup.addTo(map);
   }else map.removeLayer(fpGroup);
+}
+
+/* ---------- слой «Поверхностный сток по ЦМР» в границах объектов ГТС (заглушка: в разработке) ---------- */
+let runoffNoteEl=null;
+function runoffNote(on){
+  if(on){
+    if(!runoffNoteEl){
+      runoffNoteEl=document.createElement('div');
+      runoffNoteEl.id='runoffNote';
+      runoffNoteEl.style.cssText='position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:650; background:rgba(24,28,32,.92); color:#f2e9d8; border:1px solid #8a7d5a; border-radius:8px; padding:9px 16px; font-size:12.5px; line-height:1.45; max-width:80%; text-align:center; pointer-events:none; box-shadow:0 2px 12px rgba(0,0,0,.45)';
+      runoffNoteEl.innerHTML='🌊 <b>Поверхностный сток по ЦМР — слой в разработке.</b><br>Стоки будут построены по цифровой модели рельефа (модель направления стока D8) в границах каждого объекта ГТС — по результатам этапа моделирования НИР.';
+      document.getElementById('map').appendChild(runoffNoteEl);
+    }
+    runoffNoteEl.style.display='block';
+  }else if(runoffNoteEl) runoffNoteEl.style.display='none';
 }
 
 /* ---------- тепловая карта грунтов (IDW-интерполяция по объектам, глубины 3–15 м) ---------- */
