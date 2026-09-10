@@ -464,10 +464,10 @@
     <div class="normref">Структура ведомости замеров — по ГОСТ 25358-2020 (прил. В, Д); оформление журнала мерзлотного надзора — по СП 25.13330.2020 и ВСН 01-89.</div>
     <div class="cols">
       <b>Шаблон ведомости (одна строка = одна точка замера):</b><br>
-      <code>Адрес объекта</code> · <code>Район</code> · <code>Скважина (литера)</code> · <code>Дата замера (ДД.ММ.ГГГГ)</code> ·
+      <code>Объект ГТС</code> · <code>Площадка</code> · <code>Скважина (шифр)</code> · <code>Дата замера (ДД.ММ.ГГГГ)</code> ·
       <code>Глубина скважины, м</code> · <code>Глубина точки, м</code> · <code>Температура, °C</code> · <code>Источник (журнал, файл)</code><br>
       <span style="color:var(--mut)">Температура — со знаком «минус» для отрицательных значений; разделитель десятичных — точка или запятая.
-      Адрес должен совпадать с адресом в базе (допустимы варианты написания). Новые адреса будут отклонены — сначала создайте карточку объекта.</span>
+      Объект определяется по названию ГТС в имени файла или в шапке ведомости («Хвостохранилище ТОФ», «Лебяжье», «ГПХ НМЗ»…). Файлы, не относящиеся к объектам реестра, будут отклонены.</span>
     </div>
     <div class="acts">
       <a class="btn" href="Шаблон_загрузки_замеров.xlsx" download>⬇ Шаблон XLSX</a>
@@ -478,10 +478,16 @@
       <button class="ghost" id="uplClear" style="border-color:var(--crit); color:var(--crit)">Очистить мои загрузки</button>
     </div>
     <div style="margin-top:12px; border-top:1px dashed var(--line); padding-top:10px">
-      <b>Объектная ведомость геотермики — шаблон ООО «НПО «Фундамент»</b> <span class="note">(файл вида «Геотермика &lt;адрес&gt;.xlsx»: лист «Замеры», глубины по столбцам, строка = скважина × дата). Раскладка распознаётся автоматически и запоминается для каждой организации; недостающая t наружного воздуха догружается из метеоархива на дату замера, t воздуха подполья — по корреляции с наружной</span><br>
+      <b>Объектная ведомость геотермики — журналы замеров ГТС</b> <span class="note">(цветные ведомости и журналы температур: строка = скважина × дата, глубины по столбцам; выгрузки АСДК: глубины со знаком «минус»). Раскладка распознаётся автоматически и запоминается; недостающая t наружного воздуха догружается из метеоархива на дату замера</span><br>
       <button id="uplObjPick" style="margin-top:6px">Выбрать объектную ведомость (xlsx)…</button>
       <input type="file" id="uplObjFile" accept=".xlsx,.xls" style="display:none">
-      <span class="note"> Адрес берётся из имени файла. Расшифровка извлечения показывается полностью (скважины, даты, точки, дубли).</span>
+      <span class="note"> Объект определяется по имени файла или по наименованию в шапке («Хвостохранилище ТОФ», «Лебяжье», «ГПХ»…). Расшифровка извлечения показывается полностью (скважины, даты, точки, дубли).</span>
+      <details style="margin-top:6px"><summary style="cursor:pointer; font-size:12px; color:var(--c-centr)"><b>Метод расшифровки журналов ГТС</b> (как файл превращается в ряды базы)</summary>
+      <div class="note" style="padding:6px 0 2px; line-height:1.55">
+      <b>Термометрия.</b> 1) В первых 40 строках ищется строка меток: «Шифр скважины»/«Литер»/«Номер скважины» (в т.ч. опечатка «скавжины») + «Дата замера»/«Дата/время». 2) Правее меток ищется строка глубин — неубывающая серия ≥5 значений 0…60 м; для выгрузок АСДК — убывающая серия отрицательных (0, −0,5, −1…), берётся по модулю. 3) Строки данных: шифр скважины наследуется сверху вниз (объединённые ячейки), записи вида «(ТС-1)» трактуются как псевдоним текущей скважины; строки без даты и без замеров с текстом в левых столбцах — наименования сооружений (дамбы, поля) — становятся префиксом имени ряда «Сооружение · Скважина». 4) Принимаются строки с датой не позднее текущей и ≥2 температурами в диапазоне −60…+60 °C; строки «скважина забита / нет доступа» отбрасываются автоматически. Повторные замеры на ту же дату сливаются.<br>
+      <b>Пьезометрия.</b> Сводные ведомости формы 5 (ПБ 03-438-02): строка меток «Дата замера» + «Отметка уровня», строка имён пьезометров («1П-1», «П-5»…); данные ниже, «-» = нет замера; имённая серия «Уровень водоёма (отм.), м» — из столбца отметки уровня. Длинные форматы (ревизионные ведомости, выгрузки АСДК): строка = дата + шифр + показание; повторы дат сливаются (последняя запись).<br>
+      <b>Геодезия.</b> Журнал формы 7: блоки «Циклы измерений»; осадка = абс. отметка верха марки минус первая отметка марки, мм; переносятся только циклы с заполненными датами. Форма 8 (плановые смещения X/Y) в схему базы не входит — при необходимости загружается как примечание.<br>
+      <b>Статусы.</b> После загрузки ряды автоматически участвуют в расчёте статуса объекта (пороги — кнопка «⚙ Пороги») и в графиках вкладок «Термометрия», «Пьезометрия», «Геодезия».</div></details>
     </div>
     <div style="margin-top:12px; border-top:1px dashed var(--line); padding-top:10px">
       <b>📄 Отчёты обследований (Word .docx / PDF)</b> <span class="note">— интеллектуальное распознавание: адрес, фундаменты, сваи/ростверк/оголовки, дефекты, подполье, продухи, условия эксплуатации, ремонты → предпросмотр → перенос в разделы карточки</span><br>
@@ -510,14 +516,14 @@
   </div>
 </div>
 
-<script src="db_p1.js?v=abd0df9b"></script>
-<script src="db_p2.js?v=abd0df9b"></script>
-<script src="db_p3.js?v=abd0df9b"></script>
-<script src="db_p4.js?v=abd0df9b"></script>
-<script src="db_p5.js?v=abd0df9b"></script>
-<script src="db_p6.js?v=abd0df9b"></script>
-<script src="db_p7.js?v=abd0df9b"></script>
-<script src="db_p8.js?v=abd0df9b"></script>
+<script src="db_p1.js?v=b7ace968"></script>
+<script src="db_p2.js?v=b7ace968"></script>
+<script src="db_p3.js?v=b7ace968"></script>
+<script src="db_p4.js?v=b7ace968"></script>
+<script src="db_p5.js?v=b7ace968"></script>
+<script src="db_p6.js?v=b7ace968"></script>
+<script src="db_p7.js?v=b7ace968"></script>
+<script src="db_p8.js?v=b7ace968"></script>
 <script src="niokr.js"></script>
 
 <div id="loginModal">
@@ -1941,25 +1947,53 @@ function tabKK(o, el){
 
 function tabPiezo(o, el){
   const pts=(o.points&&o.points.piezo)||[];
+  const arch=o.ugv||{};
+  const archNames=Object.keys(arch).filter(k=>(arch[k]||[]).length>=1);
   el.innerHTML=`
-  <div class="normref">Наблюдения за уровнем и напором подземных вод — по программе мониторинга ГТС (ТЗ НИР, этап 2: уровень грунтовых вод); обработка рядов — по аналогии с ГОСТ 24846-2019.</div>
-  ${pts.length?`<div class="sect">Пьезометры объекта</div><div class="note">${pts.map(esc).join(', ')}</div>`:'<div class="note">Состав пьезометров принимается по проекту мониторинга (этап 2 НИР). Замеры вносятся в таблицу ниже.</div>'}
-  <div class="sect">Замеры уровня грунтовых вод</div>
+  <div class="normref">Наблюдения за уровнем и напором подземных вод — по программе мониторинга ГТС (ТЗ НИР, этап 2: уровень грунтовых вод); сводные ведомости — форма 5 (ПБ 03-438-02); обработка рядов — по аналогии с ГОСТ 24846-2019.</div>
+  ${archNames.length?`
+  <div class="sect">Архивные ряды из журналов наблюдений · рядов: ${archNames.length}</div>
+  <table class="rows static"><thead><tr>
+    <th style="width:34%">Ряд (пьезометр / створ)</th><th style="width:10%">Замеров</th><th style="width:22%">Период</th><th style="width:14%">Последнее</th><th>Показать на графике</th>
+  </tr></thead><tbody>
+  ${archNames.map((k,i)=>{const s=arch[k];const last=s[s.length-1];return `<tr>
+    <td>${esc(k)}</td><td><b>${s.length}</b></td><td>${esc(s[0][0])} — ${esc(last[0])}</td><td><b>${last[1]}</b> м</td>
+    <td><label class="pzpick"><input type="checkbox" data-pz="${esc(k)}"${i<6?' checked':''}></label></td></tr>`;}).join('')}
+  </tbody></table>
+  <div class="note" style="margin:-4px 0 8px">Значения — как в журнале-источнике: глубина от поверхности/оголовка либо абс. отметка, м; ряд «Уровень водоёма (отм.), м» — отметка уровня воды в водоёме (форма 5). Источники — во вкладке «Документация» / поле «Источники» карточки.</div>
+  <canvas class="plot" id="ugvArchChart"></canvas>
+  `:''}
+  ${pts.length&&!archNames.length?`<div class="sect">Пьезометры объекта</div><div class="note">${pts.map(esc).join(', ')}</div>`:''}
+  <div class="sect">Замеры уровня грунтовых вод (ручной ввод)</div>
   <table class="rows"><thead><tr>
     <th style="width:15%">Дата</th><th style="width:18%">Пьезометр</th><th style="width:18%">Уровень (отметка), м</th><th>Примечание</th><th></th>
   </tr></thead><tbody></tbody></table>
   <button class="addrow">+ добавить замер</button>
-  <div class="sect">График уровня грунтовых вод во времени</div>
-  <canvas class="plot" id="ugvChart"></canvas>`;
+  ${archNames.length?'':'<div class="sect">График уровня грунтовых вод во времени</div><canvas class="plot" id="ugvChart"></canvas>'}`;
   renderRows(o, el, 'ugv', ['date','point','lvl','note']);
-  const c=cardOf(o.a); const byP={};
-  (c.ugv||[]).forEach(r=>{
-    const v=parseFloat(String(r.lvl||'').replace(',','.'));
-    if(r.date&&!isNaN(v)&&String(r.lvl).trim()!==''){ const k=r.point||'?'; (byP[k]=byP[k]||{xs:[],ys:[]}); byP[k].xs.push(r.date); byP[k].ys.push(v); }
-  });
-  const list=Object.entries(byP).map(([m,s],i)=>({label:m, xs:s.xs, ys:s.ys, color:DATE_COLORS[i%DATE_COLORS.length]})).filter(s=>s.ys.length>=2);
-  const cv=document.getElementById('ugvChart');
-  if(list.length){ drawTrend(cv, list, 'ugv'); } else { cv.style.display='none'; cv.previousElementSibling.style.display='none'; }
+  const c=cardOf(o.a);
+  const manualSeries=()=>{ const byP={};
+    (c.ugv||[]).forEach(r=>{
+      const v=parseFloat(String(r.lvl||'').replace(',','.'));
+      if(r.date&&!isNaN(v)&&String(r.lvl).trim()!==''){ const k=(r.point||'?'); (byP[k]=byP[k]||{xs:[],ys:[]}); byP[k].xs.push(r.date); byP[k].ys.push(v); }
+    });
+    return Object.entries(byP).map(([m,s])=>({label:m+' (ручн.)', xs:s.xs, ys:s.ys})).filter(s=>s.ys.length>=2);
+  };
+  if(archNames.length){
+    const cv=document.getElementById('ugvArchChart');
+    const redraw=()=>{
+      const sel=[...el.querySelectorAll('input[data-pz]:checked')].map(x=>x.dataset.pz).slice(0,10);
+      const list=sel.map((k,i)=>{const s=arch[k];return {label:k, xs:s.map(p=>p[0]), ys:s.map(p=>p[1]), color:DATE_COLORS[i%DATE_COLORS.length]};})
+        .concat(manualSeries().map((s,i)=>Object.assign(s,{color:DATE_COLORS[(sel.length+i)%DATE_COLORS.length]})));
+      if(list.length){ cv.style.display=''; drawTrend(cv, list, 'ugv'); } else { cv.style.display='none'; }
+    };
+    el.querySelectorAll('input[data-pz]').forEach(x=>x.onchange=redraw);
+    redraw();
+  } else {
+    const list=manualSeries().map((s,i)=>Object.assign(s,{color:DATE_COLORS[i%DATE_COLORS.length]}));
+    const cv=document.getElementById('ugvChart');
+    if(list.length){ drawTrend(cv, list, 'ugv'); } else { cv.style.display='none'; cv.previousElementSibling.style.display='none'; }
+  }
 }
 
 function tabClimate(o, el){
@@ -2486,7 +2520,7 @@ async function handleUpload(file){
       rows=XLSX.utils.sheet_to_json(ws,{header:1, raw:true, defval:''});
     }
   }catch(e){ log.textContent+='Ошибка чтения файла: '+e; return; }
-  while(rows.length&&!String(rows[0][0]).toLowerCase().includes('адрес')) rows.shift();
+  while(rows.length&&!String(rows[0][0]).toLowerCase().includes('адрес')&&!String(rows[0][0]).toLowerCase().includes('объект')) rows.shift();
   if(rows.length) rows.shift();
   if(!addrIndex) buildAddrIndex();
   let added=0, skipped=0; const badAddr=new Set(); const grouped={};
@@ -2494,34 +2528,37 @@ async function handleUpload(file){
     if(r.length<7){ if(r.join('').trim()) skipped++; return; }
     const addr=String(r[0]).trim(); if(!addr) return;
     const key=normAddrKey(addr);
-    if(addrIndex[key]===undefined){ skipped++; badAddr.add(addr); return; }
+    const objR=resolveGtsObj(addr)||(addrIndex[key]!==undefined?DB.objects[addrIndex[key]]:null);
+    if(!objR){ skipped++; badAddr.add(addr); return; }
+    const okey=objR.id;
     const w=String(r[2]).trim()||'б/л';
     const date=parseDateCell(r[3]);
     const dep=parseNum(r[4]);
     const d=parseNum(r[5]);
     const t=parseNum(r[6]);
     if(!date||d===null||t===null){ skipped++; return; }
-    const g=(grouped[key]=grouped[key]||{});
+    const g=(grouped[okey]=grouped[okey]||{});
     const gw=(g[w]=g[w]||{});
     const gd=(gw[date]=gw[date]||{dep:dep, pts:{}});
     if(dep!==null) gd.dep=dep;
     gd.pts[d]=t; added++;
   });
-  Object.entries(grouped).forEach(([key, wells])=>{
+  Object.entries(grouped).forEach(([okey, wells])=>{
+    const oo=DB.objects.find(x=>x.id===okey);
     Object.entries(wells).forEach(([w, dates])=>{
       Object.entries(dates).forEach(([date, rec])=>{
-        USERDATA.push({a:DB.objects[addrIndex[key]].a, w, date, dep:rec.dep, pts:Object.entries(rec.pts).map(([d,t])=>[+d,t])});
+        USERDATA.push({a:oo.a, w, date, dep:rec.dep, pts:Object.entries(rec.pts).map(([d,t])=>[+d,t])});
       });
     });
   });
   USERDATA.forEach(rec=>mergeUserRec(rec));
-  Object.keys(grouped).forEach(key=>{
-    const o=DB.objects[addrIndex[key]];
+  Object.keys(grouped).forEach(okey=>{
+    const o=DB.objects.find(x=>x.id===okey);
     const entries=[];
-    Object.entries(grouped[key]).forEach(([w,dates])=>Object.entries(dates).forEach(([date,rec])=>entries.push({w,date,dep:rec.dep,pts:rec.pts})));
+    Object.entries(grouped[okey]).forEach(([w,dates])=>Object.entries(dates).forEach(([date,rec])=>entries.push({w,date,dep:rec.dep,pts:rec.pts})));
     stgPush('geotherm', o.a, {entries}, file.name, null);
   });
-  Object.keys(grouped).forEach(key=>refreshObjStats(DB.objects[addrIndex[key]]));
+  Object.keys(grouped).forEach(okey=>refreshObjStats(DB.objects.find(x=>x.id===okey)));
   saveUSERDATA();
   drawMarkers(); renderStats(); renderList();
   if(curObj) renderDetail(curObj);
@@ -2536,6 +2573,25 @@ uplModal.addEventListener('click',e=>{ if(e.target===uplModal) uplModal.style.di
 document.getElementById('uplPick').onclick=()=>document.getElementById('uplFile').click();
 document.getElementById('uplFile').addEventListener('change',e=>{ if(e.target.files[0]) handleUpload(e.target.files[0]); e.target.value=''; });
 /* --- загрузчик объектной ведомости геотермики (шаблон ООО «НПО «Фундамент») --- */
+/* Матчер файлов по именам объектов ГТС (журналы мониторинга не содержат уличных адресов) */
+function resolveGtsObj(name){
+  if(!name) return null;
+  let s=(' '+String(name)+' ').toLowerCase().replace(/ё/g,'е').replace(/[«»"„“”]/g,' ').replace(/[\s_\-–—]+/g,' ');
+  const has=re=>re.test(s);
+  const byId=id=>DB.objects.find(o=>o.id===id)||null;
+  if(has(/пруд\s*накопит/)) return byId('gts02');
+  if(has(/гипс|гпх/)) return byId('gts06');
+  if(has(/лебяжь|медвежь/)) return byId('gts07');
+  if(has(/никелев/)) return byId('gts09');
+  if(has(/упзк|комсомольск/)) return byId('gts04');
+  if(has(/гидротранспорт/)) return byId('gts03');
+  if(has(/хх\s*1|хвостохранилище\s*№?\s*1(\D|$)|пирротин/)) return byId('gts08');
+  if(has(/трех оз|систем[аы] тр|дудинк|песх|артинатк/)) return byId('gts10');
+  if(has(/гпх/)) return byId('gts06');
+  if(has(/нмз|надежд/)) return byId('gts05');
+  if(has(/хх\s*тоф|тоф|талнахск/)) return byId('gts01');
+  return null;
+}
 function resolveObjAddr(fa){
   if(!addrIndex) buildAddrIndex();
   const tries=[fa,
@@ -2581,8 +2637,8 @@ function gtScanLayout(rows){ // структурный анализ ведомо
     let w=-1, d=-1, g=-1;
     for(let j=0;j<r.length;j++){
       const t=T(r[j]);
-      if(w<0&&/литер|скважин/.test(t)) w=j;
-      if(d<0&&/датазамера|^дата$|датаизмерен/.test(t)) d=j;
+      if(w<0&&(/литер|скважин|скавжин/.test(t)||(/^шифр/.test(t)&&!/координат/.test(t))||/номерскваж/.test(t))) w=j;
+      if(d<0&&/датазамера|^дата$|датаизмерен|дата\/время/.test(t)) d=j;
       if(g<0&&/^глубина(скважины)?$/.test(t)) g=j;
     }
     if(w>=0&&d>=0){ labelRow=i; wellCol=w; dateCol=d; depCol=(g>=0&&g<w?g:-1); break; }
@@ -2626,6 +2682,22 @@ function gtScanLayout(rows){ // структурный анализ ведомо
       if(depths.v[0]<1) break; // серия с 0 / 0,5 м — каноническая; ниже идёт нумерация столбцов
     }
   }
+  if(depthRow<0){ // запасной вариант: глубины отрицательные и убывают (выгрузки АСДК: 0, −0.5, −1 …) → берём по модулю
+    for(let i=labelRow;i<=Math.min(labelRow+3,rows.length-1);i++){
+      const r=rows[i]||[];
+      let best=null, cur=null;
+      for(let j=keyMax+1;j<r.length;j++){
+        const v=parseNum(r[j]);
+        const ok=v!==null&&v<=0&&v>=-60;
+        if(ok&&cur&&v<=cur.v[cur.v.length-1]){ cur.v.push(v); continue; }
+        if(cur&&cur.v.length>=(best?best.v.length:5)) best=cur;
+        cur=ok?{s:j, v:[v]}:null;
+        if(!ok&&best&&j>best.s+best.v.length+2) break;
+      }
+      if(cur&&cur.v.length>=(best?best.v.length:5)) best=cur;
+      if(best&&best.v.length>=5){ depthRow=i; depths={s:best.s, v:best.v.map(x=>Math.abs(x))}; break; }
+    }
+  }
   if(depthRow<0) return null;
   const dcols={};
   depths.v.forEach((v,k)=>{ dcols[depths.s+k]=v; });
@@ -2638,7 +2710,8 @@ function gtFromTpl(rows,tpl){ // быстрый путь: раскладка и�
   let ok=0, prev=-1;
   const dcols={};
   cols.forEach(j=>{
-    const v=parseNum(r[j]);
+    let v=parseNum(r[j]);
+    if(v!==null&&v<=0&&v>=-60&&(tpl.depths[j]>0||tpl.depths[j]===0)) v=Math.abs(v); // выгрузки АСДК: глубины со знаком минус
     if(v!==null&&v>=0&&v<=60&&v>=prev){ dcols[j]=v; prev=v; ok++; }
   });
   if(ok<5) return null;
@@ -2646,27 +2719,43 @@ function gtFromTpl(rows,tpl){ // быстрый путь: раскладка и�
     toutCol:(tpl.toutCol!==undefined?tpl.toutCol:-1), tsaCol:(tpl.tsaCol!==undefined?tpl.tsaCol:-1),
     depCol:(tpl.depCol!==undefined?tpl.depCol:-1), depths:dcols};
 }
-function gtExtract(rows,lay,today){ // извлечение замеров по раскладке
+function gtExtract(rows,lay,today){ // извлечение замеров по раскладке (метод журналов ГТС: наследование шифра скважины и наименования сооружения вниз по строкам)
   const wells={}, airRows=[];
   let rowsSeen=0, rowsBadDate=0, rowsFew=0, rowsNote=0;
+  let cur='', group='';
+  const isLbl=w=>/литер|скважин|скавжин|шифр/i.test(w);
   for(let i=lay.depthRow+1;i<rows.length;i++){
     const r=rows[i]||[];
     const w=String(r[lay.wellCol]===null||r[lay.wellCol]===undefined?'':r[lay.wellCol]).trim();
-    if(!w||/литер|скважин/i.test(w)) continue;
-    if(w.length>25||(!/\d/.test(w)&&/\s/.test(w))){ rowsNote++; continue; } // строки-примечания
     const iso=parseDateCell(r[lay.dateCol]);
-    if(!iso) continue;
-    if(iso<'1950-01-01'||iso>today){ rowsBadDate++; continue; } // проектные/расчётные строки
     const pts={};
     Object.entries(lay.depths).forEach(([j,dep])=>{
       const t=parseNum(r[j]);
       if(t!==null&&t>-60&&t<60) pts[dep]=t;
     });
-    if(Object.keys(pts).length<2){ rowsFew++; continue; }
+    const nPts=Object.keys(pts).length;
+    if(!iso&&nPts<2){ // строка-группа (наименование сооружения) или пустая
+      let cand='';
+      for(let j=0;j<=lay.wellCol;j++){
+        const t=String(r[j]===null||r[j]===undefined?'':r[j]).trim();
+        if(t.length>3&&!parseDateCell(t)&&parseNum(t)===null&&!/литер|скважин|скавжин|шифр|координат/i.test(t)&&!/^\d+$/.test(t)) cand=t;
+      }
+      if(cand) group=cand;
+      continue;
+    }
+    if(w&&!isLbl(w)){
+      if(!(w.charAt(0)==='('&&cur)){ // «(ТС-1)» — псевдоним той же скважины, не новая
+        if(w.length>25||(!/\d/.test(w)&&/\s/.test(w))) rowsNote++; else cur=w;
+      }
+    }
+    if(!cur) continue;
+    if(!iso||iso<'1950-01-01'||iso>today){ if(iso) rowsBadDate++; continue; } // проектные/расчётные строки
+    if(nPts<2){ rowsFew++; continue; }
     rowsSeen++;
+    const wname=(group?group+' · ':'')+cur;
     let dep=lay.depCol>=0?parseNum(r[lay.depCol]):null;
-    if(dep!==null&&(dep<1||dep>100)) dep=null;
-    const wd=(wells[w]=wells[w]||{dates:{}, dep:null});
+    if(dep!==null&&(dep<1||dep>200)) dep=null;
+    const wd=(wells[wname]=wells[wname]||{dates:{}, dep:null});
     if(dep!==null) wd.dep=dep;
     const dd=(wd.dates[iso]=wd.dates[iso]||{});
     Object.assign(dd, pts);
@@ -2674,7 +2763,7 @@ function gtExtract(rows,lay,today){ // извлечение замеров по 
     let tSa=lay.tsaCol>=0?parseNum(r[lay.tsaCol]):null;
     if(tOut!==null&&(tOut<=-60||tOut>=60)) tOut=null;
     if(tSa!==null&&(tSa<=-60||tSa>=60)) tSa=null;
-    airRows.push({w, iso, tOut, tSa});
+    airRows.push({w:wname, iso, tOut, tSa});
   }
   return {wells, airRows, rowsSeen, rowsBadDate, rowsFew, rowsNote};
 }
@@ -2751,7 +2840,7 @@ async function handleObjUpload(file){
   catch(e){ log.textContent=L.join('\n')+'\nОшибка чтения файла: '+e; return; }
   // адрес: сначала из имени файла; если не совпал — из содержимого (строка «…объекта: р-н Норильск, ул. …»)
   let fa=file.name.replace(/\.(xlsx|xls)$/i,'').replace(/^(геотермика|geotermika)\s*/i,'').trim();
-  let obj=resolveObjAddr(fa);
+  let obj=resolveGtsObj(fa)||resolveObjAddr(fa);
   let addrSrc='из имени файла';
   if(!obj){
     let found='';
@@ -2768,8 +2857,21 @@ async function handleObjUpload(file){
     }
     if(found){
       fa=found.replace(/^ул\.\s*/i,'').replace(/[.;]\s*$/,'').trim();
-      obj=resolveObjAddr(fa);
+      obj=resolveGtsObj(fa)||resolveObjAddr(fa);
       addrSrc='из содержимого файла';
+    }
+    if(!obj){ // журналы ГТС: имя объекта в произвольных строках шапки («Хвостохранилище…», «Пруд-накопитель…»)
+      outer2:
+      for(const sn2 of wb.SheetNames){
+        const rr=XLSX.utils.sheet_to_json(wb.Sheets[sn2], {header:1, raw:true, defval:''});
+        for(const row of rr.slice(0,15)){
+          for(const v of row){
+            if(typeof v!=='string') continue;
+            const o2=resolveGtsObj(v);
+            if(o2){ obj=o2; fa=v.trim().slice(0,90); addrSrc='из содержимого файла'; break outer2; }
+          }
+        }
+      }
     }
   }
   L.push('Адрес: «'+fa+'» ('+addrSrc+') → '+(obj?('в базе: '+obj.a+' ✓'):'НЕ НАЙДЕН в базе — загрузка отклонена'));
@@ -2879,8 +2981,10 @@ async function stgPush(kind, addr, payload, filename, org){
 }
 async function stgRefresh(){
   const el=document.getElementById('stgList'); if(!el||!sbMode()){ if(el) el.innerHTML='<span class="note">контур центральной БД недоступен</span>'; return; }
+  const tok=(typeof TG_SESS!=='undefined'&&TG_SESS&&TG_SESS.access_token)||null;
+  if(!tok){ el.innerHTML='<span class="note">Приёмка загрузок доступна после входа исполнителя (раздел «Замечания и предписания» карточки объекта). Новые загрузки уходят в центральную базу автоматически.</span>'; return; }
   try{
-    const rows=await sbFetch('/rest/v1/uploads_staging?status=eq.pending&order=created_at.desc&select=id,addr,kind,filename,created_at,org')||[];
+    const rows=await sbFetch('/rest/v1/uploads_staging?status=eq.pending&order=created_at.desc&select=id,addr,kind,filename,created_at,org',{token:tok})||[];
     if(!rows.length){ el.innerHTML='<span class="note">Ожидающих приёмки загрузок нет.</span>'; return; }
     el.innerHTML='<table class="rows static" style="font-size:11.5px"><thead><tr><th>Дата</th><th>Адрес</th><th>Тип</th><th>Файл</th><th>Организация</th><th></th></tr></thead><tbody>'+
       rows.map(r=>`<tr><td>${String(r.created_at).slice(0,16).replace('T',' ')}</td><td>${esc(r.addr)}</td><td>${esc(r.kind)}</td><td>${esc(r.filename||'')}</td><td>${esc(r.org||'—')}</td>
@@ -2890,8 +2994,10 @@ async function stgRefresh(){
   }catch(e){ el.innerHTML='<span class="note">приёмка недоступна: '+esc(e.message)+'</span>'; }
 }
 async function stgSet(id, status){
+  const tok=(typeof TG_SESS!=='undefined'&&TG_SESS&&TG_SESS.access_token)||null;
+  if(!tok){ alert('Приёмка требует входа исполнителя (раздел «Замечания и предписания»).'); return; }
   try{
-    await sbFetch('/rest/v1/uploads_staging?id=eq.'+id,{method:'PATCH', headers:{'Prefer':'return=minimal'},
+    await sbFetch('/rest/v1/uploads_staging?id=eq.'+id,{method:'PATCH', token:tok, headers:{'Prefer':'return=minimal'},
       body:JSON.stringify({status, moderated_at:new Date().toISOString()})});
     stgRefresh();
   }catch(e){ alert('Не удалось обновить статус: '+e.message); }
@@ -2921,6 +3027,8 @@ async function fileToText(f){
 
 /* --- распознавание адреса из текста --- */
 function addrFromText(text, fname){
+  const g=resolveGtsObj(fname)||resolveGtsObj((text||'').slice(0,6000));
+  if(g) return g;
   let m=text.match(/(?:адрес\s+объекта|объект[а]?\s*(?:по\s+адресу)?)\s*[:;]?\s*((?:ул\.?|улица|пр-т\.?|проспект|пл\.?|площадь|наб\.?|набережная|пр-д\.?|проезд)[^\n,;.]{2,60})/i)
         || text.match(/(?:р-н|город)\s+Норильск[,\s]+([^\n;.]{3,60})/i);
   let a=m?m[1].trim():null;
@@ -3165,11 +3273,11 @@ async function handleUni(f){
 document.getElementById('uplUniPick').onclick=()=>document.getElementById('uplUniFile').click();
 document.getElementById('uplUniFile').addEventListener('change',async e=>{ if(e.target.files[0]) await handleUni(e.target.files[0]); e.target.value=''; });
 document.getElementById('uplCsvTpl').onclick=()=>{
-  const rows=[['Адрес объекта','Район','Скважина (литера)','Дата замера','Глубина скважины, м','Глубина точки, м','Температура, °C','Источник'],
-    ['50 лет Октября 13','Центральный','Б/В/16','15.03.2026','20','0','7.85','Журнал мерзлотного надзора, 1 кв. 2026'],
-    ['50 лет Октября 13','Центральный','Б/В/16','15.03.2026','20','1','1.20',''],
-    ['50 лет Октября 13','Центральный','Б/В/16','15.03.2026','20','5','-0.90',''],
-    ['50 лет Октября 13','Центральный','Б/В/16','15.03.2026','20','10','-1.35','']];
+  const rows=[['Объект ГТС','Площадка','Скважина (шифр)','Дата замера','Глубина скважины, м','Глубина точки, м','Температура, °C','Источник (журнал, файл)'],
+    ['Хвостохранилище ТОФ','ТОФ','3Т-1','15.03.2026','30','0','-12.40','Ведомость цветная ХХ ТОФ, 1 кв. 2026'],
+    ['Хвостохранилище ТОФ','ТОФ','3Т-1','15.03.2026','30','1','-3.15',''],
+    ['Хвостохранилище ТОФ','ТОФ','3Т-1','15.03.2026','30','5','-1.02',''],
+    ['Хвостохранилище ТОФ','ТОФ','3Т-1','15.03.2026','30','10','-0.85','']];
   const csv='﻿'+rows.map(r=>r.join(';')).join('\r\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
@@ -4028,9 +4136,9 @@ function saveTG(){ try{ localStorage.setItem('gtm_tg_v1', JSON.stringify(TG)); }
 /* --- Supabase-режим: общий реестр для всех пользователей + настоящая email-верификация ---
    Подключение: на экране входа в раздел — «⚙ подключение общего реестра», ввести Project URL и anon key
    (сохраняется в localStorage gtm_tg_sb). Без конфигурации — локальный режим (данные только в этом браузере). */
-/* Встроенный контур общего реестра не задан (независимый проект ГТМ ГТС).
-   Подключение своего Supabase — «⚙ подключение общего реестра» на экране входа в раздел. */
-const TG_SB_BUILTIN={url:'',key:''};
+/* Встроенный контур общего реестра: проект Supabase GTS_ZFNornik (eu-west-1), anon key (RLS).
+   Свой Supabase — «⚙ подключение общего реестра» на экране входа в раздел. */
+const TG_SB_BUILTIN={url:'https://ilifcoresdhsnzhhsybx.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsaWZjb3Jlc2Roc256aGhzeWJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNDQ3NTYsImV4cCI6MjEwNDYyMDc1Nn0.Mym4D1EsALNCv7SVni-_Pjnr7fpUlCLX84zm4QAY7hc'};
 const TG_SB=JSON.parse(localStorage.getItem('gtm_tg_sb')||'null')||TG_SB_BUILTIN;
 let TG_SESS=JSON.parse(sessionStorage.getItem('gtm_tg_sess')||'null');
 function sbMode(){ return !!(TG_SB&&TG_SB.url&&TG_SB.key); }
@@ -4095,7 +4203,7 @@ async function tgRender(o){
       e.preventDefault();
       document.getElementById('tgCfgArea').innerHTML=`
         <div style="margin-top:8px; padding:10px; background:#fff; border:1px dashed var(--c-centr); border-radius:6px; text-align:left; font-size:12px">
-          Общий реестр хранится в Supabase (таблица <code>telegrammy</code>). Встроенное подключение не задано (независимый проект) — укажите параметры своего проекта Supabase:
+          Общий реестр хранится в Supabase (проект GTS_ZFNornik, таблицы <code>telegrammy</code>, <code>osmotry</code>, <code>uploads_staging</code>). Подключение встроено; при необходимости можно указать параметры другого проекта Supabase:
           <input id="sbUrl" placeholder="Project URL, https://xxxx.supabase.co" style="width:100%; margin:6px 0" value="${TG_SB?esc(TG_SB.url||''):''}">
           <input id="sbKey" placeholder="anon public key" style="width:100%; margin-bottom:6px" value="${TG_SB?esc(TG_SB.key||''):''}">
           <div style="display:flex; gap:6px; flex-wrap:wrap">
@@ -5531,8 +5639,8 @@ setTimeout(()=>{ try{
 }catch(e){} }, 5000); // тихое ежедневное пополнение метеоряда при открытии приложения
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"LoNYt9SL7AdaYIf4"};
-const BUILD="abd0df9b";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"pZBlxQlJ/rOduYt0"};
+const BUILD="b7ace968";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
