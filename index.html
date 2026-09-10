@@ -43,6 +43,13 @@
   .item .a .sdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
   .item .t{font-size:11.5px; color:var(--mut); white-space:nowrap}
   .item .t.has{color:var(--crit); font-weight:600}
+  .fitem{padding:5px 14px 5px 26px; border-bottom:1px solid #efe9df; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:baseline; background:#faf8f3}
+  .fitem:hover{background:#ece7dd}
+  .fitem.sel{background:#e2ecf6; border-left:3px solid var(--c-centr); padding-left:23px}
+  .fitem .a{font-size:12px; color:#4a4438}
+  .fitem .t{font-size:11px; color:var(--mut); white-space:nowrap}
+  .fac-toggle{padding:3px 14px 3px 22px; font-size:11px; color:var(--mut); cursor:pointer; user-select:none; background:#f3efe7; border-bottom:1px solid #efe9df}
+  .fac-toggle:hover{color:#333}
   #map{background:#dfe6ea; position:relative}
   #map .leaflet-control-attribution{display:none} /* идентификация карты скрыта по требованию заказчика */
   .district-label{font-weight:700; font-size:13px; letter-spacing:1px; color:#33404d; background:rgba(255,255,255,.75); padding:2px 8px; border-radius:4px; border:none; box-shadow:none}
@@ -178,6 +185,18 @@
   .bst.part{background:#f7f0d8; color:#8a6d1d; border:1px solid #d9c47a}
   .bst.off{background:#f7e3df; color:#a33c2a; border:1px solid #d99a8d}
   .isx-cats td:first-child{padding-left:14px}
+  /* ---------- скрытый раздел НИОКР ---------- */
+  #niokrModal{display:none; position:fixed; inset:0; z-index:1100; background:rgba(15,28,38,.6)}
+  #niokrModal .box{background:var(--panel); width:1080px; max-width:96vw; max-height:92vh; margin:3vh auto; border-radius:10px; padding:20px 24px; box-shadow:0 10px 40px rgba(0,0,0,.4); display:flex; flex-direction:column}
+  #niokrModal h2{font-size:16px}
+  #niokrModal .close{float:right; border:none; background:none; font-size:20px; cursor:pointer; color:var(--mut)}
+  #niokrWrap{overflow-y:auto; flex:1; margin-top:10px}
+  #niokrModal .stage{border:1px solid var(--line); border-radius:8px; padding:10px 14px; margin:10px 0; background:#fff}
+  #niokrModal .stage h3{font-size:13.5px; margin:0 0 4px}
+  #niokrModal .stage .files{font-size:12px; color:var(--mut); margin-top:6px}
+  #niokrModal .stage .files li{margin:1px 0}
+  .niokr-lock{max-width:420px; margin:8vh auto; text-align:center}
+  .niokr-lock input{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; font-size:14px; margin:10px 0 6px; text-align:center}
   table.reg tr.crit td:first-child{border-left:4px solid var(--crit)}
   table.reg tr.risk td:first-child{border-left:4px solid var(--risk)}
   table.reg tr{cursor:pointer}
@@ -304,6 +323,7 @@
     <button id="meteoBtn" title="Метеоданные г. Норильска: история с 1950 г., автопополнение из открытых метеоархивов, аномалии, тренды, прогноз, параметры для теплотехнических расчётов (СП 25.13330.2020, прил. Г)" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">🌦 Метеоданные</button>
     <button id="repBtn" title="Формирование сводного отчёта" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">📄 Отчёт</button>
     <button id="uploadBtn" title="Загрузка данных по шаблону">⬆ Загрузка данных</button>
+    <button id="niokrBtn" title="НИОКР 2026 · ООО «НПО «Фундамент» — скрытый раздел с материалами НИР (отдельный парольный доступ)" style="background:none; border:1px solid #5a4a6c; color:#cbb8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">⚗ НИОКР 2026</button>
     <button id="gear" title="Пороги статусов">⚙ Пороги</button>
     <button id="logoutBtn" title="Выйти / сменить пользователя">⎋ Выход</button>
   </header>
@@ -414,6 +434,22 @@
   </div>
 </div>
 
+<div id="niokrModal">
+  <div class="box">
+    <button class="close" id="niokrClose">✕</button>
+    <h2>НИОКР 2026 · ООО «НПО «Фундамент»</h2>
+    <div id="niokrWrap">
+      <div class="niokr-lock" id="niokrLock">
+        <div class="normref" style="text-align:left">Скрытый раздел: материалы НИР по договору с ООО «НПО «Фундамент». Содержимое зашифровано и хранится отдельно от основной базы; доступ — по отдельному паролю раздела.</div>
+        <input type="password" id="niokrPw" placeholder="Пароль раздела НИОКР" autocomplete="off">
+        <button id="niokrGo" style="border:1px solid var(--c-centr); background:var(--c-centr); color:#fff; border-radius:6px; padding:7px 18px; font-size:13px; cursor:pointer">Открыть раздел</button>
+        <div class="note" id="niokrErr" style="color:var(--crit); margin-top:6px"></div>
+      </div>
+      <div id="niokrBody" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
 <div id="uplModal">
   <div class="box">
     <button class="close" id="uplClose">✕</button>
@@ -467,14 +503,15 @@
   </div>
 </div>
 
-<script src="db_p1.js?v=6a5f1217"></script>
-<script src="db_p2.js?v=6a5f1217"></script>
-<script src="db_p3.js?v=6a5f1217"></script>
-<script src="db_p4.js?v=6a5f1217"></script>
-<script src="db_p5.js?v=6a5f1217"></script>
-<script src="db_p6.js?v=6a5f1217"></script>
-<script src="db_p7.js?v=6a5f1217"></script>
-<script src="db_p8.js?v=6a5f1217"></script>
+<script src="db_p1.js?v=abd0df9b"></script>
+<script src="db_p2.js?v=abd0df9b"></script>
+<script src="db_p3.js?v=abd0df9b"></script>
+<script src="db_p4.js?v=abd0df9b"></script>
+<script src="db_p5.js?v=abd0df9b"></script>
+<script src="db_p6.js?v=abd0df9b"></script>
+<script src="db_p7.js?v=abd0df9b"></script>
+<script src="db_p8.js?v=abd0df9b"></script>
+<script src="niokr.js"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -1169,12 +1206,35 @@ function renderList(){
 }
 function objItem(o,i){
   const st=statusOf(o);
+  const wrap=document.createElement('div');
   const el=document.createElement('div');
   el.className='item'; el.id='it'+i;
   const info=o.nm?`${o.nm} зам. · ${(o.d0||'').slice(0,4)}–${(o.d1||'').slice(0,4)}`:(o.gts?o.gts.type+' · класс '+(o.gts.klass||'—'):'');
   el.innerHTML=`<span class="a">${st?`<span class="sdot" style="background:${SCOL[st]}"></span>`:''}${o.a}</span><span class="t${o.nm?' has':''}">${info}</span>`;
   el.onclick=()=>select(i,true);
-  return el;
+  wrap.appendChild(el);
+  const fs=facOf(o.id);
+  if(fs.length){
+    const tg=document.createElement('div');
+    tg.className='fac-toggle';
+    tg.innerHTML=`▸ сооружения в составе ГТС: <b>${fs.length}</b>`;
+    const box=document.createElement('div');
+    box.style.display='none';
+    fs.forEach(f=>{
+      const fe=document.createElement('div');
+      fe.className='fitem'; fe.id='fit'+f.id;
+      fe.innerHTML=`<span class="a">${esc(f.name)}</span><span class="t">${FT_TXT[f.t]||f.t}${f.klass?' · '+esc(f.klass)+' кл.':''}</span>`;
+      fe.onclick=()=>selectFacility(f.id);
+      box.appendChild(fe);
+    });
+    tg.onclick=()=>{
+      const open=box.style.display!=='none';
+      box.style.display=open?'none':'block';
+      tg.innerHTML=(open?'▸':'▾')+` сооружения в составе ГТС: <b>${fs.length}</b>`;
+    };
+    wrap.appendChild(tg); wrap.appendChild(box);
+  }
+  return wrap;
 }
 function applyFilter(){
   DB.objects.forEach((o,i)=>{
@@ -1183,6 +1243,9 @@ function applyFilter(){
     else if(map.hasLayer(m)) map.removeLayer(m);
   });
 }
+/* сооружения в составе ГТС: определения до первого вызова renderList */
+const FT_TXT={damba:'Дамба',plotina:'Плотина',ns:'Насосная станция',truba:'Трубопровод / водовод',kanal:'Канал / водосброс',emk:'Ёмкость / пруд',kia:'КИА / наблюдательные точки',proch:'Прочее сооружение'};
+function facOf(pid){ return (DB.facilities||[]).filter(f=>f.parent===pid); }
 renderList();
 
 /* ---------- ГОСТ-график (ГОСТ 25358-2020, прил. Д, рис. Д.1) ---------- */
@@ -1546,11 +1609,12 @@ function normText(s){
 }
 function escT(s){ return esc(normText(s)); }
 let curObj=null, curWell=null, curDepths=new Set(), curTab='passport', fcDepth=5;
-const TABS=[['passport','Паспорт ГТС'],['gtm','Паспорт ГТМ'],['kk','Контрольные критерии'],['geoterm','Термометрия'],['piezo','Пьезометрия'],['geod','Деформации'],['climate','Климат до 2050'],['expl','Осмотры и эксплуатация'],['repairs','Ремонты и работы'],['docs','Документация'],['photo','Фотоматериалы'],['misc','Иное']];
+const TABS=[['passport','Паспорт ГТС'],['gtm','Паспорт ГТМ'],['fac','Сооружения'],['kk','Контрольные критерии'],['geoterm','Термометрия'],['piezo','Пьезометрия'],['geod','Деформации'],['climate','Климат до 2050'],['expl','Осмотры и эксплуатация'],['repairs','Ремонты и работы'],['docs','Документация'],['photo','Фотоматериалы'],['misc','Иное']];
+let curFac=null;
 
 function select(i,fromList){
-  const o=DB.objects[i]; curObj=o;
-  document.querySelectorAll('.item').forEach(e=>e.classList.remove('sel'));
+  const o=DB.objects[i]; curObj=o; curFac=null;
+  document.querySelectorAll('.item,.fitem').forEach(e=>e.classList.remove('sel'));
   const li=document.getElementById('it'+i); if(li){li.classList.add('sel'); li.scrollIntoView({block:'nearest'});}
   if(o.lat!=null){
     if(!fromList) map.panTo([o.lat,o.lon]);
@@ -1594,8 +1658,63 @@ function renderDetail(o){
 }
 function renderTab(o){
   const el=document.getElementById('tabBody');
-  ({passport:tabGtsPassport, gtm:tabGtmGts, kk:tabKK, geoterm:tabGeoterm, piezo:tabPiezo, geod:tabGeod, climate:tabClimate,
+  ({passport:tabGtsPassport, gtm:tabGtmGts, fac:tabFac, kk:tabKK, geoterm:tabGeoterm, piezo:tabPiezo, geod:tabGeod, climate:tabClimate,
     expl:tabExpl, repairs:tabRepairs, docs:tabGtsDocs, photo:tabPhoto, misc:tabMisc})[curTab](o, el);
+}
+
+/* ---------- сооружения в составе ГТС (ТЗ НИР, п. 4.1–4.10) ---------- */
+function tabFac(o, el){
+  const fs=facOf(o.id);
+  if(!fs.length){ el.innerHTML='<div class="note">Состав сооружений по объекту не задан.</div>'; return; }
+  const groups=new Map();
+  fs.forEach(f=>{ if(!groups.has(f.sys)) groups.set(f.sys,[]); groups.get(f.sys).push(f); });
+  el.innerHTML=`
+  <div class="normref">Состав сооружений в составе комплекса ГТС — по ТЗ НИР (раздел 4 «Характеристика объектов»), проектной и декларационной документации. Клик по строке открывает карточку сооружения.</div>
+  <div class="sect">Сооружения объекта · всего ${fs.length}</div>
+  ${[...groups.entries()].map(([sys,items])=>`
+    <table class="rows static" style="margin-bottom:10px"><thead><tr>
+      <th style="width:34%">${esc(sys)} · ${items.length}</th><th style="width:15%">Вид</th><th style="width:6%">Класс</th><th>Параметры (проектные данные)</th>
+    </tr></thead><tbody>
+    ${items.map(f=>`<tr data-fid="${f.id}" style="cursor:pointer"><td><b>${esc(f.name)}</b></td><td>${FT_TXT[f.t]||f.t}</td><td>${esc(f.klass||'—')}</td><td>${esc(f.params||'—')}</td></tr>`).join('')}
+    </tbody></table>`).join('')}`;
+  el.querySelectorAll('tr[data-fid]').forEach(tr=>tr.onclick=()=>{
+    const f=(DB.facilities||[]).find(x=>x.id===tr.dataset.fid);
+    if(f) selectFacility(f.id);
+  });
+}
+function selectFacility(fid){
+  const f=(DB.facilities||[]).find(x=>x.id===fid); if(!f) return;
+  curFac=f;
+  document.querySelectorAll('.item,.fitem').forEach(e=>e.classList.remove('sel'));
+  const li=document.getElementById('fit'+fid); if(li){ li.classList.add('sel'); li.scrollIntoView({block:'nearest'}); }
+  renderFacility(f);
+}
+function renderFacility(f){
+  const o=DB.objects.find(x=>x.id===f.parent);
+  const d=document.getElementById('detail');
+  const sib=facOf(f.parent);
+  const idx=sib.findIndex(x=>x.id===f.id)+1;
+  d.innerHTML=`
+    <h2>${esc(f.name)}<span class="badge b-card">сооружение</span></h2>
+    <div class="rayon">В составе: <b>${esc(o?o.a:'—')}</b> · ${esc(f.sys)} · Сооружение ${idx} из ${sib.length}</div>
+    <div style="margin:6px 0 12px"><button class="addrow" id="facBack">← к карточке ГТС</button></div>
+    <div class="sect">Паспорт сооружения</div>
+    <table class="kv">
+      <tr><td>Наименование</td><td><b>${esc(f.name)}</b></td></tr>
+      <tr><td>Вид сооружения</td><td>${FT_TXT[f.t]||esc(f.t)}</td></tr>
+      <tr><td>Система / очередь</td><td>${esc(f.sys)}</td></tr>
+      <tr><td>Класс сооружения</td><td>${esc(f.klass||('по классу ГТС — '+(o&&o.gts&&o.gts.klass?o.gts.klass:'—')))}</td></tr>
+      <tr><td>Проектные параметры</td><td>${esc(f.params||'—')}</td></tr>
+      ${f.note?`<tr><td>Примечание</td><td>${esc(f.note)}</td></tr>`:''}
+      <tr><td>Источник сведений</td><td>ТЗ НИР «Мерзлота ГТС НПР» (раздел 4); архив исходных данных по объекту</td></tr>
+    </table>
+    <div class="sect">Мониторинг сооружения</div>
+    <div class="note">Точки мониторинга (термоскважины, пьезометры, марки), расположенные на сооружении, привязываются на этапе загрузки числовых рядов — см. вкладки «Термометрия», «Пьезометрия», «Деформации» карточки ГТС.</div>
+    <div class="sect">Документация</div>
+    <div class="note">Проектная, рабочая и эксплуатационная документация по сооружению ведётся в составе документации объекта ГТС — вкладка «Документация» карточки объекта (реестр архива исходных данных НИР).</div>`;
+  document.getElementById('facBack').onclick=()=>{ curFac=null; if(o) select(DB.objects.indexOf(o), true); };
+  if(window.matchMedia('(max-width:900px)').matches)
+    setTimeout(()=>document.getElementById('detail').scrollIntoView({behavior:'smooth'}),150);
 }
 
 function edVal(o, scope, k, dflt){
@@ -3315,6 +3434,49 @@ function openNtd(){
 document.getElementById('ntdBtn').onclick=openNtd;
 document.getElementById('ntdClose').onclick=()=>ntdModal.style.display='none';
 ntdModal.addEventListener('click',e=>{ if(e.target===ntdModal) ntdModal.style.display='none'; });
+
+/* ---------- скрытый раздел «НИОКР 2026 НПО Фундамент» (отдельный пароль) ---------- */
+const niokrModal=document.getElementById('niokrModal');
+function renderNiokrBody(N){
+  document.getElementById('niokrBody').innerHTML=`
+    <div class="normref">${esc(N.topic)}<br>${esc(N.contract)} · Заказчик: ${esc(N.customer)} · Исполнитель: <b>${esc(N.executor)}</b> · ${esc(N.year)} г.</div>
+    <div class="sect">Цель работ</div>
+    <div style="font-size:12.8px">${esc(N.goal)}</div>
+    <div class="sect">Этапы НИР и материалы (${N.stages.length})</div>
+    ${N.stages.map(s=>`<div class="stage">
+      <h3>Этап ${s.n}. ${esc(s.name)}</h3>
+      <div style="font-size:12.3px">${esc(s.scope)}</div>
+      <ul class="files">${s.files.map(f=>`<li>📄 ${esc(f)}</li>`).join('')}</ul>
+    </div>`).join('')}
+    <div class="note">${esc(N.note)}</div>`;
+  document.getElementById('niokrLock').style.display='none';
+  document.getElementById('niokrBody').style.display='block';
+}
+async function niokrUnlock(pwd){
+  const errEl=document.getElementById('niokrErr'); errEl.textContent='';
+  try{
+    const P=window.NIOKR_PKG; if(!P) throw 'нет пакета данных';
+    const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+    const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pwd),'PBKDF2',false,['deriveKey']);
+    const K=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(P.salt),iterations:150000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(P.iv)},K,b64(P.ct));
+    const txt=await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    const N=JSON.parse(txt);
+    sessionStorage.setItem('gtm_niokr',pwd);
+    renderNiokrBody(N);
+  }catch(e){ errEl.textContent='Неверный пароль раздела'; }
+}
+function openNiokr(){
+  niokrModal.style.display='block';
+  const saved=sessionStorage.getItem('gtm_niokr');
+  if(saved && document.getElementById('niokrLock').style.display!=='none') niokrUnlock(saved);
+  setTimeout(()=>{ const i=document.getElementById('niokrPw'); if(i&&document.getElementById('niokrLock').style.display!=='none') i.focus(); },100);
+}
+document.getElementById('niokrBtn').onclick=openNiokr;
+document.getElementById('niokrClose').onclick=()=>niokrModal.style.display='none';
+niokrModal.addEventListener('click',e=>{ if(e.target===niokrModal) niokrModal.style.display='none'; });
+document.getElementById('niokrGo').onclick=()=>niokrUnlock(document.getElementById('niokrPw').value);
+document.getElementById('niokrPw').addEventListener('keydown',e=>{ if(e.key==='Enter') niokrUnlock(e.target.value); });
 document.getElementById('regExport').onclick=()=>{
   const rows=registryRows();
   if(!rows.length){ alert('По текущим фильтрам объектов нет — выгружать нечего.'); return; }
@@ -4927,7 +5089,7 @@ function enterApp(role){
   document.getElementById('roleBadge').textContent=role==='edit'?'оператор':'наблюдатель';
 }
 (function initAuth(){
-  document.getElementById('logoutBtn').onclick=()=>{ sessionStorage.removeItem('gtm_role'); sessionStorage.removeItem('gtm_k'); location.reload(); };
+  document.getElementById('logoutBtn').onclick=()=>{ sessionStorage.removeItem('gtm_role'); sessionStorage.removeItem('gtm_k'); sessionStorage.removeItem('gtm_niokr'); location.reload(); };
   const role=sessionStorage.getItem('gtm_role');
   if(role==='view'||role==='edit'){ enterApp(role); return; }
   document.getElementById('loginModal').style.display='flex';
@@ -5359,8 +5521,8 @@ setTimeout(()=>{ try{
 }catch(e){} }, 5000); // тихое ежедневное пополнение метеоряда при открытии приложения
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"VLhNrCBd8WLVEJOd"};
-const BUILD="6a5f1217";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"LoNYt9SL7AdaYIf4"};
+const BUILD="abd0df9b";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":"наблюдатель"; }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
@@ -5404,7 +5566,7 @@ async function _decrypt(rawK){
       if(!silent) errEl.textContent="Не удалось загрузить данные. Обновите страницу (Ctrl+F5). Если ошибка повторится — сообщите администратору. ("+e+")";
     }
   }
-  document.getElementById("logoutBtn").onclick=()=>{ sessionStorage.removeItem("gtm_role"); sessionStorage.removeItem("gtm_k"); location.reload(); };
+  document.getElementById("logoutBtn").onclick=()=>{ sessionStorage.removeItem("gtm_role"); sessionStorage.removeItem("gtm_k"); sessionStorage.removeItem("gtm_niokr"); location.reload(); };
   lm.style.display="flex";
   document.getElementById("loginForm").onsubmit=async ev=>{
     ev.preventDefault(); errEl.textContent="";
