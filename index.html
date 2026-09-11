@@ -206,6 +206,28 @@
   table.rows td.mut{color:var(--mut); font-size:11.5px}
   .vbtn{border:1px solid #b9c4d0; background:#fff; border-radius:5px; padding:1px 8px; font-size:11.5px; cursor:pointer; white-space:nowrap; color:#2f5f8f}
   .vbtn:hover{border-color:var(--c-centr); color:var(--c-centr)}
+  /* ---------- предупреждения: критичные метеоявления (прогноз 10 сут) ---------- */
+  .warnZone{margin:2px 0 10px}
+  .warn-card{border:1px solid #e0cf85; background:#fdf8e3; border-radius:8px; padding:8px 12px; margin-bottom:8px}
+  .warn-card.crit{border-color:#d99a8d; background:#fbeeea}
+  .warn-card h3{font-size:13px; margin:0 0 3px}
+  .warn-card .wg{font-size:12px; margin:4px 0; line-height:1.45}
+  .warn-card .wg b{color:#4a4234}
+  .warn-none{border:1px solid #9ec79a; background:#eef6ec; border-radius:8px; padding:7px 12px; font-size:12.5px; margin-bottom:8px}
+  .warn-meta{font-size:11px; color:var(--mut); margin-bottom:6px}
+  #warnBadge{display:none; background:#c62828; color:#fff; border-radius:9px; font-size:10.5px; padding:0 6px; margin-left:4px; font-weight:700; vertical-align:middle}
+  /* ---------- термометрия: таблицы измерений и блок этапов изысканий ---------- */
+  details.wt, details.igt{border:1px solid #cfc9bb; border-radius:8px; margin:0 0 6px; background:#fffdf8}
+  details.wt>summary, details.igt>summary{cursor:pointer; padding:6px 10px; font-size:12.5px; user-select:none}
+  details.wt>summary:hover, details.igt>summary:hover{background:#f3eee2}
+  details.wt[open]>summary, details.igt[open]>summary{border-bottom:1px solid #e2dccc}
+  .wt-scroll{overflow-x:auto; padding:6px 10px 10px}
+  table.wtab{border-collapse:collapse; font-size:11px; white-space:nowrap}
+  table.wtab th, table.wtab td{border:1px solid #d9d3c6; padding:1px 6px; text-align:right}
+  table.wtab th{background:#efe9db; font-weight:700; text-align:center}
+  table.wtab td.pos{color:#b3261e; font-weight:700}
+  .igt-body{padding:6px 12px 10px; font-size:12.5px}
+  .igt-body .igf{margin:3px 0; line-height:1.5}
   /* ---------- скрытый раздел НИОКР ---------- */
   #niokrModal{display:none; position:fixed; inset:0; z-index:1100; background:rgba(15,28,38,.6)}
   #niokrModal .box{background:var(--panel); width:1080px; max-width:96vw; max-height:92vh; margin:3vh auto; border-radius:10px; padding:20px 24px; box-shadow:0 10px 40px rgba(0,0,0,.4); display:flex; flex-direction:column}
@@ -352,7 +374,7 @@
     </div>
     <div class="stats" id="hstats"></div>
     <span id="roleBadge" style="font-size:11px; color:#9fb0bf; border:1px solid #3a4c5c; border-radius:10px; padding:2px 10px"></span>
-    <button id="regBtn" title="Сводный реестр объектов РИСК/КРИТИЧНО" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">▤ Реестр</button>
+    <button id="regBtn" title="Сводный реестр объектов РИСК/КРИТИЧНО" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">▤ Реестр</button><span id="warnBadge" title="Активные предупреждения о критичных погодных условиях (прогноз 10 суток)"></span>
     <button id="ntdBtn" title="Нормативная документация по ГТС: действующие редакции, статусы, применимость к объектам на многолетнемерзлых грунтах (по результатам анализа НТД НИР)" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">§ Нормативка</button>
     <button id="meteoBtn" title="Метеоданные г. Норильска: история с 1950 г., автопополнение из открытых метеоархивов, аномалии, тренды, прогноз, параметры для теплотехнических расчётов (СП 25.13330.2020, прил. Г)" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">🌦 Метеоданные</button>
     <button id="repBtn" title="Формирование сводного отчёта" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">📄 Отчёт</button>
@@ -387,12 +409,14 @@
   <label>РИСК: тренд потепления &gt; <span><input id="sTrend" type="number" step="0.05"> °C/год</span></label>
   <label>…на глубине от <span><input id="sTrendDepth" type="number" step="1"> м</span></label>
   <label>РИСК: превышение Tрасч на <span><input id="sAbove" type="number" step="0.1"> °C</span></label>
-  <h3 style="margin-top:12px">Деформации основания (геодезия)</h3>
-  <label>РИСК: скорость осадки ≥ <span><input id="sGRisk" type="number" step="1"> мм/год</span></label>
-  <label>КРИТИЧНО: скорость осадки ≥ <span><input id="sGCrit" type="number" step="1"> мм/год</span></label>
+  <h3 style="margin-top:12px">Деформации сооружений ГТС (геодезические наблюдения)</h3>
+  <label>РИСК: скорость осадки марки ≥ <span><input id="sGRisk" type="number" step="1"> мм/год</span></label>
+  <label>КРИТИЧНО: скорость осадки марки ≥ <span><input id="sGCrit" type="number" step="1"> мм/год</span></label>
   <label>КРИТИЧНО: суммарная осадка ≥ <span><input id="sGTotal" type="number" step="5"> мм</span></label>
+  <label>РИСК: неравномерность осадки (разность между марками) ≥ <span><input id="sGSpreadR" type="number" step="5"> мм</span></label>
+  <label>КРИТИЧНО: неравномерность осадки (разность между марками) ≥ <span><input id="sGSpreadC" type="number" step="5"> мм</span></label>
   <button class="save" id="sSave">Применить</button>
-  <div class="note">Пороги — рабочие превентивные значения макета для режимного мониторинга ГТС. Предельные значения показателей состояния сооружений (критерии безопасности К1/К2) задаются во вкладке «Контрольные критерии» карточки объекта по данным декларации безопасности ГТС (ФЗ-117, ст. 9; ГОСТ Р 59873-2021).</div>
+  <div class="note">Пороги — рабочие превентивные значения макета для режимного мониторинга ГТС. Неравномерность осадки вдоль гребня/по площади сооружения — индикатор поперечных трещин и локальной неустойчивости откосов дамб. Предельные значения показателей состояния сооружений (критерии безопасности К1/К2) задаются во вкладке «Контрольные критерии» карточки объекта по данным декларации безопасности ГТС (ФЗ-117, ст. 9; ГОСТ Р 59873-2021) и выводятся во вкладках «Деформации» и «Пьезометрия».<br><b>Приоритет декларационных порогов над общими:</b> гребень/отстойный пруд ТОФ — пьезометры 0П-1…10П-1 и уровень пруда по ДБ 2023 (табл. 2.2); плотина 3-х озёр (Дудинка) — осадки 5/8 мм/год и температура мерзлотной завесы −1,2/−0,2 °C по ДБ (разд. 11.5); динамика осадок «затухание / ∆2⋛∆1» — для объектов, где критерий установлен декларацией (ТОФ, дамбы НМЗ/НОФ, Дудинка).</div>
 </div>
 
 <div id="tgModal">
@@ -443,6 +467,8 @@
     <button class="close" id="regClose">✕</button>
     <h2>Сводный реестр объектов со статусами РИСК и КРИТИЧНО</h2>
     <div class="normref" id="regSummary"></div>
+    <div class="sect" style="margin-top:2px">⚠ Предупреждения — критичные погодные условия (прогноз 10 суток, обновление каждый час)</div>
+    <div id="warnZone" class="warnZone"><div class="warn-meta">Загрузка прогноза метеоданных…</div></div>
     <div style="display:flex; gap:10px; margin:8px 0; flex-wrap:wrap; align-items:center">
       <select id="regD" style="padding:5px 8px; border:1px solid var(--line); border-radius:6px; font-size:12.5px">
         <option value="">Все предприятия</option><option>ТОФ</option><option>НМЗ</option><option>НОФ</option><option>Дудинка</option>
@@ -577,6 +603,7 @@
 <script src="db_p6.js?v=f2588da5"></script>
 <script src="db_p7.js?v=f2588da5"></script>
 <script src="db_p8.js?v=f2588da5"></script>
+<script src="kadastr.js?v=20260911"></script>
 <script src="niokr.js?v=311e584678"></script>
 
 <div id="loginModal">
@@ -595,8 +622,113 @@ const SCOL = {"НОРМА":"#2e7d32","РИСК":"#e08a00","КРИТИЧНО":"#c
 const DB = window.DB;
 
 /* ---------- пороги ---------- */
-const DEF_TH = {tcrit:-0.5, depth:3, trend:0.10, trendDepth:10, above:0.5, geodRiskSpeed:10, geodCritSpeed:20, geodCritTotal:100, bearRisk:0.91, bearCrit:0.77};
+const DEF_TH = {tcrit:-0.5, depth:3, trend:0.10, trendDepth:10, above:0.5, geodRiskSpeed:10, geodCritSpeed:20, geodCritTotal:100, geodRiskSpread:30, geodCritSpread:60, bearRisk:0.91, bearCrit:0.77};
 let TH = Object.assign({}, DEF_TH, JSON.parse(localStorage.getItem('gtm_th')||'{}'));
+
+/* ---------- декларационные критерии К1/К2 (из деклараций безопасности ГТС ПАО «ГМК «Норильский никель»; имеют приоритет над общими порогами TH) ---------- */
+const DECL_OVR={
+  gts01:{ // Хвостохранилище ТОФ (1 очередь)
+    // Отметки уровня в пьезометрах, м (абс., БСВ): К1/К2 и фактические показатели — дословно из табл. 2.2 декларации (стр. 56–57).
+    // Журнальные ряды (вкладка «Пьезометрия») ведутся в ГЛУБИНЕ от оголовка; автоконтроль статуса по пьезометру
+    // включается только при заданной отм. оголовка (head, м): отм. уровня = head − глубина. Источник отм. оголовков — сводная ведомость уровней воды в пьезометрах хх ТОФ.
+    piezo:{'0П-1':{k1:38.4,k2:39.6,fact:'26,1'},'1П-1':{k1:38.4,k2:39.6,fact:'37,8'},"2'П-1":{k1:38.8,k2:40.8,fact:'34,7'},'5П-1':{k1:55.8,k2:57.7,fact:'нет воды'},'8П-1':{k1:58.8,k2:60.4,fact:'лёд'},'9П-1':{k1:58.8,k2:60.4,fact:'лёд'},'10П-1':{k1:58.8,k2:60.4,fact:'лёд'}},
+    pond:{re:/уровень водоёма/i, k1:45.5, k2:46.0, fact:'45,35', nm:'отметка уровня воды в отстойном пруду'}, // ряд водоёма ведётся в отметках — автоконтроль активен
+    src:'ДБ хвостохранилища ТОФ (1 очередь), 2023 — разд. 11.5, табл. 2.2 (стр. 56–57)'},
+  gts10:{ // Плотина системы 3-х озёр (Дудинка)
+    geodRiskSpeed:5, geodCritSpeed:8, // осадки: К1 = 5 мм/год (первые 3 года, далее затухание); К2 = 8 мм/год незатухающие
+    tRisk:-1.2, tcrit:-0.2,           // температура мерзлотной завесы: К1 = −1,2 °C; К2 = −0,2 °C
+    src:'ДБ плотины системы 3-х озёр (Дудинка) — разд. 11.5'}
+};
+
+/* ---------- официальные наименования ГТС по декларациям безопасности (выводятся в паспорте ГТС; рабочие сокращённые названия в реестре и на карте сохранены) ---------- */
+const NAME_DECL={
+  gts01:'ГТС хвостохранилища Талнахской обогатительной фабрики (1 очередь) ЗФ ПАО «ГМК «Норильский никель» — ДБ, 2023',
+  gts02:'ГТС пруда-накопителя Талнахской обогатительной фабрики ЗФ ПАО «ГМК «Норильский никель»; отдельно — ДБ ГТС проектируемого отсека № 2 пруда-накопителя (3666-ДБГ изм. 2)',
+  gts03:'ГТС системы высоконапорного гидротранспорта Талнахской обогатительной фабрики (ГТС ТОФ) — ДБ, 2021',
+  gts04:'ГТС системы гидротранспорта продуктов обогащения от ТОФ ЗФ ПАО «ГМК «Норильский никель» до поверхностного закладочного комплекса рудника «Комсомольский» (ГТ ТОФ – ПЗК РК) — ДБ, 2022',
+  gts05:'ГТС хвостохранилища Надеждинского металлургического завода имени Б. И. Колесникова ЗФ ПАО «ГМК «Норильский никель»',
+  gts06:'Гипсохранилище (проект «Нейтрализация серной кислоты» НМЗ им. Б. И. Колесникова) — ДБ ГТС 3745-ДБГ изм. 7',
+  gts07:'ГТС второго поля хвостохранилища «Лебяжье» НОФ — 32360-7 ДБ, ЗАО «Механобр инжиниринг», 2004',
+  gts08:'ГТС хвостохранилища № 1 Норильской обогатительной фабрики; рег. код в Российском регистре ГТС 217040000521700; декларант ООО «Медвежий ручей» — ДБ, 04.06.2024',
+  gts09:'ГТС никелевого отстойника НОФ (отсеки «Северный», «Южный», «Восточный») — ДБ, 01.03.2024',
+  gts10:'Плотина системы 3-х озёр Дудинского участка спецгрузов Цеха по переработке специальных грузов (ДУСГ ЦПСГ ПЕСХ) ЗФ ПАО «ГМК «Норильский никель» — ДБ, 2022'
+};
+(DB.objects||[]).forEach(o=>{ if(NAME_DECL[o.id]) o.nameDecl=NAME_DECL[o.id]; });
+
+/* ---------- термометрия этапов инженерных изысканий (дословно из текстовых слоёв отчётов ИГИ; ссылки на страницы — по текстовому слою) ---------- */
+const IGI_THERM={
+  gts01:[
+    {f:'g01_zf151006', t:'Отчёт об ИГИ, гидрогеологических и геокриологических изысканиях (ЗФ-151/006-ИГИ2.1.1)', y:'2023',
+     scope:'77 скв. / 3256,2 пог.м; термокаротаж 77 скв.; 490 монолитов',
+     facts:['Термометрические исследования выполнены по ГОСТ 25358; показания температуры грунтов после выстойки скважин приведены в приложении Х (том ЗФ-151/006-ИГИ2.1.2) — стр. 34 текстового слоя']},
+    {f:'g01_avt_field', t:'Отчёт по результатам ИГИ, этап полевых работ, 2 этап (ЗФ-39/004-ИГИ)', y:'2025',
+     scope:'72 скв. / 720 пог.м; термометрия 72 скв.; 732 монолита',
+     facts:['Пробы мерзлого грунта хранились в термоящике и доставлялись в хранилище с отрицательной температурой (стр. 14); числовые таблицы замеров — в приложениях отчёта']}
+  ],
+  gts02:[
+    {f:'g02_3pk', t:'Отчёт об ИГИ. Реконструкция и ТП ТОФ, 3-й пусковой комплекс (ТОФ-РФ-3ПК-ИГИ2.1.1)', y:'2023',
+     scope:'климатическая характеристика площадки; таблицы температурных замеров грунтов — в приложениях отчёта',
+     facts:['Среднегодовая температура воздуха площадки −9,6 °C; годовая сумма осадков 427 мм (1975–2019) — стр. 19 текстового слоя']}
+  ],
+  gts03:[
+    {f:'g03_752', t:'Технический отчёт по результатам ИГИ. Трасса гидротранспорта (356752-ИГИ-752)', y:'2023',
+     scope:'98 скв.; термокаротаж 98 скв.',
+     facts:['Температурные замеры выполнены с 18.06.2022 по 06.08.2022 и с 05.10.2022 по 28.10.2022 — стр. 15 текстового слоя']}
+  ],
+  gts05:[
+    {f:'g05_88', t:'Отчёт об ИГИ, гидрогеологических и геокриологических изысканиях (88-1413/20-ИГИ)', y:'2020',
+     scope:'29 скв. / 940 пог.м; 778 проб грунта; замеры температуры в пробуренных скважинах (2015 г.)',
+     facts:['Температура грунтов на подошве слоя нулевых годовых колебаний по замерам 2015 г.: от минус 2,6 °C до минус 3,8 °C; наиболее низкие — на участках с более высокими абс. отметками рельефа — стр. 27',
+            'Температура талых грунтов на участках таликов: от плюс 1,6 °C до плюс 1,8 °C — стр. 27',
+            'По скв. ПХ-1, ПХ-2, ПХ-3 (1999 г.): верхняя зона тела русловой плотины в мёрзлом состоянии; на флангах (скв. ПХ-6, ПХ-7) породы мёрзлые — стр. 27']}
+  ],
+  gts06:[
+    {f:'g06_gpx1', t:'Отчёт об ИГИ гипсохранилища, 1 этап (356838-ИГИ-838)', y:'2025',
+     scope:'термометрия скважин этапа; табл. 6.1 — распространение пластичномерзлых грунтов',
+     wells:{cap:'Пластичномерзлые грунты по скважинам (табл. 6.1, стр. 24; фрагмент)', cols:['Скважина','Интервал, м','Температура, °C','ИГЭ'],
+       rows:[['УК-4910','17,5–20,5','−0,3…−0,8','ИГЭ-5'],['УК-4911','17,3–24,7','−0,3…−0,8','ИГЭ-3, ИГЭ-5'],['УК-4912','11,5–16,0','−0,1…−0,8','ИГЭ-3, ИГЭ-4, ИГЭ-5'],['УК-4912','18,7–21,0','—','—']]},
+     facts:['Естественные мёрзлые грунты основания ограждающей дамбы (ПК34–ПК36) — преимущественно твердомёрзлые — стр. 24']},
+    {f:'g06_gpx2', t:'Отчёт об ИГИ гипсохранилища, 2 этап (356846-ИГИ-846)', y:'2025',
+     scope:'термометрия скважин этапа',
+     facts:['Температурный режим промерзающих насыпных грунтов тела дамбы: от −0,1 до −0,6 °C — стр. 24',
+            'Пластичномёрзлые глинистые грунты (ИГЭ-3, 4, 5) отмечаются практически каждой скважиной прослоями 1,0–4,7 м (в среднем 2,3 м) — стр. 24']}
+  ],
+  gts07:[
+    {f:'g07_to675', t:'Технический отчёт по результатам ИГИ. ТО-675, т.2 ч.1 (1-е поле)', y:'2020',
+     scope:'77 скв. / 3256,2 пог.м (2 этапа); термокаротаж 77 скв.',
+     facts:['Подошва слоя нулевых годовых колебаний принята 14,0 м (высокая теплопроводность хвостов ОФ) — стр. 39',
+            'Температура грунтов на подошве НГК: верхний бьеф — от +0,7 до −1,6 °C; нижний бьеф — от −0,1 до −3,4 °C; чаша хвостохранилища — от +6,0 до −0,8 °C — стр. 39',
+            'С 2011–2012 гг. на западном борте ограждающей дамбы таликовые зоны значительно уменьшились, температуры стабилизировались — стр. 39'],
+     wells:{cap:'Скважины этапа изысканий ТО-675: глубина и абс. отметка устья (Балтийская система высот) — приложение Л, литологические колонки', cols:['Скважина','Глубина, м','Абс. отм. устья, м'], colsKey:['w','h','z'],
+       rowsSrc:'g07_wells'}
+    }
+  ],
+  gts08:[
+    {f:'g08_nnts169', t:'Отчёт об ИГИ. Дамба № 5 (ННТС-169-21-ИГИ1)', y:'2022',
+     scope:'43 скв. / ~1870–1930 пог.м; 35 термометрических скважин; замеры по ГОСТ 25358',
+     facts:['Термометрические наблюдения — во всех скважинах для изучения естественного температурного режима грунтов — стр. 11',
+            'Температуры ниже деятельного слоя: от +4,52 °C до −5,74 °C — стр. 23',
+            'Межмерзлотные таликовые зоны в северной части: мощность 2,5–17,1 м; надмерзлотные талики 0,2–1,0 м (скв. № 11, 16, 32, 42, 43) — стр. 23, табл. 6.1']}
+  ],
+  gts09:[
+    {f:'g09_1006', t:'Отчёт об ИГИ. ГТС никелевого отстойника, отсеки «Северный», «Южный», «Восточный» (1006.3-ИГИ2.1.1)', y:'2025',
+     scope:'скважины глубиной до 25 м; оборудование термометрическими трубами при вскрытии ММП',
+     facts:['При вскрытии ММП ниже подошвы СТС скважина оборудуется термометрической трубой для последующих термометрических наблюдений — стр. 30',
+            'Абс. отметки гребня дамбы Северного отстойника на момент изысканий: 110,2–111,7 м (Балтийская система высот) — стр. 23',
+            'Скв. 2-24 вскрыты многолетнемёрзлые грунты — стр. 25']}
+  ],
+  gts10:[
+    {f:'g10_m18', t:'Технический отчёт. Инженерно-геологические изыскания (М-18/20-ИГИ)', y:'2021',
+     scope:'12 скв. × 10,0 м / 120 пог.м; 34 монолита; термометрия во всех скважинах',
+     facts:['Термометрические наблюдения производились во всех скважинах с целью изучения естественного температурного режима грунтов — стр. 11',
+            'Рекомендованы контрольные циклы измерения температуры в термометрических скважинах в течение года (риск термокарста в береговом примыкании и нижнем бьефе) — стр. 25']},
+    {f:'g10_szo', t:'Отчёт об ИГИ (СЗО-ИГИ, пояснительная записка)', y:'2022',
+     scope:'бурение 75 пог.м; анализ термометрических скважин трёх этапов',
+     facts:['Термометрические скважины 1-го этапа (19 шт.) — вдоль труб паводкового водосброса; 2-го этапа (7 шт., ~2010–2019) — вдоль термосифонного ряда; скважины 1 и 2 этапов нерабочие; 3-й этап — бурение при изысканиях — стр. 26']}
+  ]
+};
+/* скважины ТО-675 (хх «Лебяжье»): [номер, глубина м, абс. отм. устья м БСВ] — из приложения Л отчёта 356675-ИГ-675 */
+const G07_WELLS=[["ЛБ-1180","53,0","85,0"],["ЛБ-1183","56,0","84,8"],["ЛБ-1186","56,5","85,1"],["ЛБ-1189","58,5","84,0"],["ЛБ-1192","59,0","82,6"],["ЛБ-1195","57,0","83,0"],["ЛБ-1198","59,0","83,8"],["ЛБ-1201","60,0","83,9"],["ЛБ-1204","65,0","83,9"],["ЛБ-1207","63,0","83,2"],["ЛБ-1210","61,0","82,8"],["ЛБ-1215","58,0","83,3"],["ЛБ-1218","60,0","82,1"],["ЛБ-1221","53,0","81,1"],["ЛБ-1226","60,0","83,5"],["ЛБ-1229","53,0","82,5"],["ЛБ-1232","48,5","82,7"],["ЛБ-1237","56,0","83,3"],["ЛБ-1240","50,0","83,6"],["ЛБ-1243","53,5","83,9"],["ЛБ-1246","54,7","84,4"],["ЛБ-1249","52,5","84,7"],["ЛБ-1252","42,5","85,1"],["ЛБ-1176","47,5","84,9"],["ЛБ-1177","49,0","84,6"],["ЛБ-1179","38,0","69,8"],["ЛБ-1185","38,0","66,0"],["ЛБ-1191","41,5","64,1"],["ЛБ-1197","46,0","75,8"],["ЛБ-1203","45,0","76,6"],["ЛБ-1209","45,5","75,4"],["ЛБ-1214","55,0","72,3"],["ЛБ-1220","35,0","69,6"],["ЛБ-1225","42,0","69,3"],["ЛБ-1231","30,5","63,6"],["ЛБ-1236","45,0","67,5"],["ЛБ-1242","43,0","74,5"],["ЛБ-1248","38,0","71,8"],["ЛБ-1178","25,0","50,7"],["ЛБ-1184","25,0","46,5"],["ЛБ-1190","25,0","46,0"],["ЛБ-1196","38,0","69,7"],["ЛБ-1202","35,0","67,0"],["ЛБ-1208","30,0","68,7"],["ЛБ-1213","36,0","66,8"],["ЛБ-1219","35,5","56,7"],["ЛБ-1224","28,0","55,2"],["ЛБ-1230","25,0","48,0"],["ЛБ-1235","25,0","55,9"],["ЛБ-1241","25,0","54,3"],["ЛБ-1247","25,0","61,6"],["ЛБ-1181","54,0","85,0"],["ЛБ-1182","53,0","83,7"],["ЛБ-1187","57,0","85,8"],["ЛБ-1188","54,0","83,5"],["ЛБ-1193","61,0","84,7"],["ЛБ-1194","60,0","83,6"],["ЛБ-1199","57,5","83,7"],["ЛБ-1200","52,0","83,1"],["ЛБ-1205","60,0","83,0"],["ЛБ-1206","61,0","82,6"],["ЛБ-1211","61,0","82,4"],["ЛБ-1212","58,0","81,9"],["ЛБ-1216","55,0","81,6"],["ЛБ-1217","52,0","81,4"],["ЛБ-1222","56,0","80,9"],["ЛБ-1223","60,0","80,9"],["ЛБ-1227","59,0","82,0"],["ЛБ-1228","58,0","81,6"],["ЛБ-1233","47,0","81,9"],["ЛБ-1234","45,0","80,9"],["ЛБ-1238","60,0","81,9"],["ЛБ-1239","55,0","80,9"],["ЛБ-1244","55,0","82,4"],["ЛБ-1245","51,5","82,0"],["ЛБ-1250","53,5","83,3"],["ЛБ-1251","52,0","82,8"]];
 function saveTH(){ localStorage.setItem('gtm_th', JSON.stringify(TH)); }
 
 /* ---------- миграция ключей localStorage по карте переименований адресов (канонизация) ---------- */
@@ -756,32 +888,74 @@ function bearingDyn(o){
   if(tc!==undefined){ fd0=Fd(tc); k=fd[fd.length-1]/fd0; }
   return {dates, fd, fd0, k, U, Ap, L, Lth, Lf, gk, rk, dr, tc};
 }
-function geodMetrics(o){ // макс. скорость последнего цикла и макс. суммарная осадка по маркам
+function geodMetrics(o){ // макс. скорость последнего цикла, макс. суммарная осадка и неравномерность (разность между марками)
   if(!o.geod) return null;
   let maxSpeed=0, maxOsad=0, speedMark='', osadMark='';
+  const lastVals=[];
   Object.entries(o.geod).forEach(([mk,s])=>{
     if(s.length>=2){
       const [d0,v0]=s[s.length-2], [d1,v1]=s[s.length-1];
       const yrs=(new Date(d1)-new Date(d0))/3.15576e10;
       if(yrs>0.05){ const sp=Math.abs(v1-v0)/yrs; if(sp>maxSpeed){ maxSpeed=sp; speedMark=mk; } }
     }
-    if(s.length){ const v=Math.abs(s[s.length-1][1]); if(v>maxOsad){ maxOsad=v; osadMark=mk; } }
+    if(s.length){ const v=Math.abs(s[s.length-1][1]); if(v>maxOsad){ maxOsad=v; osadMark=mk; } lastVals.push({mk, v:s[s.length-1][1]});
+    }
   });
-  return {maxSpeed, maxOsad, speedMark, osadMark};
+  // неравномерность осадки: размах последних отметок осадки между марками (индикатор поперечных трещин гребня/откосов)
+  let spread=0, spreadA='', spreadB='';
+  if(lastVals.length>=2){
+    lastVals.forEach(a=>lastVals.forEach(b=>{ const d=Math.abs(a.v-b.v); if(d>spread){ spread=d; spreadA=a.mk; spreadB=b.mk; } }));
+  }
+  return {maxSpeed, maxOsad, speedMark, osadMark, spread, spreadA, spreadB};
+}
+function geodIncrements(o){ // годовые приращения осадок по маркам: затухание / отсутствие затухания / прогрессия
+  if(!o.geod) return null;   // критерий деклараций ГТС: «отсутствие затухания осадок 3 года подряд» — К1 (см. вкладку «Контрольные критерии»)
+  const rows=[], prog=[], nodamp=[];
+  Object.entries(o.geod).forEach(([m,s])=>{
+    if(s.length<3) return;
+    const incs=[];
+    for(let i=1;i<s.length;i++){
+      const yrs=(new Date(s[i][0])-new Date(s[i-1][0]))/3.15576e10;
+      if(yrs>0.05) incs.push((s[i][1]-s[i-1][1])/yrs); // мм/год; отрицательное = осадка
+    }
+    if(incs.length<2) return;
+    const a=incs.map(v=>Math.abs(v));
+    const last3=a.slice(-3);
+    let dyn='—';
+    if(last3.length>=3){
+      const nonDec=last3.every((v,i)=>i===0||v>=last3[i-1]-0.5); // приращения не убывают (допуск 0,5 мм/год)
+      const fading=last3.every((v,i)=>i===0||v<last3[i-1]-0.5);
+      if(nonDec&&last3[last3.length-1]>=TH.geodRiskSpeed*0.5) dyn='прогрессия';
+      else if(nonDec) dyn='без затухания';
+      else if(fading) dyn='затухание';
+    }else if(last3.length===2){
+      dyn=(last3[1]<last3[0]-0.5)?'затухание':(last3[1]>last3[0]+0.5?'рост':'—');
+    }
+    rows.push({m,incs,dyn});
+    if(dyn==='прогрессия') prog.push(m);
+    if(dyn==='прогрессия'||dyn==='без затухания') nodamp.push(m);
+  });
+  return {rows, prog, nodamp};
 }
 function statusDetail(o){ // статус + причины (какие правила сработали)
-  if(!o.prof&&!o.geod) return {status:null, reasons:[]};
+  if(!o.prof&&!o.geod&&!o.ugv) return {status:null, reasons:[]};
+  const ov=DECL_OVR[o.id]||{}; // декларационные критерии К1/К2 объекта (приоритет над TH)
   const tc=TCALC[o.a];
   const reasons=[];
   if(o.prof){
+    const tcrit=(ov.tcrit!==undefined?ov.tcrit:TH.tcrit), tRisk=ov.tRisk;
     // КРИТИЧНО: температура на глубине
-    let worstT=null;
+    let worstT=null, worstTr=null;
     Object.entries(o.prof).forEach(([w,wd])=>{
       if(!wd.s.length) return;
       const lastEnt=wd.s[wd.s.length-1], dt=lastEnt[0], pts=lastEnt[1];
-      pts.forEach(([d,t])=>{ if(d>=TH.depth&&t>=TH.tcrit&&(!worstT||t>worstT.t)) worstT={w,d,t,dt}; });
+      pts.forEach(([d,t])=>{
+        if(d>=TH.depth&&t>=tcrit&&(!worstT||t>worstT.t)) worstT={w,d,t,dt};
+        if(tRisk!==undefined&&d>=TH.depth&&t>=tRisk&&t<tcrit&&(!worstTr||t>worstTr.t)) worstTr={w,d,t,dt};
+      });
     });
-    if(worstT) reasons.push({level:'crit', text:`температура ${worstT.t} °C на глубине ${worstT.d} м ≥ порога ${TH.tcrit} °C (скв. ${worstT.w}, замер ${worstT.dt})`});
+    if(worstT) reasons.push({level:'crit', text:`температура ${worstT.t} °C на глубине ${worstT.d} м ≥ порога ${tcrit} °C${ov.tcrit!==undefined?' (К2 декларации: '+ov.src+')':''} (скв. ${worstT.w}, замер ${worstT.dt})`});
+    else if(worstTr) reasons.push({level:'risk', text:`температура мерзлотной завесы ${worstTr.t} °C на глубине ${worstTr.d} м ≥ К1 декларации ${tRisk} °C (${ov.src}) (скв. ${worstTr.w}, замер ${worstTr.dt})`});
     // РИСК: тренд потепления
     let worstK=null;
     Object.entries(o.prof).forEach(([w,wd])=>{
@@ -801,9 +975,38 @@ function statusDetail(o){ // статус + причины (какие прав�
   }
   const gm=geodMetrics(o);
   if(gm){
-    if(gm.maxSpeed>=TH.geodCritSpeed) reasons.push({level:'crit', text:`скорость осадки ${gm.maxSpeed.toFixed(1)} мм/год ≥ порога ${TH.geodCritSpeed} мм/год (марка ${gm.speedMark})`});
-    else if(gm.maxSpeed>=TH.geodRiskSpeed) reasons.push({level:'risk', text:`скорость осадки ${gm.maxSpeed.toFixed(1)} мм/год ≥ порога ${TH.geodRiskSpeed} мм/год (марка ${gm.speedMark})`});
-    if(gm.maxOsad>=TH.geodCritTotal) reasons.push({level:'crit', text:`суммарная осадка ${gm.maxOsad.toFixed(0)} мм ≥ порога ${TH.geodCritTotal} мм (марка ${gm.osadMark})`});
+    const gRSpd=ov.geodRiskSpeed||TH.geodRiskSpeed, gCSpd=ov.geodCritSpeed||TH.geodCritSpeed;
+    const spdSrc=ov.geodRiskSpeed?` (декларация: ${ov.src})`:'';
+    if(gm.maxSpeed>=gCSpd) reasons.push({level:'crit', text:`скорость осадки марок сооружений ${gm.maxSpeed.toFixed(1)} мм/год ≥ порога ${gCSpd} мм/год (марка ${gm.speedMark})${spdSrc}`});
+    else if(gm.maxSpeed>=gRSpd) reasons.push({level:'risk', text:`скорость осадки марок сооружений ${gm.maxSpeed.toFixed(1)} мм/год ≥ порога ${gRSpd} мм/год (марка ${gm.speedMark})${spdSrc}`});
+    if(gm.maxOsad>=TH.geodCritTotal) reasons.push({level:'crit', text:`суммарная осадка сооружений ${gm.maxOsad.toFixed(0)} мм ≥ порога ${TH.geodCritTotal} мм (марка ${gm.osadMark})`});
+    if(gm.spread>=TH.geodCritSpread) reasons.push({level:'crit', text:`неравномерность осадки ${gm.spread.toFixed(0)} мм между марками ${gm.spreadA} и ${gm.spreadB} ≥ порога ${TH.geodCritSpread} мм — риск поперечных трещин гребня/откосов`});
+    else if(gm.spread>=TH.geodRiskSpread) reasons.push({level:'risk', text:`неравномерность осадки ${gm.spread.toFixed(0)} мм между марками ${gm.spreadA} и ${gm.spreadB} ≥ порога ${TH.geodRiskSpread} мм`});
+    // динамика осадок по декларационному критерию (∆2⋚∆1 / затухание) — только для объектов, где он установлен декларацией
+    const kkdTxt=JSON.stringify((o.kkd&&o.kkd.rows)||[]);
+    if(/∆2|затух|прогресс/i.test(kkdTxt)){
+      const gi=geodIncrements(o);
+      if(gi&&gi.prog.length) reasons.push({level:'crit', text:`прогрессирующие осадки (∆2>∆1) по маркам: ${gi.prog.slice(0,4).join(', ')}${gi.prog.length>4?' и др.':''} — К2 декларации безопасности ГТС`});
+      else if(gi&&gi.nodamp.length) reasons.push({level:'risk', text:`осадки без затухания по маркам: ${gi.nodamp.slice(0,4).join(', ')}${gi.nodamp.length>4?' и др.':''} — К1 декларации безопасности ГТС`});
+    }
+  }
+  // пьезометрия / уровень водоёма по декларационным отметкам К1/К2 (абс., м; выше = хуже)
+  if(o.ugv&&(ov.piezo||ov.pond)){
+    Object.entries(ov.piezo||{}).forEach(([w,c])=>{
+      if(typeof c.head!=='number') return; // журнальный ряд — глубина от оголовка; без отм. оголовка автоконтроль не выполняется (см. вкладку «Пьезометрия»)
+      const s=o.ugv[w]; if(!s||!s.length) return;
+      const [dt,depth]=s[s.length-1]; const v=c.head-depth; // отметка уровня = отм. оголовка − глубина
+      if(v>=c.k2) reasons.push({level:'crit', text:`уровень в пьезометре ${w} — отм. ${v.toFixed(2)} м ≥ К2 декларации ${c.k2} м (замер ${dt}; ${ov.src})`});
+      else if(v>=c.k1) reasons.push({level:'risk', text:`уровень в пьезометре ${w} — отм. ${v.toFixed(2)} м ≥ К1 декларации ${c.k1} м (замер ${dt}; ${ov.src})`});
+    });
+    if(ov.pond){
+      const wn=Object.keys(o.ugv).find(k=>ov.pond.re.test(k));
+      if(wn&&o.ugv[wn].length){
+        const [dt,v]=o.ugv[wn][o.ugv[wn].length-1];
+        if(v>=ov.pond.k2) reasons.push({level:'crit', text:`${ov.pond.nm} — отм. ${v.toFixed(2)} м ≥ К2 декларации ${ov.pond.k2} м (замер ${dt}; ${ov.src})`});
+        else if(v>=ov.pond.k1) reasons.push({level:'risk', text:`${ov.pond.nm} — отм. ${v.toFixed(2)} м ≥ К1 декларации ${ov.pond.k1} м (замер ${dt}; ${ov.src})`});
+      }
+    }
   }
   const crit=reasons.some(r=>r.level==='crit'), risk=reasons.some(r=>r.level==='risk');
   return {status: crit?'КРИТИЧНО':(risk?'РИСК':'НОРМА'), reasons};
@@ -817,8 +1020,8 @@ window.addEventListener('orientationchange', ()=>{ map.invalidateSize(); if(curO
 const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'});
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
-const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup},{position:'topright'}).addTo(map);
+const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup();
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup},{position:'topright'}).addTo(map);
 map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); });
 
@@ -939,6 +1142,39 @@ function runoffNote(on){
     runoffNoteEl.style.display='block';
   }else if(runoffNoteEl) runoffNoteEl.style.display='none';
 }
+
+/* ---------- кадастровые границы ЗУ объектов ГТС (НСПД/ЕГРН, статическая выгрузка kadastr.js) ---------- */
+function kadPopup(p){
+  const o=(window.DB&&DB.objects?DB.objects:[]).find(x=>x.id===p.obj);
+  const nm=o?o.a:p.obj;
+  const ga=p.area?(p.area/10000).toLocaleString('ru-RU',{maximumFractionDigits:2})+' га':'—';
+  let h='<div style="font-size:12.5px;line-height:1.5;max-width:340px">';
+  h+='<div style="font-weight:700;margin-bottom:3px">🗺 Земельный участок ГТС</div>';
+  h+='<div><b>Объект:</b> '+nm+'</div>';
+  h+='<div><b>Кадастровый №:</b> '+p.cad+'</div>';
+  h+='<div><b>Площадь:</b> '+ga+'</div>';
+  if(p.cat) h+='<div><b>Категория земель:</b> '+p.cat+'</div>';
+  if(p.use) h+='<div><b>Вид разрешённого использования:</b> '+p.use+'</div>';
+  if(p.st) h+='<div><b>Статус:</b> '+p.st+'</div>';
+  if(p.addr) h+='<div style="margin-top:3px;color:#555"><b>Адрес / ориентир:</b> '+p.addr+'</div>';
+  if(p.note) h+='<div style="margin-top:5px;padding:6px 8px;background:#fdf3e0;border:1px solid #e3c37a;border-radius:6px;color:#7a5b13">⚠ '+p.note+'</div>';
+  h+='<div style="margin-top:6px;color:#888;font-size:11px">Источник: '+(window.KAD?KAD.src:'НСПД')+', выгрузка '+(window.KAD?KAD.updated:'—')+'. Сведения справочные; юридически значимые данные — только из актуальной выписки ЕГРН.</div>';
+  return h+'</div>';
+}
+(function kadBuild(){
+  if(!window.KAD||!KAD.plots) return;
+  let nPoly=0,nPt=0;
+  KAD.plots.forEach(p=>{
+    if(p.rings&&p.rings.length){
+      L.polygon(p.rings,{color:'#c0392b',weight:2,dashArray:'7 5',fillColor:'#c0392b',fillOpacity:0.06}).bindPopup(kadPopup(p),{maxWidth:360}).addTo(kadGroup);
+      nPoly++;
+    }else if(p.pt){
+      L.circleMarker(p.pt,{radius:9,color:'#c0392b',weight:2.5,fillColor:'#f39c12',fillOpacity:0.9}).bindPopup(kadPopup(p),{maxWidth:360}).addTo(kadGroup);
+      nPt++;
+    }
+  });
+  console.log('KAD слой: '+nPoly+' контуров, '+nPt+' ориентиров (выгрузка '+(KAD.updated||'')+')');
+})();
 
 /* ---------- тепловая карта грунтов (IDW-интерполяция по объектам, глубины 3–15 м) ---------- */
 function inPoly(la, lo, rings){
@@ -1879,6 +2115,7 @@ function tabGtsPassport(o, el){
   <div class="normref">Состав сведений: ГОСТ 31937-2024 (паспорт объекта мониторинга); ФЗ-117 «О безопасности ГТС» (паспорт ГТС, декларация безопасности — ст. 9); ПП РФ № 1892 (декларирование); ПП РФ № 1607 (классы ГТС); СП 25.13330.2020 (основания на ММГ). Состав объекта и КИА — по ТЗ на НИР (2025). Поля редактируются и сохраняются локально в браузере.</div>
   <table class="kv">
     <tr><td>Наименование объекта</td><td><b>${esc(o.a)}</b></td></tr>
+    ${o.nameDecl?`<tr><td>Наименование ГТС по декларации безопасности</td><td>${esc(o.nameDecl)}</td></tr>`:''}
     <tr><td>Предприятие</td><td>${esc(o.d||'—')}</td></tr>
     <tr><td>Тип ГТС</td><td>${sel(o,'pf','type', g.type||'', TYPE_OPTS)}</td></tr>
     <tr><td>Вид и тип ГТС по декларации безопасности <span class="note">(приказ Ростехнадзора от 07.12.2020 № 499, Российский регистр ГТС)</span></td><td>${esc(g.vt||'—')}</td></tr>
@@ -2054,6 +2291,22 @@ function tabPiezo(o, el){
     <td><label class="pzpick"><input type="checkbox" data-pz="${esc(k)}"${i<6?' checked':''}></label></td></tr>`;}).join('')}
   </tbody></table>
   <div class="note" style="margin:-4px 0 8px">Значения — как в журнале-источнике: глубина от поверхности/оголовка либо абс. отметка, м; ряд «Уровень водоёма (отм.), м» — отметка уровня воды в водоёме (форма 5). Источники — во вкладке «Документация» / поле «Источники» карточки.</div>
+  ${(()=>{ const ov=DECL_OVR[o.id]||{}; if(!ov.piezo&&!ov.pond) return '';
+    const stP=(v,k1,k2)=> v===null?'<span style="color:#888">нет ряда наблюдений</span>':(v>=k2?'<b style="color:#c62828">К2 — превышение</b>':(v>=k1?'<b style="color:#a86400">К1 — внимание</b>':'<span style="color:#2e7d32">норма</span>'));
+    const rows=[];
+    Object.entries(ov.piezo||{}).forEach(([w,c])=>{ const s=arch[w]; const last=s&&s.length?s[s.length-1]:null;
+      const elev=(last&&typeof c.head==='number')?(c.head-last[1]):null; // отм. уровня = отм. оголовка − глубина
+      rows.push({nm:'Пьезометр '+w, k1:c.k1.toFixed(1), k2:c.k2.toFixed(1), fact:c.fact||'—',
+        lastTxt:last?('<b>'+last[1].toFixed(1)+'</b> м от оголовка ('+esc(last[0])+')'):'—',
+        st:(typeof c.head==='number')?stP(elev,c.k1,c.k2):(last?'<span style="color:#888">н/д — нужна отм. оголовка</span>':stP(null,null,null))}); });
+    if(ov.pond){ const wn=Object.keys(arch).find(k=>ov.pond.re.test(k)); const s=wn?arch[wn]:null; const last=s&&s.length?s[s.length-1]:null; const v=last?last[1]:null;
+      rows.push({nm:ov.pond.nm, k1:ov.pond.k1.toFixed(1), k2:ov.pond.k2.toFixed(1), fact:ov.pond.fact||'—',
+        lastTxt:last?('<b>'+v.toFixed(2)+'</b> м, отм. ('+esc(last[0])+')'):'—', st:stP(v,ov.pond.k1,ov.pond.k2)}); }
+    return `<div class="sect">Декларационные отметки уровней К1/К2 — автоматический контроль</div>
+    <table class="rows static"><thead><tr><th>Прибор / показатель</th><th style="width:9%">К1, м (отм.)</th><th style="width:9%">К2, м (отм.)</th><th style="width:13%">Факт по декларации</th><th style="width:26%">Последний замер журнала</th><th style="width:17%">Статус</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${esc(r.nm)}</td><td>${r.k1}</td><td>${r.k2}</td><td>${esc(r.fact)}</td><td>${r.lastTxt}</td><td>${r.st}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="note">Источник порогов: ${esc(ov.src)}. Пороги декларации — абсолютные отметки уровня воды; журнальные ряды пьезометров ведутся в глубине от оголовка, поэтому автоматический контроль по пьезометрам включается после ввода отметок оголовков (источник — сводная ведомость уровней воды в пьезометрах). Ряд уровня водоёма ведётся в отметках — контроль активен; превышение К1/К2 формирует причину статуса объекта (РИСК/КРИТИЧНО) в реестре и на карте.</div>`; })()}
   <canvas class="plot" id="ugvArchChart"></canvas>
   `:''}
   ${pts.length&&!archNames.length?`<div class="sect">Пьезометры объекта</div><div class="note">${pts.map(esc).join(', ')}</div>`:''}
@@ -2163,6 +2416,24 @@ function tabGtsDocs(o, el){
   renderRows2(o, el.querySelector('#igiTbl'), 'igi', ['report','year','org','wells','grunt','ugv','note'], null, el.querySelector('#igiAdd'));
   el.querySelectorAll('.vbtn').forEach(b=>b.onclick=()=>txtOpen(b.dataset.store,b.dataset.id));
 }
+function igiThermHtml(o){ // блок «Термометрия этапов изысканий» — дословные сведения из отчётов ИГИ (IGI_THERM)
+  const items=IGI_THERM[o.id]; if(!items||!items.length) return '';
+  const wellTbl=(wl)=>{
+    const rows=wl.rowsSrc==='g07_wells'?G07_WELLS:(wl.rows||[]);
+    return `<div class="note" style="margin:8px 0 2px">${esc(wl.cap)} · строк: ${rows.length}</div>
+    <div class="wt-scroll"><table class="wtab"><thead><tr>${wl.cols.map(c=>'<th>'+esc(c)+'</th>').join('')}</tr></thead>
+    <tbody>${rows.map(r=>'<tr>'+r.map((c,i)=>'<td'+(i===0?' style="text-align:left"':'')+'>'+esc(String(c))+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`;
+  };
+  return `<div class="sect">Термометрия этапов инженерных изысканий (базовое тепловое состояние до начала режимного мониторинга) · по отчётам ИГИ</div>
+  <div class="note">Сведения дословно из текстовых слоёв отчётов ИГИ (со ссылками на страницы). Плановые координаты X, Y скважин этапов изысканий приведены в ведомостях горных выработок и на планшетах графической части отчётов и в текстовый слой не входят — они доступны в оригиналах из архива исходных данных НИР (вкладка «Документация»); доступные в тексте абс. отметки устьев приведены в таблицах ниже.</div>
+  ${items.map(it=>`<details class="igt"><summary><b>${esc(it.t)}</b> · ${esc(it.y)}</summary>
+    <div class="igt-body">
+      ${it.f?`<button class="vbtn" data-igif="${esc(it.f)}" style="float:right">📖 текст отчёта</button>`:''}
+      <div class="igf"><b>Объём термометрии:</b> ${esc(it.scope)}</div>
+      ${(it.facts||[]).map(f=>`<div class="igf">• ${esc(f)}</div>`).join('')}
+      ${it.wells?wellTbl(it.wells):''}
+    </div></details>`).join('')}`;
+}
 function tabGeoterm(o, el){
   const st=statusOf(o);
   const wells=o.prof?Object.keys(o.prof):[];
@@ -2203,11 +2474,18 @@ function tabGeoterm(o, el){
     <canvas class="plot" id="trendChart"></canvas>
     <div class="sect">Тренд температур по глубинам — все скважины (усреднённые ряды)</div>
     <canvas class="plot" id="trendChartAll"></canvas>
+    <div class="sect">Таблицы измерений температуры по скважинам · T, °C (строки — глубина, м; столбцы — даты замеров)</div>
+    ${wells.map(w=>{ const wd=o.prof[w]; return `<details class="wt" data-w="${esc(w)}"><summary><b>Скважина ${esc(w)}</b> · замеров: ${wd.s.length}</summary><div class="wt-scroll"></div></details>`; }).join('')}
+    <div class="note">Таблица строится при первом раскрытии скважины (клик по строке). Положительные значения температуры (талый грунт) выделяются красным; значения — как в журналах-источниках (форма 3, ПБ 03-438-02). Те же ряды — на графиках выше.</div>
     <div class="sect">Прогноз температуры основания до 2050 г. (среднее по всем скважинам)</div>
     <div class="note" style="margin:0 0 2px">Глубина прогноза: <span id="fcBtns"></span></div>
     <canvas class="plot" id="fcChart"></canvas>
     <div class="note">Прогноз оценочный: сплошная линия — ряд наблюдений; штриховая — линейная экстраполяция наблюдаемого тренда; пунктир — тренд с климатической поправкой потепления воздуха Арктической зоны ≈ +0,35 °C/декаду (сценарий SSP2-4.5, оценочно) с затуханием по глубине (5 м — ×0,6; 10 м — ×0,8; 15 м — ×0,9). Красная линия — 0 °C (граница мёрзлого состояния). Подлежит уточнению теплотехническим расчётом.</div>`
   : '<div class="empty" style="text-align:left;padding:8px 0">Числовые замеры по объекту в файлах не найдены — запись зарезервирована в структуре БД.<br>Замеры можно добавить через «⬆ Загрузка данных» в шапке.</div>';
+  if(IGI_THERM[o.id]&&IGI_THERM[o.id].length){
+    el.insertAdjacentHTML('beforeend', igiThermHtml(o));
+    el.querySelectorAll('[data-igif]').forEach(b=>b.onclick=()=>txtOpen('igi_txt', b.getAttribute('data-igif')));
+  }
   if(o.prof){
     const wb=document.getElementById('wellBtns');
     wells.forEach(w=>{
@@ -2215,6 +2493,18 @@ function tabGeoterm(o, el){
       b.className='wbtn'+(w===curWell?' on':''); b.textContent=w;
       b.onclick=()=>{curWell=w; renderDetail(o);};
       wb.appendChild(b);
+    });
+    el.querySelectorAll('details.wt').forEach(dt=>{ // таблицы замеров строятся лениво при первом раскрытии скважины
+      dt.addEventListener('toggle', ()=>{
+        if(!dt.open||dt.dataset.done) return; dt.dataset.done='1';
+        const w=dt.getAttribute('data-w'), wd=o.prof[w]; if(!wd) return;
+        const dates=wd.s.map(x=>x[0]);
+        const dps=[...new Set(wd.s.flatMap(x=>x[1].map(p=>p[0])))].sort((a,b)=>a-b);
+        const byD={}; wd.s.forEach(([d2,pts])=>{const m={}; pts.forEach(([dd,t])=>m[dd]=t); byD[d2]=m;});
+        dt.querySelector('.wt-scroll').innerHTML='<table class="wtab"><thead><tr><th>Глубина, м</th>'+dates.map(d=>'<th>'+esc(d)+'</th>').join('')+'</tr></thead><tbody>'
+          +dps.map(dep=>'<tr><td><b>'+String(dep).replace('.',',')+'</b></td>'+dates.map(d2=>{const v=byD[d2][dep]; return '<td'+(v!==undefined&&v>0?' class="pos"':'')+'>'+(v!==undefined?v.toFixed(2).replace('.',','):'')+'</td>';}).join('')+'</tr>').join('')+'</tbody></table>';
+        dt.querySelector('summary').insertAdjacentHTML('beforeend',' · глубин: '+dps.length+' · '+esc(dates[0]||'')+' … '+esc(dates[dates.length-1]||''));
+      });
     });
     const db=document.getElementById('depthBtns');
     depthsAvail.forEach(dep=>{
@@ -2397,27 +2687,53 @@ function tabGeod(o, el){
   let builtin='';
   if(g){
     const marks=Object.keys(g);
+    const gm=geodMetrics(o);
+    const gi=geodIncrements(o);
+    const dynByM={}; (gi?gi.rows:[]).forEach(r=>dynByM[r.m]=r.dyn);
     const rows=marks.map(m=>{
       const s=g[m], first=s[0], last=s[s.length-1];
       const years=(new Date(last[0])-new Date(first[0]))/3.15576e10;
+      let lastSpeed=null;
+      if(s.length>=2){ const [pd0,pv0]=s[s.length-2], [pd1,pv1]=s[s.length-1]; const py=(new Date(pd1)-new Date(pd0))/3.15576e10; if(py>0.05) lastSpeed=Math.abs(pv1-pv0)/py; }
       return {m, n:s.length, d0:first[0], d1:last[0], osad:last[1],
-              speed:years>0.2?(last[1]-first[1])/years:null};
+              speed:years>0.2?(last[1]-first[1])/years:null, lastSpeed};
     });
     const worst=rows.reduce((a,b)=>a.osad<b.osad?a:b);
-    const gm=geodMetrics(o);
-    const gmNote=gm?` Макс. скорость последнего цикла: <b>${gm.maxSpeed.toFixed(1)} мм/год</b>; макс. суммарная осадка: <b>${gm.maxOsad.toFixed(1)} мм</b>. Учитывается в статусе объекта (пороги — «⚙ Пороги»).`:'';
+    const dynBadge={'прогрессия':'<b style="color:var(--crit)">прогрессия</b>','без затухания':'<b style="color:#a86400">без затухания</b>','затухание':'<span style="color:#2e7d32">затухание</span>','рост':'<b style="color:#a86400">рост</b>'};
+    const _gOv=DECL_OVR[o.id]||{};
+    const gmNote=gm?` Макс. скорость последнего цикла: <b>${gm.maxSpeed.toFixed(1)} мм/год</b> (марка ${esc(gm.speedMark)}); макс. суммарная осадка: <b>${gm.maxOsad.toFixed(1)} мм</b> (марка ${esc(gm.osadMark)}); неравномерность осадки между марками: <b>${gm.spread.toFixed(0)} мм</b> (${esc(gm.spreadA)} ↔ ${esc(gm.spreadB)}, пороги РИСК/КРИТИЧНО ${TH.geodRiskSpread}/${TH.geodCritSpread} мм). Учитывается в статусе объекта (пороги — «⚙ Пороги»).${_gOv.geodRiskSpeed?` <b>Пороги скорости осадки по декларации безопасности: К1 = ${_gOv.geodRiskSpeed} мм/год, К2 = ${_gOv.geodCritSpeed} мм/год</b> (${esc(_gOv.src)}).`:''}`:'';
+    const kkRows=((o.kkd&&o.kkd.rows)||[]).filter(r=>/осад|смещ|деформ|гребн|крен|трещин|откос/i.test((r.p||'')+' '+(r.g||'')));
     builtin=`
-    <div class="sect">Геодезические наблюдения (архивные ряды) · марок: ${marks.length}</div>
+    <div class="sect">Геодезические наблюдения за сооружениями ГТС · марок: ${marks.length}</div>
     <table class="rows static"><thead><tr>
-      <th>Марка</th><th style="width:12%">Замеров</th><th style="width:22%">Период</th><th style="width:18%">Осадка с нач. набл., мм</th><th style="width:16%">Ср. скорость, мм/год</th>
-    </tr></thead><tbody>${rows.map(r=>`<tr${r===worst?' style="background:#f7dcd7"':''}><td>${esc(r.m)}</td><td>${r.n}</td><td>${r.d0} … ${r.d1}</td><td><b>${r.osad}</b></td><td>${r.speed!==null?r.speed.toFixed(1):'—'}</td></tr>`).join('')}</tbody></table>
+      <th>Марка</th><th style="width:9%">Замеров</th><th style="width:19%">Период</th><th style="width:14%">Осадка с нач. набл., мм</th><th style="width:12%">Ср. скорость, мм/год</th><th style="width:14%">Скорость последнего цикла, мм/год</th><th style="width:12%">Динамика приращений</th>
+    </tr></thead><tbody>${rows.map(r=>`<tr${r===worst?' style="background:#f7dcd7"':''}><td>${esc(r.m)}</td><td>${r.n}</td><td>${r.d0} … ${r.d1}</td><td><b>${r.osad}</b></td><td>${r.speed!==null?r.speed.toFixed(1):'—'}</td><td>${r.lastSpeed!==null?r.lastSpeed.toFixed(1):'—'}</td><td>${dynBadge[dynByM[r.m]]||esc(dynByM[r.m]||'—')}</td></tr>`).join('')}</tbody></table>
     <div class="note">Максимальная осадка — марка ${esc(worst.m)}: ${worst.osad} мм за период наблюдений. Положительные значения — подъём (вспучивание), отрицательные — осадка.${gmNote}</div>
+    ${gi&&gi.nodamp.length?`<div class="warn-card"><b>Внимание:</b> по маркам ${gi.nodamp.map(esc).join(', ')} годовые приращения осадок не убывают на последних интервалах наблюдений${gi.prog.length?` (прогрессия: ${gi.prog.map(esc).join(', ')})`:''} — по критериям деклараций ГТС это соответствует предупреждающему критерию К1 («отсутствие затухания осадок в течение непрерывного наблюдения трёх лет подряд»); требуется внеочередной осмотр участков и уточнение причин (ГОСТ Р 59873-2021; ФНП № 151).</div>`:''}
+    ${kkRows.length?`<div class="sect">Контрольные критерии К1/К2 декларации безопасности — деформационные показатели</div>
+    <table class="rows static"><thead><tr><th style="width:20%">Сооружение / группа</th><th>Показатель</th><th style="width:22%">К1 (предупреждающий)</th><th style="width:22%">К2 (предельный)</th><th style="width:22%">Примечание / факт</th></tr></thead><tbody>${kkRows.map(r=>`<tr><td>${esc(r.g||'')}</td><td>${esc(r.p||'')}</td><td>${esc(r.k1||'')}</td><td>${esc(r.k2||'')}</td><td>${esc(r.n||'')}</td></tr>`).join('')}</tbody></table>
+    <div class="note">Источник: ${esc((o.kkd&&o.kkd.decl)||'декларация безопасности ГТС')}. Полный состав критериев — вкладка «Контрольные критерии».</div>`:''}
     <div class="sect">График осадок по маркам во времени</div>
     <canvas class="plot" id="geodChartBuiltin"></canvas>`;
   }
+  const IND={'дамба':'осадка и горизонтальные смещения гребня и откосов; неравномерность осадки вдоль гребня (индикатор поперечных трещин); контроль отметки гребня против К1/К2 декларации',
+    'плотина':'осадка и смещения гребня и откосов; осадка мерзлого ядра и грунтов основания; деформации сопряжений с водосбросами',
+    'трубопровод':'осадка и крены опор эстакад; плановые смещения ниток; просадки насыпей и подъездных путей',
+    'эстакада':'осадка и крены опор; горизонтальные смещения опор вдоль и поперёк трассы',
+    'насосная станция':'осадка и крены фундаментов зданий и оборудования',
+    'ёмкость':'осадка и крены дна и стенок; неравномерная осадка по периметру',
+    'канал':'деформации откосов и берм; размывы и оползни',
+    'водосброс':'осадка и смещения оголовков, труб/лотков и водобойных устройств',
+    'дренаж':'осадка и заиливание лотков; деформации откосов канав',
+    'СОУ':'смещения и крены опор и устройств сезонного охлаждения',
+    'наблюдательная скважина':'сохранность оголовков (совмещена с пьезометрией)'};
+  const kinds=[...new Set(((o.gts&&o.gts.structures)||[]).map(s=>s.kind))].filter(k=>IND[k]);
   el.innerHTML=`
-  <div class="normref">ГОСТ 24846-2019 «Грунты. Методы измерения деформаций оснований зданий и сооружений»; ГОСТ 53778-2010 (геодезические наблюдения за деформациями); СП 25.13330.2020 (разд. 13 — наблюдения за зданиями). Осадка — от исходной отметки цикла наблюдений.</div>
+  <div class="normref">ФЗ-117 «О безопасности ГТС» (ст. 9 — мониторинг состояния); ФНП «Требования к обеспечению безопасности ГТС» (приказ Ростехнадзора от 08.05.2024 № 151) — контроль показателей состояния и действия при достижении К1/К2; ГОСТ Р 59873-2021 (контрольные критерии безопасности); ГОСТ 24846-2019, ГОСТ 53778-2010 (методика и точность геодезических измерений); СП 25.13330.2020 (эксплуатация оснований на ММГ). Формы ведомостей — по унаследованным шаблонам ПБ 03-438-02 (отменён ПП РФ от 22.07.2020 № 1086): форма 7 — вертикальные осадки, форма 8 — плановые смещения.</div>
+  ${kinds.length?`<div class="sect">Контролируемые деформационные показатели по видам сооружений объекта</div>
+  <table class="rows static"><thead><tr><th style="width:22%">Вид сооружения</th><th>Показатели (по проекту мониторинга и ФНП № 151)</th></tr></thead><tbody>${kinds.map(k=>`<tr><td><b>${esc(k)}</b></td><td>${IND[k]}</td></tr>`).join('')}</tbody></table>`:''}
   ${builtin}
+  <div class="note">📐 <b>Плановые (горизонтальные) смещения</b> марок (форма 8) — обязательный показатель устойчивости откосов дамб и плотин. В базе пока не загружены: вводятся в примечании к замеру или журналом формы 8 после расширения загрузчика (см. «Загрузка данных»).</div>
   <div class="sect">Ручной ввод измерений</div>
   <table class="rows"><thead><tr>
     <th style="width:15%">Дата</th><th style="width:13%">Марка №</th><th style="width:15%">Отметка, м</th><th style="width:14%">Осадка, мм</th><th style="width:16%">Скорость, мм/год</th><th>Примечание</th><th></th>
@@ -3562,11 +3878,13 @@ function assess(o){
   const gm=geodMetrics(o);
   if(gm){
     sS=100;
-    if(gm.maxSpeed>=TH.geodCritSpeed){ sS-=70; notes.strength.push(`скорость осадки ${gm.maxSpeed.toFixed(1)} мм/год ≥ критического порога ${TH.geodCritSpeed} — активная деформация основания (−70)`); }
-    else if(gm.maxSpeed>=TH.geodRiskSpeed){ sS-=35; notes.strength.push(`скорость осадки ${gm.maxSpeed.toFixed(1)} мм/год ≥ порога риска ${TH.geodRiskSpeed} (−35)`); }
-    if(gm.maxOsad>=TH.geodCritTotal){ sS-=50; notes.strength.push(`суммарная осадка ${gm.maxOsad.toFixed(0)} мм ≥ предельной ${TH.geodCritTotal} мм (−50)`); }
-    else if(gm.maxOsad>=50){ sS-=20; notes.strength.push(`суммарная осадка ${gm.maxOsad.toFixed(0)} мм — значительная (−20)`); }
-    if(!notes.strength.length) notes.strength.push('деформации основания в пределах порогов');
+    if(gm.maxSpeed>=TH.geodCritSpeed){ sS-=70; notes.strength.push(`скорость осадки марок сооружений ${gm.maxSpeed.toFixed(1)} мм/год ≥ критического порога ${TH.geodCritSpeed} — активная деформация (−70)`); }
+    else if(gm.maxSpeed>=TH.geodRiskSpeed){ sS-=35; notes.strength.push(`скорость осадки марок сооружений ${gm.maxSpeed.toFixed(1)} мм/год ≥ порога риска ${TH.geodRiskSpeed} (−35)`); }
+    if(gm.maxOsad>=TH.geodCritTotal){ sS-=50; notes.strength.push(`суммарная осадка сооружений ${gm.maxOsad.toFixed(0)} мм ≥ предельной ${TH.geodCritTotal} мм (−50)`); }
+    else if(gm.maxOsad>=50){ sS-=20; notes.strength.push(`суммарная осадка сооружений ${gm.maxOsad.toFixed(0)} мм — значительная (−20)`); }
+    if(gm.spread>=TH.geodCritSpread){ sS-=40; notes.strength.push(`неравномерность осадки ${gm.spread.toFixed(0)} мм (марки ${gm.spreadA}↔${gm.spreadB}) ≥ критического порога ${TH.geodCritSpread} мм — риск поперечных трещин (−40)`); }
+    else if(gm.spread>=TH.geodRiskSpread){ sS-=20; notes.strength.push(`неравномерность осадки ${gm.spread.toFixed(0)} мм (марки ${gm.spreadA}↔${gm.spreadB}) ≥ порога риска ${TH.geodRiskSpread} мм (−20)`); }
+    if(!notes.strength.length) notes.strength.push('деформации сооружений в пределах порогов');
   } else notes.strength.push('нет данных геодезических наблюдений — направление не оценивается');
   if(o.defects){
     sD=100;
@@ -3754,6 +4072,7 @@ function renderRegTable(){
 function openRegistry(){
   document.getElementById('regD').onchange=renderRegTable;
   renderRegTable();
+  warnTick(false);
   regModal.style.display='block';
 }
 document.getElementById('regBtn').onclick=openRegistry;
@@ -3854,6 +4173,128 @@ document.getElementById('txtFind').onclick=()=>{
   document.getElementById('txtInfo').textContent='«'+q+'» — не найдено';
 };
 document.getElementById('txtQ').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('txtFind').click(); });
+
+/* ==================== ПРЕДУПРЕЖДЕНИЯ: критичные метеоявления, прогноз 10 сут, обновление ежечасно ==================== */
+/* Источник: Open-Meteo forecast API (модели ECMWF IFS / GFS). Пороги — по критериям опасных явлений Росгидромета;
+   рекомендации — по ФНП ГТС (приказ Ростехнадзора от 08.05.2024 № 151) и практике эксплуатации накопителей на ММГ. */
+const W_PTS=[{nm:'Норильский промрайон (ТОФ, НМЗ, НОФ)',lat:69.355,lon:88.20,groups:['A','B']},
+             {nm:'г. Дудинка (система 3-х озёр)',lat:69.4058,lon:86.1778,groups:['C']}];
+const W_GROUPS={A:'Накопители с дамбами (хвостохранилища, пруд-накопитель, гипсохранилище, отстойники)',
+                B:'Гидротранспортные системы (высоконапорный гидротранспорт ТОФ–НМЗ, ТОФ–УПЗК)',
+                C:'Плотина водохранилища с водосбросами (система 3-х озёр, Дудинка)'};
+const W_HAZ={rain:{ic:'🌧',nm:'Ливневый дождь'},snow:{ic:'🌨',nm:'Интенсивный снегопад'},wind:{ic:'💨',nm:'Сильный ветер'},
+             thunder:{ic:'⛈',nm:'Гроза'},frz:{ic:'🧊',nm:'Гололёдный дождь'},bliz:{ic:'❄️',nm:'Метель'}};
+const W_IMPACT={
+ rain:{A:{i:'рост уровня воды в прудке и снижение свободного борта дамб, риск перелива; размыв гребней и откосов; интенсификация фильтрации и суффозии в теле и основании дамб, в т.ч. по таликовым зонам ММГ',
+          m:'проверить водосбросные и водоотводные сооружения, очистить нагорные канавы; усилить визуальный контроль дамб (2 раза в сутки); контроль УВБ по пьезометрам; подготовить средства аварийного водоотлива; при необходимости ограничить намыв и сброс'},
+       B:{i:'подтопление трасс трубопроводов, подмыв опор эстакад и насыпей, размыв подъездных путей',
+          m:'осмотр опор, водопропускных и водоотводных сооружений трассы; проверка дренажа насосных станций; готовность ремонтных бригад'},
+       C:{i:'рост притока и уровня верхнего бьефа, повышенная нагрузка на шахтный и трубчатый водосбросы',
+          m:'проверить водосбросы и водобойный колодец; усилить контроль уровня верхнего бьефа; готовность к сработке водосбросов'}},
+ snow:{A:{i:'накопление снегозапаса — дополнительный приток при оттепели и снеготаянии; затруднение осмотров и доступа к КИА',
+          m:'организовать расчистку подходов к пьезометрам и маркам; учесть снегозапас при оценке весеннего притока и фильтрации'},
+       B:{i:'снежные заносы трасс, затруднение патрулирования трубопроводов',
+          m:'расчистка подъездов, дежурный контроль трассы'},
+       C:{i:'рост снегозапаса в водосборе — фактор паводка',
+          m:'оценка снегозапасов, подготовка к пропуску паводка через водосбросы'}},
+ wind:{A:{i:'волновой напор на гребень и крепление откосов; пыление пляжей хвостохранилищ и гипсохранилища',
+          m:'осмотр укрепления откосов после шторма; увлажнение пылящих поверхностей; ограничить работы на гребнях дамб'},
+       B:{i:'динамические нагрузки на эстакады, срыв теплоизоляции трубопроводов',
+          m:'ограничить высотные работы; осмотр эстакад и изоляции после ветра'},
+       C:{i:'волнение в резервуарах, волновой размыв откосов плотины',
+          m:'контроль крепления откосов и гребня плотины'}},
+ thunder:{A:{i:'возможно отключение электроснабжения насосных станций оборотного водоснабжения',
+          m:'проверить резервное электропитание и готовность дежурного персонала'},
+       B:{i:'отключение ПНС — остановка перекачки; риск гидроудара при перезапуске, при отрицательных температурах — застывание пульпы в нитках',
+          m:'резервное энергоснабжение ПНС; готовность к опорожнению/продувке ниток; контроль задвижек'},
+       C:{i:'риск повреждения электрооборудования и средств контроля водосбросов',
+          m:'проверка молниезащиты и АВР'}},
+ frz:{A:{i:'обледенение гребней, дорог и КИА, травмоопасность осмотров',
+          m:'противогололёдная обработка, перенос осмотров, предупреждение персонала'},
+       B:{i:'обледенение трубопроводов и ЛЭП, дополнительные нагрузки на опоры',
+          m:'контроль провисания ЛЭП, осмотр трассы после явления'},
+       C:{i:'обледенение затворов и водосбросов',
+          m:'проверка работоспособности водосбросных устройств'}},
+ bliz:{A:{i:'нулевая видимость и заносы — невозможность визуального контроля дамб',
+          m:'отложить осмотры, дежурство по связи; после метели — внеочередной осмотр гребней и откосов'},
+       B:{i:'заносы трасс и насосных станций',
+          m:'дежурство, расчистка после явления'},
+       C:{i:'заносы подходов к водосбросам',
+          m:'расчистка подходов после метели'}}
+};
+function wCache(){ try{ return JSON.parse(localStorage.getItem('gtm_warn')||'null'); }catch(e){ return null; } }
+async function warnFetch(){
+  const url='https://api.open-meteo.com/v1/forecast?latitude='+W_PTS.map(p=>p.lat).join(',')+'&longitude='+W_PTS.map(p=>p.lon).join(',')
+    +'&hourly=temperature_2m,rain,snowfall,weather_code,wind_gusts_10m&wind_speed_unit=ms&forecast_days=10&timezone=Asia%2FKrasnoyarsk';
+  const r=await fetch(url); const j=await r.json();
+  const d={ts:Date.now(), pts:Array.isArray(j)?j:[j]};
+  try{ localStorage.setItem('gtm_warn',JSON.stringify(d)); }catch(e){}
+  return d;
+}
+function warnAnalyze(d){
+  const out=[];
+  (d.pts||[]).forEach((pt,pi)=>{
+    const meta=W_PTS[pi]; if(!meta||!pt||!pt.hourly) return;
+    const H=pt.hourly, T=H.time||[], days={};
+    for(let i=0;i<T.length;i++){
+      const key=T[i].slice(0,10);
+      const a=days[key]=days[key]||{rain:0,snow:0,gust:0,thunder:0,frz:0};
+      a.rain+=H.rain?(+H.rain[i]||0):0;
+      a.snow+=H.snowfall?(+H.snowfall[i]||0):0;
+      const g=H.wind_gusts_10m?(+H.wind_gusts_10m[i]||0):0; if(g>a.gust) a.gust=g;
+      const c=H.weather_code?+H.weather_code[i]:null;
+      if(c===95||c===96||c===99) a.thunder++;
+      if(c===66||c===67) a.frz++;
+    }
+    Object.keys(days).sort().forEach(key=>{
+      const a=days[key];
+      const push=(haz,lvl,val)=>out.push({date:key,haz,lvl,val,pt:meta.nm,groups:meta.groups});
+      if(a.rain>=30) push('rain','crit','дождь '+a.rain.toFixed(0)+' мм/сут');
+      else if(a.rain>=15) push('rain','warn','дождь '+a.rain.toFixed(0)+' мм/сут');
+      if(a.snow>=20) push('snow','crit','снегопад '+a.snow.toFixed(0)+' см/сут');
+      else if(a.snow>=8) push('snow','warn','снегопад '+a.snow.toFixed(0)+' см/сут');
+      if(a.snow>=5&&a.gust>=15) push('bliz','warn','снег '+a.snow.toFixed(0)+' см + порывы '+a.gust.toFixed(0)+' м/с');
+      if(a.gust>=22) push('wind','crit','порывы ветра до '+a.gust.toFixed(0)+' м/с');
+      else if(a.gust>=17) push('wind','warn','порывы ветра до '+a.gust.toFixed(0)+' м/с');
+      if(a.thunder>0) push('thunder','warn','гроза, '+a.thunder+' ч');
+      if(a.frz>0) push('frz','warn','гололёдный дождь, '+a.frz+' ч');
+    });
+  });
+  return out.sort((x,y)=>x.date<y.date?-1:1);
+}
+function wBadge(n){
+  const b=document.getElementById('warnBadge'); if(!b) return;
+  const rb=document.getElementById('regBtn');
+  if(n>0){ b.style.display='inline-block'; b.textContent='⚠ '+n; rb.title='Сводный реестр объектов РИСК/КРИТИЧНО · активных метеопредупреждений: '+n; }
+  else{ b.style.display='none'; rb.title='Сводный реестр объектов РИСК/КРИТИЧНО'; }
+}
+function warnRender(d,stale){
+  const z=document.getElementById('warnZone'); if(!z) return;
+  if(!d){ z.innerHTML='<div class="warn-meta">Прогноз не загружен (нет связи с метеоисточником).</div>'; wBadge(0); return; }
+  const ws=warnAnalyze(d);
+  wBadge(ws.length);
+  const upd=new Date(d.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  let h='<div class="warn-meta">Источник: Open-Meteo (модели ECMWF IFS / GFS), точки: Норильск, Дудинка · обновлено '+upd+', автообновление каждый час'+(stale?' · ⚠ показан закэшированный прогноз (нет связи)':'')+'. Пороги — по критериям опасных явлений Росгидромета; меры — по ФНП ГТС (приказ Ростехнадзора от 08.05.2024 № 151) и практике эксплуатации накопителей на ММГ.</div>';
+  if(!ws.length){ h+='<div class="warn-none">✔ Критичных погодных явлений на ближайшие 10 суток не прогнозируется.</div>'; z.innerHTML=h; return; }
+  ws.forEach(w=>{
+    const hz=W_HAZ[w.haz];
+    h+='<div class="warn-card'+(w.lvl==='crit'?' crit':'')+'"><h3>'+hz.ic+' '+hz.nm+' · '+w.date.split('-').reverse().join('.')+' · '+esc(w.pt)+' <span class="note">'+esc(w.val)+(w.lvl==='crit'?' · ОПАСНО':'')+'</span></h3>';
+    w.groups.forEach(g=>{
+      const im=W_IMPACT[w.haz][g];
+      h+='<div class="wg"><b>Группа '+g+': '+W_GROUPS[g]+'.</b> Возможное влияние: '+im.i+'. <b>Рекомендуемые меры:</b> '+im.m+'.</div>';
+    });
+    h+='</div>';
+  });
+  z.innerHTML=h;
+}
+async function warnTick(force){
+  let d=wCache();
+  if(!force&&d&&Date.now()-d.ts<55*60*1000){ warnRender(d,false); return d; }
+  try{ d=await warnFetch(); warnRender(d,false); return d; }
+  catch(e){ if(d){ warnRender(d,true); return d; } warnRender(null); return null; }
+}
+setInterval(()=>warnTick(false),60*60*1000);
+warnTick(false);
 
 /* ---------- скрытый раздел «НИОКР 2026 НПО Фундамент» (отдельный пароль) ---------- */
 const niokrModal=document.getElementById('niokrModal');
@@ -4062,10 +4503,12 @@ document.getElementById('gear').onclick=()=>{
   setEl.style.display=setEl.style.display==='block'?'none':'block';
   sTcrit.value=TH.tcrit; sDepth.value=TH.depth; sTrend.value=TH.trend; sTrendDepth.value=TH.trendDepth; sAbove.value=TH.above;
   sGRisk.value=TH.geodRiskSpeed; sGCrit.value=TH.geodCritSpeed; sGTotal.value=TH.geodCritTotal;
+  sGSpreadR.value=TH.geodRiskSpread; sGSpreadC.value=TH.geodCritSpread;
 };
 document.getElementById('sSave').onclick=()=>{
   TH={tcrit:+sTcrit.value, depth:+sDepth.value, trend:+sTrend.value, trendDepth:+sTrendDepth.value, above:+sAbove.value,
       geodRiskSpeed:+sGRisk.value, geodCritSpeed:+sGCrit.value, geodCritTotal:+sGTotal.value,
+      geodRiskSpread:+sGSpreadR.value, geodCritSpread:+sGSpreadC.value,
       bearRisk:TH.bearRisk, bearCrit:TH.bearCrit};
   saveTH(); setEl.style.display='none';
   drawMarkers(); renderStats(); renderList(); if(curObj) renderDetail(curObj);
