@@ -293,6 +293,12 @@
   .nkForm{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:8px 0; font-size:12px}
   .nkForm select, .nkForm input{border:1px solid var(--line); border-radius:5px; padding:4px 8px; font-size:12px}
   .nkForm button{border:1px solid var(--c-centr); background:var(--c-centr); color:#fff; border-radius:5px; padding:4px 12px; font-size:12px; cursor:pointer}
+  /* ---------- временный запрет копирования/скачивания (кроме НИОКР 2026 и Презентации) ---------- */
+  body{-webkit-user-select:none; -moz-user-select:none; user-select:none; -webkit-touch-callout:none}
+  input, textarea, [contenteditable="true"], input *, textarea *{-webkit-user-select:text; -moz-user-select:text; user-select:text}
+  #niokrModal, #niokrModal *{-webkit-user-select:text; -moz-user-select:text; user-select:text; -webkit-touch-callout:default}
+  #cpToast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); z-index:4000; background:#1d2c3a; color:#f3e9d7; border:1px solid #4a6076; border-radius:8px; padding:9px 18px; font-size:12.6px; line-height:1.45; max-width:min(92vw,560px); text-align:center; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; box-shadow:0 6px 24px rgba(0,0,0,.45)}
+  #cpToast.on{opacity:1; transform:translateX(-50%) translateY(0)}
   table.reg tr.crit td:first-child{border-left:4px solid var(--crit)}
   table.reg tr.risk td:first-child{border-left:4px solid var(--risk)}
   table.reg tr{cursor:pointer}
@@ -2145,7 +2151,7 @@ function normText(s){
 }
 function escT(s){ return esc(normText(s)); }
 let curObj=null, curWell=null, curDepths=new Set(), curTab='passport', fcDepth=5;
-const TABS=[['passport','Паспорт ГТС'],['gtm','Паспорт ГТМ'],['igi','Инженерно-геологические изыскания'],['fac','Сооружения'],['kk','Контрольные критерии'],['geoterm','Термометрия'],['piezo','Пьезометрия'],['geod','Деформации'],['climate','Климат до 2050'],['expl','Осмотры и эксплуатация'],['repairs','Ремонты и работы'],['docs','Документация'],['photo','Фотоматериалы'],['misc','Иное']];
+const TABS=[['passport','Паспорт ГТС'],['gtm','Паспорт ГТМ'],['igi','Инженерно-геологические изыскания'],['fac','Сооружения'],['kk','Контрольные критерии'],['geoterm','Термометрия'],['piezo','Пьезометрия'],['geod','Деформации'],['calc','Расчёты'],['climate','Климат до 2050'],['expl','Осмотры и эксплуатация'],['repairs','Ремонты и работы'],['docs','Документация'],['photo','Фотоматериалы'],['misc','Иное']];
 let curFac=null;
 
 function select(i,fromList){
@@ -2194,7 +2200,7 @@ function renderDetail(o){
 }
 function renderTab(o){
   const el=document.getElementById('tabBody');
-  ({passport:tabGtsPassport, gtm:tabGtmGts, igi:tabIgi, fac:tabFac, kk:tabKK, geoterm:tabGeoterm, piezo:tabPiezo, geod:tabGeod, climate:tabClimate,
+  ({passport:tabGtsPassport, gtm:tabGtmGts, igi:tabIgi, fac:tabFac, kk:tabKK, geoterm:tabGeoterm, piezo:tabPiezo, geod:tabGeod, calc:tabCalcGts, climate:tabClimate,
     expl:tabExpl, repairs:tabRepairs, docs:tabGtsDocs, photo:tabPhoto, misc:tabMisc})[curTab](o, el);
 }
 
@@ -2695,6 +2701,200 @@ function tabPiezo(o, el){
     const cv=document.getElementById('ugvChart');
     if(list.length){ drawTrend(cv, list, 'ugv'); } else { cv.style.display='none'; cv.previousElementSibling.style.display='none'; }
   }
+}
+
+/* ==================== РАСЧЁТЫ (режимные, по действующей НТД) ==================== */
+function calcD0Guess(o){ // дефолт d0 по описаниям ИГЭ / грунтам паспорта (СП 22.13330.2016, п. 5.5.4)
+  let txt='';
+  (o.igeList||[]).forEach(p=>p.entries.slice(0,3).forEach(e=>{ txt+=' '+(e.grp||'')+' '+e.txt; }));
+  if(!txt.trim()) txt=(((o.pf2||{}).grunts)||'')+' '+(o.igi_grunts||'');
+  if(/щебен|грав|дресв|крупнооблом|галечн|валун/i.test(txt)) return {v:0.34, why:'крупнообломочные грунты (по описаниям ИГЭ)'};
+  if(/песок|пески|песчан/i.test(txt)) return {v:0.30, why:'пески гравелистые, крупные и средней крупности (по описаниям ИГЭ)'};
+  if(/супес/i.test(txt)) return {v:0.28, why:'супеси, пески мелкие и пылеватые (по описаниям ИГЭ)'};
+  if(/суглин|глин/i.test(txt)) return {v:0.23, why:'суглинки и глины (по описаниям ИГЭ)'};
+  return {v:0.28, why:'состав грунтов не распознан — принято по умолчанию'};
+}
+function mtMtRows(d){ // Mt по календарным годам: сумма |среднемесячных отрицательных| (СП 22.13330.2016, п. 5.5.4)
+  const rows=[];
+  if(!d) return rows;
+  d.years.forEach((y,i)=>{
+    const row=(d.m.t||[])[i]||[];
+    if(row.filter(v=>v!==null&&v!==undefined).length!==12) return;
+    rows.push({y, mt:+row.reduce((s,v)=>s+(v<0?Math.abs(v):0),0).toFixed(1)});
+  });
+  return rows;
+}
+function tabCalcGts(o, el){ // вкладка «Расчёты» карточки ГТС (режимные оценки + нормативные калькуляторы)
+  const d=mtData(), sp=window.meteoSP?window.meteoSP():null;
+  const ov=DECL_OVR[o.id]||{};
+  const tcrit=(ov.tcrit!==undefined?ov.tcrit:TH.tcrit), tRisk=ov.tRisk;
+  const fmtT=v=>(v>0?'+':'')+(+v).toFixed(2).replace('.',',');
+  const g0=calcD0Guess(o);
+  const selD0=+(cardOf(o.a).calcD0||g0.v);
+  const mtRows=mtMtRows(d);
+  const last10=mtRows.slice(-10);
+  const mtMaxV=last10.length?Math.max.apply(null,last10.map(r=>r.mt)):null;
+
+  /* --- блок 1: климатические исходные данные (СП 131.13330.2020; СП 25.13330.2020, прил. Г) --- */
+  let climHtml='';
+  if(sp){
+    const agg=mtYearAgg(d,'t').filter(r=>r.full);
+    const lr=agg.length>=3?mtLin(agg.map(r=>r.y), agg.map(r=>r.v)):null;
+    climHtml=`<table class="kv">
+      <tr><td>Среднегодовая температура воздуха, °C (${sp.period})</td><td><b>${fmtT(sp.MGT)}</b></td></tr>
+      <tr><td>Период с отрицательной среднесуточной температурой: средняя t, °C / продолжительность, ч</td><td><b>${fmtT(sp.Tfm)}</b> / ${sp.tfm}</td></tr>
+      <tr><td>Период с положительной среднесуточной температурой: средняя t, °C / продолжительность, ч</td><td><b>${fmtT(sp.Ttc)}</b> / ${sp.ttc}</td></tr>
+      <tr><td>Индекс промерзания Ω<sub>f</sub>, °C·сут / индекс оттаивания Ω<sub>t</sub>, °C·сут</td><td><b>${sp.OmF}</b> / ${sp.OmT}</td></tr>
+      ${sp.snH!==undefined?`<tr><td>Снежный покров: средняя из наибольших высот, см (${sp.snPeriod})</td><td><b>${String(sp.snH).replace('.',',')}</b></td></tr>`:''}
+      ${sp.sdM!==undefined?`<tr><td>Снежный покров: средняя плотность, г/см³ (${sp.sdPeriod})</td><td><b>${String(sp.sdM).replace('.',',')}</b></td></tr>`:''}
+      ${lr?`<tr><td>Тренд среднегодовой температуры воздуха (линейный, ${agg[0].y}–${agg[agg.length-1].y}, n=${lr.n}, R²=${String(lr.r2).replace('.',',')})</td><td><b>${(lr.k*10>0?'+':'')}${(lr.k*10).toFixed(2).replace('.',',')} °C / 10 лет</b></td></tr>`:''}
+    </table>
+    <div class="note">Источник метеоданных: ${esc(d.station||'метеостанция')} · ${esc(d.src||'')}; базовый ряд дополняется оперативными данными Open-Meteo (окно «Метеоданные»). Параметры — по СП 131.13330.2020 и СП 25.13330.2020 (приложение Г).</div>`;
+  } else climHtml='<div class="note">Метеорологическая база недоступна — климатические исходные данные не сформированы.</div>';
+
+  /* --- блок 2: нормативная глубина сезонного промерзания dfn = d0·√Mt (СП 22.13330.2016, п. 5.5.4) --- */
+  let dfnHtml='';
+  if(mtRows.length){
+    const mtLast=mtRows[mtRows.length-1];
+    const opts=[[0.23,'суглинки и глины'],[0.28,'супеси, пески мелкие и пылеватые'],[0.30,'пески гравелистые, крупные и средней крупности'],[0.34,'крупнообломочные грунты']];
+    dfnHtml=`<table class="kv">
+      <tr><td>M<sub>t</sub> — сумма абсолютных значений среднемесячных отрицательных температур за зиму (последняя полная, ${mtLast.y} г.)</td><td><b>${String(mtLast.mt).replace('.',',')}</b></td></tr>
+      <tr><td>M<sub>t</sub> наибольшее за последние ${last10.length} полных лет (${last10[0].y}–${last10[last10.length-1].y}) — нормативное</td><td><b>${String(mtMaxV).replace('.',',')}</b></td></tr>
+      <tr><td>Грунт у поверхности (d<sub>0</sub>, м)</td><td><select id="calcD0Sel" class="noprint" style="font:inherit; padding:2px 4px; max-width:100%">${opts.map(x=>`<option value="${x[0]}"${Math.abs(x[0]-selD0)<1e-9?' selected':''}>d₀ = ${String(x[0]).replace('.',',')} — ${x[1]}</option>`).join('')}</select><div class="note" style="margin:2px 0 0">Автовыбор по описаниям ИГЭ: ${esc(g0.why)}.</div></td></tr>
+      <tr><td>Нормативная глубина сезонного промерзания d<sub>fn</sub> = d<sub>0</sub>·√M<sub>t</sub></td><td><b>${(selD0*Math.sqrt(mtMaxV)).toFixed(2).replace('.',',')} м</b></td></tr>
+    </table>
+    <table class="rows static" style="margin-top:6px"><thead><tr><th style="width:14%">Год</th>${last10.map(r=>`<th>${r.y}</th>`).join('')}</tr></thead>
+    <tbody><tr><td><b>M<sub>t</sub></b></td>${last10.map(r=>`<td${r.mt===mtMaxV?' style="font-weight:700;color:#b3261e"':''}>${String(r.mt).replace('.',',')}</td>`).join('')}</tr></tbody></table>
+    <div class="note">СП 22.13330.2016, п. 5.5.4: формула d<sub>fn</sub> = d<sub>0</sub>·√M<sub>t</sub> допускается для районов с глубиной промерзания ≤ 2,5 м; для района Норильска (M<sub>t</sub> велико) значение является верхней оценкой и используется как справочное для зон сезонного промерзания-оттаивания в талых и техногенных участках (отсыпки тел дамб, верх деятельного слоя). M<sub>t</sub> рассчитан по фактическому ряду метеостанции (полные календарные годы).</div>`;
+  } else dfnHtml='<div class="note">Недостаточно полных календарных лет метеоряда для расчёта M<sub>t</sub>.</div>';
+
+  /* --- блок 3: фактическая глубина сезонного оттаивания (ГОСТ 25358-2020, прил. Д) --- */
+  let thawHtml='';
+  const thawRows=[];
+  Object.entries(o.prof||{}).forEach(([w,wd])=>{
+    const m=wellThawMax(wd);
+    if(m) thawRows.push({w, z:m.z, gt:m.gt, date:m.date, n:m.n});
+  });
+  thawRows.sort((a,b)=>b.z-a.z);
+  if(thawRows.length){
+    const mx=thawRows[0];
+    thawHtml=`<table class="rows static"><thead><tr>
+      <th style="width:20%">Скважина</th><th style="width:22%">Макс. глубина оттаивания, м</th><th style="width:18%">Дата замера</th><th style="width:12%">Профилей</th><th>Примечание</th></tr></thead><tbody>
+      ${thawRows.map(r=>`<tr><td>${esc(r.w)}</td><td><b>${r.gt?'&gt; ':''}${String(r.z).replace('.',',')}</b></td><td>${esc(r.date)}</td><td>${r.n}</td><td class="mut">${r.gt?'фронт оттаивания ниже забоя скважины':''}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="note">Глубина оттаивания — глубина изотермы 0 °C по фактическим профилям замеров (ГОСТ 25358-2020, приложение Д). Максимум по объекту: <b>${mx.gt?'&gt; ':''}${String(mx.z).replace('.',',')} м</b> (скв. ${esc(mx.w)}, ${esc(mx.date)}).${mtMaxV!==null?` Сопоставление с d<sub>fn</sub>: ${(mx.z/(selD0*Math.sqrt(mtMaxV))).toFixed(2).replace('.',',')} d<sub>fn</sub>.`:''}</div>`;
+  } else thawHtml=`<div class="note">${o.prof?'По рядам скважин объекта сезонное оттаивание не выделяется (профили целиком мёрзлые либо замеры разовые).':'Термометрические ряды по объекту не загружены — загрузка во вкладке «Термометрия».'}</div>`;
+
+  /* --- блок 4: температура грунтов на глубине НГК (СП 25.13330.2020, п. 3.1) --- */
+  let ngcHtml='';
+  const ngcRows=[]; let worstT=null;
+  Object.entries(o.prof||{}).forEach(([w,wd])=>{
+    if(!wd.s.length||wd.ngcH==null) return;
+    const lastEnt=wd.s[wd.s.length-1], pts=lastEnt[1];
+    if(wd.ngcH>pts[pts.length-1][0]){ ngcRows.push({w, h:wd.ngcH, t:null, dt:lastEnt[0], note:'НГК ниже забоя скважины'}); return; }
+    const t=interp(pts, wd.ngcH);
+    ngcRows.push({w, h:wd.ngcH, t, dt:lastEnt[0]});
+    if(t!==null&&(!worstT||t>worstT.t)) worstT={w,t};
+  });
+  const ngcSt=t=>{
+    if(t===null) return '<span class="mut">—</span>';
+    if(t>=tcrit) return '<b style="color:#c62828">≥ К2/порога '+fmtT(tcrit)+' °C</b>';
+    if(tRisk!==undefined&&t>=tRisk) return '<b style="color:#a86400">≥ К1 '+fmtT(tRisk)+' °C</b>';
+    return '<span style="color:#2e7d32">норма</span>';
+  };
+  if(ngcRows.length){
+    ngcHtml=`${o.ngc?`<table class="kv" style="margin-bottom:6px">
+      <tr><td>Глубина НГК по объекту (медиана по ${o.ngc.nW} скв.)</td><td><b>${String(o.ngc.h).replace('.',',')} м</b></td></tr>
+      <tr><td>Средняя t грунтов на уровне НГК (последние замеры)</td><td><b>${o.ngc.t===null?'—':fmtT(o.ngc.t)+' °C'}</b></td></tr>
+      <tr><td>Наибольшая t на НГК (последние замеры)</td><td><b>${worstT?fmtT(worstT.t)+' °C (скв. '+esc(worstT.w)+')':'—'}</b> ${worstT?ngcSt(worstT.t):''}</td></tr>
+      ${TCALC[o.a]!==undefined?`<tr><td>Расчётная температура грунта основания T<sub>расч</sub> (вкладка «Паспорт ГТС»)</td><td><b>${fmtT(TCALC[o.a])} °C</b>${worstT?` — факт ${worstT.t>TCALC[o.a]?`<b style="color:#c62828">выше расчётной на ${fmtT(worstT.t-TCALC[o.a])} °C</b>`:'<span style="color:#2e7d32">не выше расчётной</span>'}`:''}</td></tr>`:''}
+    </table>`:''}
+    <table class="rows static"><thead><tr>
+      <th style="width:20%">Скважина</th><th style="width:13%">НГК, м</th><th style="width:19%">t на НГК (последняя), °C</th><th style="width:16%">Дата замера</th><th>Статус (пороги ${tRisk!==undefined?'К1 '+fmtT(tRisk)+' / ':''}К2 ${fmtT(tcrit)} °C)</th></tr></thead><tbody>
+      ${ngcRows.map(r=>`<tr><td>${esc(r.w)}</td><td>${String(r.h).replace('.',',')}</td><td><b>${r.t===null?'—':fmtT(r.t)}</b></td><td>${esc(r.dt)}</td><td>${r.note?'<span class="mut">'+esc(r.note)+'</span>':ngcSt(r.t)}</td></tr>`).join('')}
+    </tbody></table>
+    <div class="note">НГК — глубина нулевых годовых колебаний температуры грунта (амплитуда годовой гармоники ≤ 0,1 °C; СП 25.13330.2020, п. 3.1). Пороги: ${ov.tcrit!==undefined?('декларация безопасности — '+esc(ov.src)):'общие (настраиваются в окне «Пороги и КК»)'}.</div>`;
+  } else ngcHtml=`<div class="note">${o.prof?'НГК по скважинам объекта не определяется (недостаточная длительность или полнота годового хода замеров).':'Термометрические ряды по объекту не загружены.'}</div>`;
+
+  /* --- блок 5: проверка по контрольным критериям декларации К1/К2 (ГОСТ Р 59873-2021; ФНП № 151) --- */
+  let kkHtml='';
+  const kd=o.kkd;
+  if(kd&&kd.rows&&kd.rows.length){
+    const gm=geodMetrics(o), gi=geodIncrements(o);
+    const stCell=r=>{
+      const txt=((r.g||'')+' '+(r.p||''));
+      if(/температур|м[её]рзлот|завес/i.test(txt)){
+        if(!worstT) return o.prof?'<span class="mut">ряды загружены, но НГК по скважинам не определена — автоконтроль не выполняется</span>':'<span class="mut">нет термометрических рядов</span>';
+        const k2=parseNum(r.k2), k1=parseNum(r.k1);
+        if(k2!==null&&worstT.t>=k2) return `<b style="color:#c62828">К2: факт ${fmtT(worstT.t)} °C ≥ ${esc(r.k2)}</b>`;
+        if(k1!==null&&worstT.t>=k1) return `<b style="color:#a86400">К1: факт ${fmtT(worstT.t)} °C ≥ ${esc(r.k1)}</b>`;
+        return `<span style="color:#2e7d32">норма (факт ${fmtT(worstT.t)} °C, скв. ${esc(worstT.w)})</span>`;
+      }
+      if(/∆2|затух|прогресс/i.test(txt)){
+        if(!gi) return '<span class="mut">нет геодезических рядов</span>';
+        if(gi.prog.length) return `<b style="color:#c62828">прогрессия: ${esc(gi.prog.slice(0,3).join(', '))}${gi.prog.length>3?' и др.':''}</b>`;
+        if(gi.nodamp.length) return `<b style="color:#a86400">без затухания: ${esc(gi.nodamp.slice(0,3).join(', '))}${gi.nodamp.length>3?' и др.':''}</b>`;
+        return '<span style="color:#2e7d32">затухание / норма</span>';
+      }
+      if(/осад|смещ|деформ|крен|трещин/i.test(txt)){
+        if(!gm) return '<span class="mut">нет геодезических рядов</span>';
+        const k2=parseNum(r.k2), k1=parseNum(r.k1);
+        const v=gm.maxSpeed;
+        if(k2!==null&&v>=k2) return `<b style="color:#c62828">К2: скорость ${v.toFixed(1)} мм/год ≥ ${esc(r.k2)}</b>`;
+        if(k1!==null&&v>=k1) return `<b style="color:#a86400">К1: скорость ${v.toFixed(1)} мм/год ≥ ${esc(r.k1)}</b>`;
+        return `<span style="color:#2e7d32">норма (макс. скорость ${v.toFixed(1)} мм/год${gm.speedMark?', марка '+esc(gm.speedMark):''})</span>`;
+      }
+      if(/уров|пьезо|напор/i.test(txt)) return '<span class="mut">контроль — вкладка «Пьезометрия» (после ввода отметок оголовков)</span>';
+      return '<span class="mut">контроль по журналу наблюдений</span>';
+    };
+    let lastG=null, body='';
+    kd.rows.forEach(r=>{
+      if(r.g!==lastG){ lastG=r.g; body+=`<tr class="grp"><td colspan="5">${esc(r.g)}</td></tr>`; }
+      body+=`<tr><td>${esc(r.p||'')}</td><td>${esc(r.k1||'')}</td><td>${esc(r.k2||'')}</td><td>${stCell(r)}</td><td class="mut">${esc(r.n||'')}</td></tr>`;
+    });
+    kkHtml=`<table class="rows static kk"><thead><tr>
+      <th style="width:24%">Показатель / параметр</th><th style="width:14%">К1 (предупреждающий)</th><th style="width:14%">К2 (предельный)</th><th style="width:30%">Оценка по мониторингу</th><th>Примечание</th></tr></thead><tbody>${body}</tbody></table>
+    <div class="note">Источник критериев: ${esc(kd.decl)}. Оценка выполняется автоматически по фактическим рядам термометрии и деформаций; по показателям без числовых рядов — контроль по журналу наблюдений.</div>`;
+  } else kkHtml='<div class="note">Критерии из декларации безопасности по этому объекту не загружены — см. вкладку «Контрольные критерии».</div>';
+  const sd=statusDetail(o);
+  const sdHtml=(sd.status?`<div class="sect" style="margin-top:10px">Итоговый статус объекта по правилам мониторинга: <b style="color:${SCOL[sd.status]||'#555'}">${sd.status}</b></div>
+    ${sd.reasons.length?`<table class="rows static"><thead><tr><th style="width:12%">Уровень</th><th>Сработавшее правило</th></tr></thead><tbody>${sd.reasons.map(r=>`<tr><td><b style="color:${r.level==='crit'?'#c62828':'#a86400'}">${r.level==='crit'?'КРИТИЧНО':'РИСК'}</b></td><td>${esc(r.text)}</td></tr>`).join('')}</tbody></table>`:'<div class="note">Нарушений порогов по загруженным рядам не выявлено.</div>'}`:'<div class="note">Ряды наблюдений по объекту не загружены — статус не оценивается.</div>');
+
+  /* --- блок 6: прогноз до горизонта климатического моделирования --- */
+  const cl=DB.climate||{};
+  const climForecastHtml=`<table class="kv">
+    <tr><td>Горизонт прогноза</td><td><b>${esc(String(cl.horizon||2050))} г.</b></td></tr>
+    <tr><td>Климатические сценарии МГИК (IPCC)</td><td>${(cl.scenarios||[]).map(esc).join(' · ')||'—'}</td></tr>
+    <tr><td>Период моделирования</td><td>${esc(cl.modeling_period||'—')}</td></tr>
+    <tr><td>Статус работ</td><td>${esc(cl.status||'в разработке')}</td></tr>
+  </table>
+  <div class="note">Численное теплотехническое моделирование оснований (ТЗ НИР, этап 3) — после комплектации исходных данных; тренд потепления грунтов по фактическим рядам уже оценивается во вкладке «Термометрия».</div>
+  <div class="noprint" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+    <button class="wbtn" id="calcGoClim">→ Климат до ${esc(String(cl.horizon||2050))}</button>
+    <button class="wbtn" id="calcGoTherm">→ Термометрия</button>
+  </div>`;
+
+  /* --- блок 7: гидрологический расчёт --- */
+  const hydroHtml=`<div class="note">Блок в разработке. Планируемый состав: оценка поверхностного стока с водосборов по ЦМР (слой «Поверхностные стоки по ЦМР» на карте), сопоставление с ливневыми сценариями метеобазы и декларационными требованиями к водопропуску и паводковой безопасности (ФЗ-117; ПБ 03-438-02; СП 33.101-2003 — расчёт поверхностных стоков для ГТС накопительного типа). После реализации результаты (расчётные расходы, отметки НПУ/ФПУ) будут включены в проверку критериев К1/К2.</div>`;
+
+  const blk=(icon,title,sum,body)=>`<details class="igt" style="margin:6px 0" open><summary style="font-size:13px"><b>${icon} ${title}</b>${sum?` <span style="color:var(--mut);font-weight:400;font-size:12px">— ${sum}</span>`:''}</summary><div style="padding:6px 10px 10px">${body}</div></details>`;
+  el.innerHTML=`
+  <div class="normref">Режимные расчёты и оценки для целей геотехнического мониторинга ГТС в условиях многолетней мерзлоты и климатических изменений. Основания: СП 25.13330.2020 (прил. Г — климатические параметры; п. 3.1 — НГК; прил. В — несущая способность свай по мерзлоте); СП 22.13330.2016 (п. 5.5.4 — глубина сезонного промерзания); СП 131.13330.2020 (климатология); ГОСТ 25358-2020 (прил. Д — глубина оттаивания); ГОСТ Р 59873-2021 и ФНП (приказ Ростехнадзора от 08.05.2024 № 151) — контрольные критерии К1/К2; ФЗ-117 «О безопасности ГТС» (ст. 3, 9); ГОСТ 31937-2024 (наблюдения за деформациями). <b>Внимание:</b> результаты раздела — оценочные, для оперативного контроля состояния; они не заменяют проектные обоснования, теплотехнический расчёт основания и экспертизу промышленной безопасности.</div>
+  ${blk('🌦','Климатические исходные данные (метеостанция, фактический ряд)', sp?('СГТ '+fmtT(sp.MGT)+' °C · Ωf '+sp.OmF+' °C·сут · '+sp.period):'', climHtml)}
+  ${blk('❄','Глубина сезонного промерзания d<sub>fn</sub> (нормативная оценка)', mtMaxV!==null?('M<sub>t</sub> max '+String(mtMaxV).replace('.',',')+' · d<sub>fn</sub> '+(selD0*Math.sqrt(mtMaxV)).toFixed(2).replace('.',',')+' м'):'', dfnHtml)}
+  ${blk('🌡','Глубина сезонного оттаивания (фактическая, по замерам)', thawRows.length?('макс. '+(thawRows[0].gt?'> ':'')+String(thawRows[0].z).replace('.',',')+' м · скв. '+esc(thawRows[0].w)):'', thawHtml)}
+  ${blk('🧊','Температура грунтов на глубине НГК (тепловое состояние основания)', o.ngc?('НГК '+String(o.ngc.h).replace('.',',')+' м · t '+(o.ngc.t===null?'—':fmtT(o.ngc.t)+' °C')):'', ngcHtml)}
+  ${blk('🛡','Проверка по контрольным критериям К1/К2 декларации', sd.status?('статус объекта: '+sd.status):'', kkHtml+sdHtml)}
+  ${blk('📈','Прогноз температурного режима до '+esc(String(cl.horizon||2050))+' г. (климатические сценарии)', esc(cl.status||'в разработке'), climForecastHtml)}
+  ${blk('💧','Гидрологический расчёт (поверхностный сток, ЦМР)', 'в разработке', hydroHtml)}
+  ${blk('🧮','Нормативные калькуляторы (формулы с открытой подстановкой — СП 25.13330.2020)', 'свая · оттаивание/промерзание по прил. Г · прогноз t · запас на НГК · осадка — результаты уходят в «Приложение. Расчёты» отчёта объекта', '<div id="calcToolsHost"></div>')}
+  `;
+  const sel0=el.querySelector('#calcD0Sel');
+  if(sel0) sel0.onchange=()=>{ const c=cardOf(o.a); c.calcD0=+sel0.value; saveCARD(); renderTab(o); };
+  const b1=el.querySelector('#calcGoClim'); if(b1) b1.onclick=()=>{curTab='climate'; renderDetail(o);};
+  const b2=el.querySelector('#calcGoTherm'); if(b2) b2.onclick=()=>{curTab='geoterm'; renderDetail(o);};
+  const host=el.querySelector('#calcToolsHost');
+  if(host&&typeof tabCalc==='function'){ try{ tabCalc(o, host); }catch(e){ host.innerHTML='<div class="note">Калькуляторы недоступны: '+esc(e&&e.message||e)+'</div>'; } }
 }
 
 function tabClimate(o, el){
@@ -7242,6 +7442,33 @@ setTimeout(()=>{ try{
   if(st.ts&&Date.now()-st.ts<20*3600e3) return;
   mtAutoupdate().then(()=>{}).catch(()=>{});
 }catch(e){} }, 5000); // тихое ежедневное пополнение метеоряда при открытии приложения
+
+/* ---------- временный запрет копирования/скачивания/скриншотов (кроме НИОКР 2026 и Презентации) ---------- */
+(function(){
+  const ALLOW=el=>!!(el&&el.closest&&(el.closest('#niokrModal')||el.closest('#presBtn')||el.closest('input,textarea,[contenteditable="true"]')));
+  let _cpT=null;
+  function cpToast(){
+    let t=document.getElementById('cpToast');
+    if(!t){ t=document.createElement('div'); t.id='cpToast'; document.body.appendChild(t); }
+    t.textContent='Копирование, сохранение и снимки материалов отключены — сведения ограниченного доступа (ФЗ-117, ФЗ-98). Исключения: раздел «НИОКР 2026» и «Презентация».';
+    t.classList.add('on'); clearTimeout(_cpT); _cpT=setTimeout(()=>t.classList.remove('on'), 2600);
+  }
+  document.addEventListener('contextmenu', e=>{ if(!ALLOW(e.target)){ e.preventDefault(); cpToast(); } }, true);
+  document.addEventListener('copy',  e=>{ if(!ALLOW(e.target)){ e.preventDefault(); cpToast(); } }, true);
+  document.addEventListener('cut',   e=>{ if(!ALLOW(e.target)){ e.preventDefault(); cpToast(); } }, true);
+  document.addEventListener('dragstart', e=>{ if(!ALLOW(e.target)) e.preventDefault(); }, true);
+  document.addEventListener('keydown', e=>{
+    const k=(e.key||'').toLowerCase();
+    if((e.ctrlKey||e.metaKey)&&!ALLOW(e.target)){
+      if(k==='s'||k==='u'||k==='p'){ e.preventDefault(); e.stopPropagation(); cpToast(); } // сохранение / исходный код / печать страницы
+      else if(k==='c'||k==='x'){ /* перехватит событие copy/cut */ }
+    }
+    if((e.ctrlKey||e.metaKey)&&e.shiftKey&&(k==='s')){ e.preventDefault(); e.stopPropagation(); cpToast(); }
+  }, true);
+  document.addEventListener('keyup', e=>{
+    if(e.key==='PrintScreen'){ try{ navigator.clipboard.writeText(''); }catch(_){} cpToast(); }
+  }, true);
+})();
 
 };
 const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"OmjUYWdwQfyM44Hj"};
