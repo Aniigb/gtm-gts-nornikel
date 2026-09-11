@@ -430,6 +430,16 @@
   .insp-prog{height:8px; background:#e8e4da; border-radius:4px; overflow:hidden; margin:8px 0}
   .insp-prog>div{height:100%; background:var(--ok); width:0; transition:width .3s}
   .insp-hist{border:1px solid var(--line); border-radius:8px; background:#fff; padding:8px 12px; margin:8px 0; font-size:12.8px}
+  /* ---------- единый стиль кнопок закрытия модальных окон: цветная, с контуром, правый верхний угол ---------- */
+  #uplModal .box, #repModal .box, #regModal .box, #ntdModal .box, #txtModal .box, #niokrModal .box, #wxDutyModal .box, #tgModal .box, #meteoModal .box, #skModal .box{position:relative}
+  #uplModal .close, #repModal .close, #regModal .close, #ntdModal .close, #txtModal .close, #niokrModal .close, #wxDutyModal .close, #tgModal .close, #meteoModal .close, #skModal .close{
+    position:absolute; top:12px; right:12px; float:none; width:30px; height:30px; padding:0; z-index:6;
+    border:1.5px solid #8f271e; border-radius:8px; background:var(--crit); color:#fff;
+    font-size:15px; font-weight:700; line-height:1; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 2px 6px rgba(20,10,8,.3); transition:background .15s, transform .15s}
+  #uplModal .close:hover, #repModal .close:hover, #regModal .close:hover, #ntdModal .close:hover, #txtModal .close:hover, #niokrModal .close:hover, #wxDutyModal .close:hover, #tgModal .close:hover, #meteoModal .close:hover, #skModal .close:hover{background:#a52a22; transform:scale(1.07)}
+  #uplModal .box>h2, #repModal .box>h2, #regModal .box>h2, #ntdModal .box>h2, #txtModal .box>h2, #niokrModal .box>h2, #wxDutyModal .box>h2, #tgModal .box>h2, #meteoModal .box>h2, #skModal .box>h2{margin-right:40px}
+  @media print{ body.printing #repModal .close{display:none} }
 </style>
 </head>
 <body>
