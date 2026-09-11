@@ -19,7 +19,7 @@
   }
   *{box-sizing:border-box; margin:0; padding:0}
   html,body{height:100%; font:14px/1.45 "Segoe UI","PT Sans",-apple-system,"Helvetica Neue",Arial,sans-serif; color:var(--ink)}
-  #app{display:grid; grid-template-columns:330px 1fr 420px; grid-template-rows:56px 1fr; height:100vh}
+  #app{display:grid; grid-template-columns:330px 1fr 420px; grid-template-rows:56px auto 1fr; height:100vh}
   header{grid-column:1/4; background:var(--bg); color:#eef2f6; display:flex; align-items:center; gap:18px; padding:0 18px}
   header h1{font-size:16px; font-weight:600; letter-spacing:.3px; white-space:nowrap}
   header .sub{font-size:12px; color:#9fb0bf}
@@ -216,6 +216,13 @@
   .warn-none{border:1px solid #9ec79a; background:#eef6ec; border-radius:8px; padding:7px 12px; font-size:12.5px; margin-bottom:8px}
   .warn-meta{font-size:11px; color:var(--mut); margin-bottom:6px}
   #warnBadge{display:none; background:#c62828; color:#fff; border-radius:9px; font-size:10.5px; padding:0 6px; margin-left:4px; font-weight:700; vertical-align:middle}
+  /* ---------- постоянно видимая полоса метеопредупреждений / дежурный статус ---------- */
+  #warnStrip{grid-column:1/4; font-size:12px; padding:4px 16px; cursor:pointer; border-bottom:1px solid var(--line); display:flex; align-items:center; white-space:nowrap; overflow:hidden}
+  #warnStrip>span{overflow:hidden; text-overflow:ellipsis}
+  #warnStrip.ok{background:#eef6ec; color:#2e6b34; border-bottom-color:#9ec79a}
+  #warnStrip.warn{background:#fdf8e3; color:#8a6d1d; border-bottom-color:#e0cf85}
+  #warnStrip.crit{background:#fbeeea; color:#a33c2a; border-bottom-color:#d99a8d; font-weight:600}
+  #warnStrip:hover{filter:brightness(.97)}
   /* ---------- термометрия: таблицы измерений и блок этапов изысканий ---------- */
   details.wt, details.igt{border:1px solid #cfc9bb; border-radius:8px; margin:0 0 6px; background:#fffdf8}
   details.wt>summary, details.igt>summary{cursor:pointer; padding:6px 10px; font-size:12.5px; user-select:none}
@@ -274,6 +281,7 @@
     #list{max-height:38vh}
     #detail{order:3; border-left:none; border-top:1px solid var(--line); overflow:visible; padding:12px}
     .legend{font-size:10.5px; padding:5px 8px; right:8px; bottom:32px}
+    #warnStrip{font-size:11.3px; white-space:normal; padding:5px 10px; line-height:1.35}
     .tabs{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin}
     .tabs button{flex:0 0 auto; padding:8px 10px; font-size:12px}
     table.kv{font-size:12px}
@@ -398,6 +406,7 @@
     <button id="gear" title="Пороги статусов">⚙ Пороги</button>
     <button id="logoutBtn" title="Выйти / сменить пользователя">⎋ Выход</button>
   </header>
+  <div id="warnStrip" class="ok" title="Дежурный метеоконтроль: критичные погодные явления по группам объектов ГТС, прогноз 10 суток, сверка каждый час. Клик — подробности и рекомендуемые меры в сводном реестре."><span>…сверка прогноза метеоданных</span></div>
   <div id="side">
     <div class="chips" id="chips"></div>
     <input id="search" placeholder="Поиск по наименованию объекта ГТС…">
@@ -412,7 +421,7 @@
     </div>
     <div id="wxTicker" title="Текущая погода в Норильске (Open-Meteo, обновление каждые 30 мин; пауза — навести курсор)"><div class="tk"><span id="wxA">загрузка погоды…</span><span id="wxB" aria-hidden="true"></span></div></div>
     <div id="mapTicker" title="Бегущая строка: количество объектов по категориям состояния (пауза — навести курсор)"><div class="tk"><span id="tkA"></span><span id="tkB" aria-hidden="true"></span></div></div>
-    <div id="gtmCov" title="Охват объектов геотехническим мониторингом: термометрические скважины, геодезические марки, осмотры за 12 мес. Обновляется при изменении данных."><canvas id="gtmCovC" width="248" height="126"></canvas></div>
+    <div id="gtmCov" title="Охват объектов геотехническим мониторингом: термометрические скважины, геодезические марки, осмотры за 12 мес. Автообновление каждую минуту и при изменении данных."><canvas id="gtmCovC" width="248" height="126"></canvas></div>
   </div>
   <div id="detail"><div class="empty">Выберите объект на карте или в списке слева</div></div>
 </div>
@@ -1543,6 +1552,8 @@ function gtmCovDraw(){
     });
   }
 }
+/* автообновление диаграммы охвата ГТМ — каждую минуту (плюс перерисовка при изменении данных) */
+setInterval(()=>{ try{ gtmCovDraw(); }catch(e){} }, 60*1000);
 /* --- бегущая строка погоды Норильска (Open-Meteo, обновление каждые 30 мин) --- */
 async function wxTick(){
   const A=document.getElementById('wxA'), B=document.getElementById('wxB'); if(!A) return;
@@ -4366,11 +4377,31 @@ function wBadge(n){
   if(n>0){ b.style.display='inline-block'; b.textContent='⚠ '+n; rb.title='Сводный реестр объектов РИСК/КРИТИЧНО · активных метеопредупреждений: '+n; }
   else{ b.style.display='none'; rb.title='Сводный реестр объектов РИСК/КРИТИЧНО'; }
 }
+/* --- постоянно видимая полоса: дежурный статус / активные метеопредупреждения --- */
+function warnStripSet(d, ws, stale){
+  const st=document.getElementById('warnStrip'); if(!st) return;
+  if(!st.dataset.wired){ st.dataset.wired='1'; st.onclick=()=>{ const b=document.getElementById('regBtn'); if(b) b.click(); }; }
+  if(!d){ st.className='warn'; st.innerHTML='<span>⚠ <b>Дежурный метеоконтроль</b>: нет связи с метеоисточником — повторная сверка через час · подробности — в сводном реестре</span>'; return; }
+  const upd=new Date(d.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const nxt=new Date(d.ts+60*60*1000).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  let nObj=0; try{ nObj=DB.objects.length; }catch(e){}
+  if(!ws.length){
+    st.className='ok';
+    st.innerHTML='<span>🛡 <b>Дежурный метеоконтроль активен</b> · критичных явлений на 10 суток не прогнозируется · точки: Норильск, Дудинка · объектов под наблюдением: '+nObj+' · сверка '+upd+', следующая ~'+nxt+(stale?' · ⚠ показан закэшированный прогноз (нет связи)':'')+'</span>';
+    return;
+  }
+  const critN=ws.filter(w=>w.lvl==='crit').length;
+  const w0=ws[0], hz=W_HAZ[w0.haz];
+  st.className=critN?'crit':'warn';
+  st.innerHTML='<span>'+(critN?'⛔':'⚠')+' <b>Метеопредупреждения: '+ws.length+'</b>'+(critN?' · из них ОПАСНЫХ: '+critN:'')+' · ближайшее: '+hz.ic+' '+hz.nm+' — '+w0.date.split('-').reverse().join('.')+', '+esc(w0.pt)+' ('+esc(w0.val)+') · сверка '+upd+' · подробности и меры — клик</span>';
+}
 function warnRender(d,stale){
-  const z=document.getElementById('warnZone'); if(!z) return;
-  if(!d){ z.innerHTML='<div class="warn-meta">Прогноз не загружен (нет связи с метеоисточником).</div>'; wBadge(0); return; }
+  const z=document.getElementById('warnZone');
+  if(!d){ if(z) z.innerHTML='<div class="warn-meta">Прогноз не загружен (нет связи с метеоисточником).</div>'; wBadge(0); warnStripSet(null,null,false); return; }
   const ws=warnAnalyze(d);
   wBadge(ws.length);
+  warnStripSet(d, ws, stale);
+  if(!z) return;
   const upd=new Date(d.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   let h='<div class="warn-meta">Источник: Open-Meteo (модели ECMWF IFS / GFS), точки: Норильск, Дудинка · обновлено '+upd+', автообновление каждый час'+(stale?' · ⚠ показан закэшированный прогноз (нет связи)':'')+'. Пороги — по критериям опасных явлений Росгидромета; меры — по ФНП ГТС (приказ Ростехнадзора от 08.05.2024 № 151) и практике эксплуатации накопителей на ММГ.</div>';
   if(!ws.length){ h+='<div class="warn-none">✔ Критичных погодных явлений на ближайшие 10 суток не прогнозируется.</div>'; z.innerHTML=h; return; }
