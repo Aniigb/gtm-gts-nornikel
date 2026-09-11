@@ -243,18 +243,18 @@
   details.wt[open]>summary, details.igt[open]>summary{border-bottom:1px solid #e2dccc}
   /* ---------- термометрия: сводка + выпадающие подразделы ---------- */
   .twsum{border:1px solid var(--line); border-left:4px solid #8a97a3; border-radius:8px; background:#fff; padding:8px 12px 2px; margin:0 0 10px}
-  .twnav{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px}
-  .twnav a{border:1px solid var(--line); background:#fff; border-radius:14px; padding:3px 11px; font-size:11.8px; cursor:pointer; color:var(--c-centr); text-decoration:none; user-select:none}
-  .twnav a:hover{background:#eaf1f7; border-color:var(--c-centr)}
-  details.tsec{border:1px solid var(--line); border-radius:8px; margin:0 0 8px; background:#fff}
-  details.tsec>summary{cursor:pointer; padding:8px 12px; font-size:13px; font-weight:600; user-select:none; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; list-style:none}
+  .twnav{display:flex; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; gap:6px; margin:0 0 8px; position:-webkit-sticky; position:sticky; top:var(--tabsh,0px); z-index:16; background:var(--panel); padding:6px 2px 8px; border-radius:0 0 8px 8px; box-shadow:0 3px 8px rgba(15,28,38,.10)}
+  .twnav a{flex:0 0 auto; border:1px solid #9ec6a4; background:#eef6ef; border-radius:14px; padding:3px 11px; font-size:11.8px; cursor:pointer; color:#1b5e20; text-decoration:none; user-select:none; font-weight:600}
+  .twnav a:hover{background:#d9ecdd; border-color:#2e7d32}
+  details.tsec{border:1px solid #b9d6bd; border-radius:8px; margin:0 0 8px; background:#fff}
+  details.tsec>summary{cursor:pointer; padding:8px 12px; font-size:13px; font-weight:600; user-select:none; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; list-style:none; position:-webkit-sticky; position:sticky; top:calc(var(--tabsh,0px) + var(--twnavh,34px) + 4px); z-index:15; background:#e4f1e6; color:#1b5e20; border-left:4px solid #2e7d32; border-radius:7px; box-shadow:0 2px 6px rgba(27,94,32,.14)}
   details.tsec>summary::-webkit-details-marker{display:none}
   details.tsec>summary .ti{font-size:14px}
-  details.tsec>summary .ts{margin-left:auto; font-weight:400; font-size:11.5px; color:var(--mut)}
-  details.tsec>summary::after{content:'▸'; color:var(--mut)}
+  details.tsec>summary .ts{margin-left:auto; font-weight:400; font-size:11.5px; color:#3e6244}
+  details.tsec>summary::after{content:'▸'; color:#2e7d32}
   details.tsec[open]>summary::after{content:'▾'}
-  details.tsec>summary:hover{background:#f4f7fa}
-  details.tsec[open]>summary{border-bottom:1px solid var(--line); background:#f8fafc; border-radius:8px 8px 0 0}
+  details.tsec>summary:hover{background:#d8ecdc}
+  details.tsec[open]>summary{border-bottom:1px solid #cfe4d3; background:#dff0e2; border-radius:7px 7px 0 0}
   details.tsec .tsec-body{padding:10px 12px 12px}
   .wt-scroll{overflow-x:auto; padding:6px 10px 10px}
   table.wtab{border-collapse:collapse; font-size:11px; white-space:nowrap}
@@ -2654,6 +2654,27 @@ function twDrawSec(o, key){ // ленивая отрисовка: canvas в за
   }
   if(key==='fc') drawForecast(cv('fcChart'), o, fcDepth);
 }
+/* липкие зелёные шапки подразделов термометрии: офсеты от фактической высоты панели вкладок и навигатора */
+function twStickySync(){
+  const d=document.getElementById('detail'); if(!d) return;
+  const tb=document.getElementById('cardTabs');
+  const nav=document.getElementById('twNav');
+  d.style.setProperty('--tabsh',(tb?tb.offsetHeight:0)+'px');
+  d.style.setProperty('--twnavh',(nav?nav.offsetHeight:0)+'px');
+}
+window.addEventListener('resize',()=>{ clearTimeout(window.__twsT); window.__twsT=setTimeout(twStickySync,120); });
+function twScrollTo(dt){ // прокрутка к подразделу с поправкой на липкие панели (вкладки + навигатор)
+  const tb=document.getElementById('cardTabs'), nav=document.getElementById('twNav');
+  const off=(tb?tb.offsetHeight:0)+(nav?nav.offsetHeight:0)+10;
+  let sc=dt.parentElement;
+  while(sc&&sc!==document.body){ const cs=getComputedStyle(sc); if((cs.overflowY==='auto'||cs.overflowY==='scroll')&&sc.scrollHeight>sc.clientHeight+2) break; sc=sc.parentElement; }
+  if(!sc||sc===document.body) sc=null; // мобильная раскладка: прокручивает окно
+  setTimeout(()=>{
+    const r=dt.getBoundingClientRect();
+    if(sc){ sc.scrollTo({top:sc.scrollTop+r.top-sc.getBoundingClientRect().top-off, behavior:'smooth'}); }
+    else{ window.scrollTo({top:window.scrollY+r.top-off, behavior:'smooth'}); }
+  },40);
+}
 function tabGeoterm(o, el){
   const st=statusOf(o);
   const wells=o.prof?Object.keys(o.prof):[];
@@ -2711,7 +2732,7 @@ function tabGeoterm(o, el){
     if(nav){
       const a=document.createElement('a');
       a.textContent=TW_NAV[key]||key; a.title=dt.querySelector('.tt').textContent;
-      a.onclick=()=>{ dt.open=true; dt.scrollIntoView({behavior:'smooth', block:'start'}); };
+      a.onclick=()=>{ dt.open=true; twScrollTo(dt); };
       nav.appendChild(a);
     }
   });
@@ -2755,6 +2776,7 @@ function tabGeoterm(o, el){
       fcb.appendChild(b);
     });
   }
+  twStickySync(); setTimeout(twStickySync,150);
 }
 
 
