@@ -297,6 +297,14 @@
   #loginModal button[type=submit]:hover{background:#1b2c3a}
   #loginModal .lerr{color:var(--crit); font-size:12.5px; min-height:17px; margin-top:8px}
   #loginModal .lnote{font-size:11.3px; color:var(--mut); margin-top:10px; border-top:1px solid var(--line); padding-top:10px}
+  #loginModal .rbtn{display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:8px; background:#f6f8f9; border:1px solid var(--line); border-radius:8px; cursor:pointer; font-size:13px; font-family:inherit}
+  #loginModal .rbtn b{display:block; font-size:13.5px; margin-bottom:2px; color:var(--bg)}
+  #loginModal .rbtn span{color:var(--mut); font-size:11.5px; line-height:1.35; display:block}
+  #loginModal .rbtn:hover{border-color:var(--bg); background:#eef2f4}
+  #loginModal .rbtn:focus-visible{outline:2px solid var(--bg); outline-offset:1px}
+  #loginModal .pwrole{font-size:12.5px; margin-bottom:10px; color:var(--mut)}
+  #loginModal .pwrole b{color:var(--bg)}
+  #loginModal .pwrole a{margin-left:8px; font-size:11.5px}
   #logoutBtn{background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px}
   #logoutBtn:hover{background:#1b2c3a}
   /* Ролевая модель (ФЗ-117, ФНП № 151): наблюдатель — просмотр; оператор — ведение базы; надзор — контроль без редактирования */
@@ -610,12 +618,39 @@
   <form class="lbox" id="loginForm">
     <h2>ГТМ с учётом климатических изменений ГТС</h2>
     <div class="sub2">ЗФ ПАО «ГМК «Норильский никель»</div>
-    <input type="password" id="loginPw" placeholder="Пароль" autocomplete="current-password" autofocus>
-    <button type="submit">Войти</button>
+    <div id="rolePick">
+      <button type="button" class="rbtn" data-r="view"><b>Наблюдатель</b><span>просмотр реестра, карты, карточек и графиков</span></button>
+      <button type="button" class="rbtn" data-r="edit"><b>Оператор</b><span>загрузка замеров, ведение карточек, отчёты и выгрузки</span></button>
+      <button type="button" class="rbtn" data-r="insp"><b>Надзор</b><span>контроль: замечания и предписания, чек-листы осмотров, выгрузки</span></button>
+    </div>
+    <div id="pwBlock" style="display:none">
+      <div class="pwrole">Роль: <b id="pwRoleName"></b> · <a href="#" id="roleBack">изменить</a></div>
+      <input type="password" id="loginPw" placeholder="Пароль" autocomplete="current-password">
+      <button type="submit">Войти</button>
+    </div>
     <div class="lerr" id="loginErr"></div>
-    <div class="lnote">Уровни доступа: <b>наблюдатель</b> — просмотр базы и графиков; <b>оператор</b> — загрузка замеров, ведение карточек, отчёты и выгрузки; <b>надзор</b> — контроль: замечания и предписания, чек-листы осмотров, выгрузки (без изменения данных мониторинга).</div>
+    <div class="lnote">Данные ГТС конфиденциальны (объект промышленной безопасности). Доступ — по роли и паролю; пароль выдаёт администратор системы.</div>
   </form>
 </div>
+<script>
+(function(){ // выбор роли в приветственном окне (общий для dev- и публичной сборки)
+  var RN={view:'наблюдатель',edit:'оператор',insp:'надзор'};
+  window.__loginRole=null;
+  var pick=document.getElementById('rolePick'), pw=document.getElementById('pwBlock');
+  pick.addEventListener('click',function(ev){
+    var b=ev.target.closest('.rbtn'); if(!b) return;
+    window.__loginRole=b.getAttribute('data-r');
+    document.getElementById('pwRoleName').textContent=RN[window.__loginRole]||'';
+    pick.style.display='none'; pw.style.display='block';
+    var i=document.getElementById('loginPw'); i.value=''; i.focus();
+  });
+  document.getElementById('roleBack').addEventListener('click',function(ev){
+    ev.preventDefault();
+    window.__loginRole=null; pw.style.display='none'; pick.style.display='block';
+    document.getElementById('loginErr').textContent='';
+  });
+})();
+</script>
 <script>window.__initApp=function(){
 const DCOL = {"ТОФ":"#c05a2e","НМЗ":"#2f6fb2","НОФ":"#3d8a5a","Дудинка":"#8a5aa8"};
 const SCOL = {"НОРМА":"#2e7d32","РИСК":"#e08a00","КРИТИЧНО":"#c8372d"};
@@ -6165,11 +6200,11 @@ function enterApp(role){
   document.getElementById('loginModal').style.display='flex';
   document.getElementById('loginForm').onsubmit=async ev=>{
     ev.preventDefault();
+    const rl=window.__loginRole;
+    if(!rl){ document.getElementById('loginErr').textContent='Сначала выберите роль'; return; }
     const h=await sha256Hex(document.getElementById('loginPw').value);
-    if(h===PWH.edit) enterApp('edit');
-    else if(h===PWH.insp) enterApp('insp');
-    else if(h===PWH.view) enterApp('view');
-    else document.getElementById('loginErr').textContent='Неверный пароль';
+    if(h===PWH[rl]) enterApp(rl);
+    else document.getElementById('loginErr').textContent='Неверный пароль для выбранной роли';
   };
 })();
 
@@ -6641,13 +6676,15 @@ async function _decrypt(rawK){
   lm.style.display="flex";
   document.getElementById("loginForm").onsubmit=async ev=>{
     ev.preventDefault(); errEl.textContent="";
+    const rl=window.__loginRole;
+    if(!rl){ errEl.textContent="Сначала выберите роль"; return; }
     const pw=document.getElementById("loginPw").value;
-    let rawK=await _unwrap(pw,ENC.saltE,ENC.ivE,ENC.wrapE);
-    if(rawK) return init(rawK,"edit");
-    rawK=await _unwrap(pw,ENC.saltV,ENC.ivV,ENC.wrapV);
-    if(rawK) return init(rawK,"view");
-    if(ENC.saltX){ rawK=await _unwrap(pw,ENC.saltX,ENC.ivX,ENC.wrapX); if(rawK) return init(rawK,"insp"); }
-    errEl.textContent="Неверный пароль";
+    let rawK=null;
+    if(rl==="edit") rawK=await _unwrap(pw,ENC.saltE,ENC.ivE,ENC.wrapE);
+    else if(rl==="view") rawK=await _unwrap(pw,ENC.saltV,ENC.ivV,ENC.wrapV);
+    else if(rl==="insp"&&ENC.saltX) rawK=await _unwrap(pw,ENC.saltX,ENC.ivX,ENC.wrapX);
+    if(rawK) return init(rawK,rl);
+    errEl.textContent="Неверный пароль для выбранной роли";
   };
   const ck=sessionStorage.getItem("gtm_k"), cr=sessionStorage.getItem("gtm_role");
   if(ck&&cr){ init(_b64(ck),cr,true); return; }
