@@ -2522,7 +2522,9 @@ function tabGeoterm(o, el){
         const s=wellThawSeries(o.prof[x.w]);
         return {label:x.w, xs:s.map(p=>p.d), ys:s.map(p=>p.z), color:DATE_COLORS[i%DATE_COLORS.length]};
       }).filter(s=>s.ys.length>=2);
-      drawTrend(document.getElementById('thawChart'), thawSeries, 'm');
+      const tc=document.getElementById('thawChart');
+      if(thawSeries.length){ drawTrend(tc, thawSeries, 'm'); }
+      else if(tc){ tc.style.display='none'; }
     }
     const wd=o.prof[curWell];
     const list=[...curDepths].sort((a,b)=>a-b).map((dep,i)=>{
