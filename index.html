@@ -238,6 +238,21 @@
   details.wt>summary, details.igt>summary{cursor:pointer; padding:6px 10px; font-size:12.5px; user-select:none}
   details.wt>summary:hover, details.igt>summary:hover{background:#f3eee2}
   details.wt[open]>summary, details.igt[open]>summary{border-bottom:1px solid #e2dccc}
+  /* ---------- термометрия: сводка + выпадающие подразделы ---------- */
+  .twsum{border:1px solid var(--line); border-left:4px solid #8a97a3; border-radius:8px; background:#fff; padding:8px 12px 2px; margin:0 0 10px}
+  .twnav{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px}
+  .twnav a{border:1px solid var(--line); background:#fff; border-radius:14px; padding:3px 11px; font-size:11.8px; cursor:pointer; color:var(--c-centr); text-decoration:none; user-select:none}
+  .twnav a:hover{background:#eaf1f7; border-color:var(--c-centr)}
+  details.tsec{border:1px solid var(--line); border-radius:8px; margin:0 0 8px; background:#fff}
+  details.tsec>summary{cursor:pointer; padding:8px 12px; font-size:13px; font-weight:600; user-select:none; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; list-style:none}
+  details.tsec>summary::-webkit-details-marker{display:none}
+  details.tsec>summary .ti{font-size:14px}
+  details.tsec>summary .ts{margin-left:auto; font-weight:400; font-size:11.5px; color:var(--mut)}
+  details.tsec>summary::after{content:'▸'; color:var(--mut)}
+  details.tsec[open]>summary::after{content:'▾'}
+  details.tsec>summary:hover{background:#f4f7fa}
+  details.tsec[open]>summary{border-bottom:1px solid var(--line); background:#f8fafc; border-radius:8px 8px 0 0}
+  details.tsec .tsec-body{padding:10px 12px 12px}
   .wt-scroll{overflow-x:auto; padding:6px 10px 10px}
   table.wtab{border-collapse:collapse; font-size:11px; white-space:nowrap}
   table.wtab th, table.wtab td{border:1px solid #d9d3c6; padding:1px 6px; text-align:right}
@@ -2596,8 +2611,7 @@ function igiThermHtml(o){ // блок «Термометрия этапов из
     <div class="wt-scroll"><table class="wtab"><thead><tr>${wl.cols.map(c=>'<th>'+esc(c)+'</th>').join('')}</tr></thead>
     <tbody>${rows.map(r=>'<tr>'+r.map((c,i)=>'<td'+(i===0?' style="text-align:left"':'')+'>'+esc(String(c))+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`;
   };
-  return `<div class="sect">Термометрия этапов инженерных изысканий (базовое тепловое состояние до начала режимного мониторинга) · по отчётам ИГИ</div>
-  <div class="note">Сведения дословно из текстовых слоёв отчётов ИГИ (со ссылками на страницы). Плановые координаты X, Y скважин этапов изысканий приведены в ведомостях горных выработок и на планшетах графической части отчётов и в текстовый слой не входят — они доступны в оригиналах из архива исходных данных НИР (вкладка «Документация»); доступные в тексте абс. отметки устьев приведены в таблицах ниже.</div>
+  return `<div class="note">Базовое тепловое состояние до начала режимного мониторинга. Сведения дословно из текстовых слоёв отчётов ИГИ (со ссылками на страницы). Плановые координаты X, Y скважин этапов изысканий приведены в ведомостях горных выработок и на планшетах графической части отчётов и в текстовый слой не входят — они доступны в оригиналах из архива исходных данных НИР (вкладка «Документация»); доступные в тексте абс. отметки устьев приведены в таблицах ниже.</div>
   ${items.map(it=>`<details class="igt"><summary><b>${esc(it.t)}</b> · ${esc(it.y)}</summary>
     <div class="igt-body">
       ${it.f?`<button class="vbtn" data-igif="${esc(it.f)}" style="float:right">📖 текст отчёта</button>`:''}
@@ -2605,6 +2619,29 @@ function igiThermHtml(o){ // блок «Термометрия этапов из
       ${(it.facts||[]).map(f=>`<div class="igf">• ${esc(f)}</div>`).join('')}
       ${it.wells?wellTbl(it.wells):''}
     </div></details>`).join('')}`;
+}
+/* --- состояние раскрытия подразделов термометрии (сохраняется между перерисовками карточки) --- */
+const twOpen=new Set(['prof']);
+const TW_NAV={thaw:'Оттаивание',prof:'Профиль T',iso:'Изоплеты',trend:'Тренды',tabs:'Таблицы',fc:'Прогноз 2050',igi:'Изыскания'};
+function twDrawSec(o, key){ // ленивая отрисовка: canvas в закрытом details имеет нулевую ширину
+  const cv=id=>document.getElementById(id);
+  if(key==='prof') drawGostProfile(cv('gostChart'), o, curWell);
+  if(key==='iso') drawIsopleth(cv('isoChart'), o, curWell);
+  if(key==='thaw'){
+    const wells=Object.keys(o.prof||{});
+    const thawS=wells.map(w=>({w:w,m:wellThawMax(o.prof[w])})).filter(x=>x.m);
+    const series=thawS.map((x,i)=>{ const s=wellThawSeries(o.prof[x.w]); return {label:x.w, xs:s.map(p=>p.d), ys:s.map(p=>p.z), color:DATE_COLORS[i%DATE_COLORS.length]}; }).filter(s=>s.ys.length>=2);
+    const tc2=cv('thawChart');
+    if(series.length) drawTrend(tc2, series, 'm'); else if(tc2) tc2.style.display='none';
+  }
+  if(key==='trend'){
+    const wd=o.prof[curWell];
+    const list=[...curDepths].sort((a,b)=>a-b).map((dep,i)=>{ const s=wellDepthSeries(wd, dep); return {label:dep+' м', xs:s.xs, ys:s.ys, color:DATE_COLORS[i%DATE_COLORS.length]}; }).filter(s=>s.ys.length>=2);
+    drawTrend(cv('trendChart'), list);
+    const listAll=[...curDepths].sort((a,b)=>a-b).map((dep,i)=>{ const s=objDepthSeries(o, dep); return {label:dep+' м · все скважины', xs:s.xs, ys:s.ys, color:DATE_COLORS[i%DATE_COLORS.length]}; }).filter(s=>s.ys.length>=2);
+    drawTrend(cv('trendChartAll'), listAll);
+  }
+  if(key==='fc') drawForecast(cv('fcChart'), o, fcDepth);
 }
 function tabGeoterm(o, el){
   const st=statusOf(o);
@@ -2615,49 +2652,59 @@ function tabGeoterm(o, el){
   const tc=TCALC[o.a];
   const thaw=o.prof?wells.map(w=>({w:w, m:wellThawMax(o.prof[w])})).filter(x=>x.m):[];
   const thawMax=thaw.length?thaw.reduce((a,b)=>(b.m.z>a.m.z||(b.m.z===a.m.z&&b.m.date>a.m.date)?b:a)):null;
-  el.innerHTML = o.prof? `
-    <div class="normref">ГОСТ 25358-2020 «Грунты. Методы полевых измерений температуры»: график распределения температуры по глубине (прил. Д, рис. Д.1); график термоизоплет (прил. Д, рис. Д.2); глубина НГК — СП 25.13330.2020 (п. 3.1).</div>
-    <div class="sect">Тепловое состояние основания</div>
-    <table class="kv">
-      <tr><td>Глубина нулевых годовых колебаний (НГК)</td><td>${o.ngc?('<b>'+fmt(o.ngc.h,' м')+'</b> <span class="note">(по '+o.ngc.nW+' скв. с полными сезонными рядами)</span>'):'—'}</td></tr>
-      <tr><td>T грунта на уровне НГК (средняя)</td><td>${(o.ngc&&o.ngc.t!==null)?fmt(o.ngc.t,' °C'):'—'}</td></tr>
-      <tr><td>Расчётная (проектная) температура</td><td>${tc!==undefined?('<b>'+tc+' °C</b>'):'—'} <span class="note">(задаётся во вкладке «Паспорт объекта»)</span></td></tr>
-      <tr><td>Макс. глубина оттаивания грунтов</td><td>${thawMax?('<b>'+(thawMax.m.gt?'&gt; ':'')+fmt(thawMax.m.z,' м')+'</b> <span class="note">(скв. '+esc(thawMax.w)+', замер '+thawMax.m.date+')</span>'):'—'} <span class="note">— по изотерме 0 °C в профилях замеров</span></td></tr>
-      <tr><td>Статус (превентивный)</td><td><b style="color:${SCOL[st]}">${st}</b></td></tr>
-    </table>
-    <div class="note">Глубина НГК — вычислена по рядам замеров скважин объекта: глубина, ниже которой амплитуда годовой гармоники температуры ≤ 0,1 °C после снятия многолетнего тренда (СП 25.13330.2020, п. 3.1). Скважины, где сезонный ход наблюдался недостаточно полно (менее 6 замеров, 2 лет или 4 различных месяцев), в расчёте не участвуют.</div>
-    ${thaw.length?`
-    <div class="sect">Глубина оттаивания грунтов по замерам — изотерма 0 °C · ГОСТ 25358-2020, прил. Д</div>
-    <table class="rows static"><thead><tr>
-      <th>Скважина</th><th style="width:16%">Замеров с оттаиванием</th><th style="width:17%">Макс. глубина, м</th><th style="width:14%">Дата максимума</th><th style="width:22%">Последний замер, м</th>
-    </tr></thead><tbody>
-      ${thaw.map(x=>`<tr${x===thawMax?' style="background:#fdeaea"':''}><td>${esc(x.w)}</td><td>${x.m.n} из ${x.m.total}</td><td><b>${x.m.gt?'&gt; ':''}${x.m.z.toFixed(2)}</b></td><td>${x.m.date}</td><td>${x.m.last?((x.m.last.gt?'&gt; ':'')+x.m.last.z.toFixed(2)+' ('+x.m.last.d+')'):'—'}</td></tr>`).join('')}
-    </tbody></table>
-    <div class="note">Глубина оттаивания — глубина изотермы 0 °C в профиле замера (линейная интерполяция между смежными глубинами). Знак «&gt;» — фронт оттаивания ниже забоя скважины. Разовые замеры из одной точки профиля не используются. Максимум сезона (конец летнего периода) соответствует глубине сезонного оттаивания — СП 25.13330.2020. Подсвечена скважина с максимальной глубиной по объекту.</div>
-    <canvas class="plot" id="thawChart"></canvas>`:''}
-    <div class="sect">График распределения температуры по глубине · ГОСТ 25358-2020, прил. Д</div>
-    <div class="wells" id="wellBtns"></div>
-    <canvas class="plot" id="gostChart"></canvas>
-    <div class="sect">График термоизоплет по скважине · ГОСТ 25358-2020, прил. Д, рис. Д.2</div>
-    <canvas class="plot" id="isoChart"></canvas>
-    <div class="sect">Тренд температур по глубинам</div>
-    <div class="note" style="margin:0 0 2px">Скважина: <b id="trWell">${esc(curWell)}</b> (та же, что на профиле). Глубины:</div>
-    <div class="depths" id="depthBtns"></div>
-    <canvas class="plot" id="trendChart"></canvas>
-    <div class="sect">Тренд температур по глубинам — все скважины (усреднённые ряды)</div>
-    <canvas class="plot" id="trendChartAll"></canvas>
-    <div class="sect">Таблицы измерений температуры по скважинам · T, °C (строки — глубина, м; столбцы — даты замеров)</div>
-    ${wells.map(w=>{ const wd=o.prof[w]; return `<details class="wt" data-w="${esc(w)}"><summary><b>Скважина ${esc(w)}</b> · замеров: ${wd.s.length}</summary><div class="wt-scroll"></div></details>`; }).join('')}
-    <div class="note">Таблица строится при первом раскрытии скважины (клик по строке). Положительные значения температуры (талый грунт) выделяются красным; значения — как в журналах-источниках (форма 3, ПБ 03-438-02). Те же ряды — на графиках выше.</div>
-    <div class="sect">Прогноз температуры основания до 2050 г. (среднее по всем скважинам)</div>
-    <div class="note" style="margin:0 0 2px">Глубина прогноза: <span id="fcBtns"></span></div>
-    <canvas class="plot" id="fcChart"></canvas>
-    <div class="note">Прогноз оценочный: сплошная линия — ряд наблюдений; штриховая — линейная экстраполяция наблюдаемого тренда; пунктир — тренд с климатической поправкой потепления воздуха Арктической зоны ≈ +0,35 °C/декаду (сценарий SSP2-4.5, оценочно) с затуханием по глубине (5 м — ×0,6; 10 м — ×0,8; 15 м — ×0,9). Красная линия — 0 °C (граница мёрзлого состояния). Подлежит уточнению теплотехническим расчётом.</div>`
-  : '<div class="empty" style="text-align:left;padding:8px 0">Числовые замеры по объекту в файлах не найдены — запись зарезервирована в структуре БД.<br>Замеры можно добавить через «⬆ Загрузка данных» в шапке.</div>';
+  const sec=(key,icon,title,stat,body)=>'<details class="tsec" data-tw="'+key+'"><summary><span class="ti">'+icon+'</span><span class="tt">'+title+'</span>'+(stat?'<span class="ts">'+stat+'</span>':'')+'</summary><div class="tsec-body">'+body+'</div></details>';
+  if(o.prof){
+    el.innerHTML =
+    '<div class="normref">ГОСТ 25358-2020 «Грунты. Методы полевых измерений температуры»: график распределения температуры по глубине (прил. Д, рис. Д.1); график термоизоплет (прил. Д, рис. Д.2); глубина НГК — СП 25.13330.2020 (п. 3.1). Подразделы раскрываются кликом; графики строятся в момент раскрытия.</div>'
+    +'<div class="twnav" id="twNav"></div>'
+    +'<div class="twsum" style="border-left-color:'+(SCOL[st]||'#8a97a3')+'">'
+    +'<div class="sect" style="margin-top:0">Тепловое состояние основания — сводка</div>'
+    +'<table class="kv">'
+    +'<tr><td>Глубина нулевых годовых колебаний (НГК)</td><td>'+(o.ngc?('<b>'+fmt(o.ngc.h,' м')+'</b> <span class="note">(по '+o.ngc.nW+' скв. с полными сезонными рядами)</span>'):'—')+'</td></tr>'
+    +'<tr><td>T грунта на уровне НГК (средняя)</td><td>'+((o.ngc&&o.ngc.t!==null)?fmt(o.ngc.t,' °C'):'—')+'</td></tr>'
+    +'<tr><td>Расчётная (проектная) температура</td><td>'+(tc!==undefined?('<b>'+tc+' °C</b>'):'—')+' <span class="note">(задаётся во вкладке «Паспорт объекта»)</span></td></tr>'
+    +'<tr><td>Макс. глубина оттаивания грунтов</td><td>'+(thawMax?('<b>'+(thawMax.m.gt?'&gt; ':'')+fmt(thawMax.m.z,' м')+'</b> <span class="note">(скв. '+esc(thawMax.w)+', замер '+thawMax.m.date+')</span>'):'—')+' <span class="note">— по изотерме 0 °C в профилях замеров</span></td></tr>'
+    +'<tr><td>Статус (превентивный)</td><td><b style="color:'+SCOL[st]+'">'+st+'</b></td></tr>'
+    +'</table>'
+    +'<div class="note">Глубина НГК — вычислена по рядам замеров скважин объекта: глубина, ниже которой амплитуда годовой гармоники температуры ≤ 0,1 °C после снятия многолетнего тренда (СП 25.13330.2020, п. 3.1). Скважины, где сезонный ход наблюдался недостаточно полно (менее 6 замеров, 2 лет или 4 различных месяцев), в расчёте не участвуют.</div></div>'
+    +(thaw.length? sec('thaw','📉','Глубина оттаивания грунтов по замерам — изотерма 0 °C · ГОСТ 25358-2020, прил. Д','макс. '+(thawMax.m.gt?'&gt; ':'')+thawMax.m.z.toFixed(2)+' м · скв. '+esc(thawMax.w),
+        '<table class="rows static"><thead><tr><th>Скважина</th><th style="width:16%">Замеров с оттаиванием</th><th style="width:17%">Макс. глубина, м</th><th style="width:14%">Дата максимума</th><th style="width:22%">Последний замер, м</th></tr></thead><tbody>'
+        +thaw.map(x=>'<tr'+(x===thawMax?' style="background:#fdeaea"':'')+'><td>'+esc(x.w)+'</td><td>'+x.m.n+' из '+x.m.total+'</td><td><b>'+(x.m.gt?'&gt; ':'')+x.m.z.toFixed(2)+'</b></td><td>'+x.m.date+'</td><td>'+(x.m.last?((x.m.last.gt?'&gt; ':'')+x.m.last.z.toFixed(2)+' ('+x.m.last.d+')'):'—')+'</td></tr>').join('')
+        +'</tbody></table><div class="note">Глубина оттаивания — глубина изотермы 0 °C в профиле замера (линейная интерполяция между смежными глубинами). Знак «&gt;» — фронт оттаивания ниже забоя скважины. Разовые замеры из одной точки профиля не используются. Максимум сезона (конец летнего периода) соответствует глубине сезонного оттаивания — СП 25.13330.2020. Подсвечена скважина с максимальной глубиной по объекту.</div><canvas class="plot" id="thawChart"></canvas>'):'')
+    +sec('prof','🌡','Профиль температур по глубине · ГОСТ 25358-2020, прил. Д','скв. '+esc(curWell),
+        '<div class="wells" id="wellBtns"></div><canvas class="plot" id="gostChart"></canvas>')
+    +sec('iso','🗺','Термоизоплеты скважины · ГОСТ 25358-2020, прил. Д, рис. Д.2','скв. '+esc(curWell),
+        '<canvas class="plot" id="isoChart"></canvas>')
+    +sec('trend','📈','Тренды температур по глубинам','скв. '+esc(curWell)+' · глубин: '+curDepths.size,
+        '<div class="note" style="margin:0 0 2px">Скважина: <b id="trWell">'+esc(curWell)+'</b> (та же, что на профиле). Глубины:</div>'
+        +'<div class="depths" id="depthBtns"></div><canvas class="plot" id="trendChart"></canvas>'
+        +'<div class="sect" style="margin-top:12px">Все скважины (усреднённые ряды)</div><canvas class="plot" id="trendChartAll"></canvas>')
+    +sec('tabs','🧮','Таблицы измерений температуры по скважинам', wells.length+' скв. · T, °C',
+        '<div class="note">Строки — глубина, м; столбцы — даты замеров. Таблица строится при первом раскрытии скважины (клик по строке). Положительные значения температуры (талый грунт) выделяются красным; значения — как в журналах-источниках (форма 3, ПБ 03-438-02). Те же ряды — на графиках смежных подразделов.</div>'
+        +wells.map(w=>{ const wd=o.prof[w]; return '<details class="wt" data-w="'+esc(w)+'"><summary><b>Скважина '+esc(w)+'</b> · замеров: '+wd.s.length+'</summary><div class="wt-scroll"></div></details>'; }).join(''))
+    +sec('fc','🔮','Прогноз температуры основания до 2050 г.','среднее по всем скважинам',
+        '<div class="note" style="margin:0 0 2px">Глубина прогноза: <span id="fcBtns"></span></div><canvas class="plot" id="fcChart"></canvas>'
+        +'<div class="note">Прогноз оценочный: сплошная линия — ряд наблюдений; штриховая — линейная экстраполяция наблюдаемого тренда; пунктир — тренд с климатической поправкой потепления воздуха Арктической зоны ≈ +0,35 °C/декаду (сценарий SSP2-4.5, оценочно) с затуханием по глубине (5 м — ×0,6; 10 м — ×0,8; 15 м — ×0,9). Красная линия — 0 °C (граница мёрзлого состояния). Подлежит уточнению теплотехническим расчётом.</div>');
+  } else {
+    el.innerHTML = '<div class="empty" style="text-align:left;padding:8px 0">Числовые замеры по объекту в файлах не найдены — запись зарезервирована в структуре БД.<br>Замеры можно добавить через «⬆ Загрузка данных» в шапке.</div>';
+  }
   if(IGI_THERM[o.id]&&IGI_THERM[o.id].length){
-    el.insertAdjacentHTML('beforeend', igiThermHtml(o));
+    el.insertAdjacentHTML('beforeend', sec('igi','📐','Термометрия этапов инженерных изысканий', IGI_THERM[o.id].length+' этап. · базовое тепловое состояние', igiThermHtml(o)));
     el.querySelectorAll('[data-igif]').forEach(b=>b.onclick=()=>txtOpen('igi_txt', b.getAttribute('data-igif')));
   }
+  /* навигатор по подразделам + ленивая отрисовка при раскрытии + восстановление состояния */
+  const nav=document.getElementById('twNav');
+  el.querySelectorAll('details.tsec').forEach(dt=>{
+    const key=dt.dataset.tw;
+    dt.addEventListener('toggle',()=>{ if(dt.open){ twOpen.add(key); twDrawSec(o,key); } else twOpen.delete(key); });
+    if(nav){
+      const a=document.createElement('a');
+      a.textContent=TW_NAV[key]||key; a.title=dt.querySelector('.tt').textContent;
+      a.onclick=()=>{ dt.open=true; dt.scrollIntoView({behavior:'smooth', block:'start'}); };
+      nav.appendChild(a);
+    }
+  });
+  el.querySelectorAll('details.tsec').forEach(dt=>{ if(twOpen.has(dt.dataset.tw)) dt.open=true; });
   if(o.prof){
     const wb=document.getElementById('wellBtns');
     wells.forEach(w=>{
@@ -2687,29 +2734,6 @@ function tabGeoterm(o, el){
       b.onclick=()=>{ curDepths.has(dep)?curDepths.delete(dep):curDepths.add(dep); renderDetail(o); };
       db.appendChild(b);
     });
-    drawGostProfile(document.getElementById('gostChart'), o, curWell);
-    drawIsopleth(document.getElementById('isoChart'), o, curWell);
-    if(thaw.length){
-      const thawSeries=thaw.map((x,i)=>{
-        const s=wellThawSeries(o.prof[x.w]);
-        return {label:x.w, xs:s.map(p=>p.d), ys:s.map(p=>p.z), color:DATE_COLORS[i%DATE_COLORS.length]};
-      }).filter(s=>s.ys.length>=2);
-      const tc=document.getElementById('thawChart');
-      if(thawSeries.length){ drawTrend(tc, thawSeries, 'm'); }
-      else if(tc){ tc.style.display='none'; }
-    }
-    const wd=o.prof[curWell];
-    const list=[...curDepths].sort((a,b)=>a-b).map((dep,i)=>{
-      const s=wellDepthSeries(wd, dep);
-      return {label:dep+' м', xs:s.xs, ys:s.ys, color:DATE_COLORS[i%DATE_COLORS.length]};
-    }).filter(s=>s.ys.length>=2);
-    drawTrend(document.getElementById('trendChart'), list);
-    // сводный тренд по всем скважинам + прогноз до 2050
-    const listAll=[...curDepths].sort((a,b)=>a-b).map((dep,i)=>{
-      const s=objDepthSeries(o, dep);
-      return {label:dep+' м · все скважины', xs:s.xs, ys:s.ys, color:DATE_COLORS[i%DATE_COLORS.length]};
-    }).filter(s=>s.ys.length>=2);
-    drawTrend(document.getElementById('trendChartAll'), listAll);
     // переключатель глубины прогноза
     const fcb=document.getElementById('fcBtns');
     [5,10,15,'all'].forEach(dep=>{
@@ -2719,7 +2743,6 @@ function tabGeoterm(o, el){
       b.onclick=()=>{ fcDepth=dep; renderDetail(o); };
       fcb.appendChild(b);
     });
-    drawForecast(document.getElementById('fcChart'), o, fcDepth);
   }
 }
 
