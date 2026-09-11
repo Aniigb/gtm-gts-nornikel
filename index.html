@@ -405,7 +405,7 @@
 <div id="settings">
   <h3>Превентивные пороги температур грунтов</h3>
   <label>КРИТИЧНО: T ≥ <span><input id="sTcrit" type="number" step="0.1"> °C</span></label>
-  <label>…на глубине от <span><input id="sDepth" type="number" step="1"> м</span></label>
+  <label style="color:var(--mut)">…оценивается на глубине НГК (нулевых годовых колебаний) — вычисляется по рядам замеров каждой скважины: амплитуда годовой гармоники ≤ 0,1 °C</label>
   <label>РИСК: тренд потепления &gt; <span><input id="sTrend" type="number" step="0.05"> °C/год</span></label>
   <label>…на глубине от <span><input id="sTrendDepth" type="number" step="1"> м</span></label>
   <label>РИСК: превышение Tрасч на <span><input id="sAbove" type="number" step="0.1"> °C</span></label>
@@ -824,6 +824,56 @@ function objDepthSeries(o, depth){ // средний ряд по скважин�
   const xs=Object.keys(byDate).sort();
   return {xs, ys:xs.map(d=>+(byDate[d].reduce((a,b)=>a+b,0)/byDate[d].length).toFixed(2))};
 }
+/* --- глубина нулевых годовых колебаний (НГК): амплитуда годовой гармоники температуры ≤ 0,1 °C (СП 25.13330.2020, п. 3.1) --- */
+function harmAmp(xs, ys){ // амплитуда годовой гармоники после снятия линейного тренда (МНК: a + k·t + C·cos ωt + S·sin ωt)
+  const n=xs.length, w=2*Math.PI, t0=new Date(xs[0])/3.15576e10;
+  const A=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]], b=[0,0,0,0];
+  for(let i=0;i<n;i++){
+    const ti=new Date(xs[i])/3.15576e10-t0;
+    const X=[1,ti,Math.cos(w*ti),Math.sin(w*ti)];
+    for(let j=0;j<4;j++){ for(let k=0;k<4;k++) A[j][k]+=X[j]*X[k]; b[j]+=X[j]*ys[i]; }
+  }
+  for(let c=0;c<4;c++){ // гаусс с выбором ведущего
+    let p=c; for(let r=c+1;r<4;r++) if(Math.abs(A[r][c])>Math.abs(A[p][c])) p=r;
+    [A[c],A[p]]=[A[p],A[c]]; [b[c],b[p]]=[b[p],b[c]];
+    if(Math.abs(A[c][c])<1e-12) return null;
+    for(let r=0;r<4;r++){ if(r===c) continue; const f=A[r][c]/A[c][c];
+      for(let k=c;k<4;k++) A[r][k]-=f*A[c][k]; b[r]-=f*b[c]; }
+  }
+  const bb=b.map((v,i)=>v/A[i][i]);
+  return Math.sqrt(bb[2]*bb[2]+bb[3]*bb[3]);
+}
+function wellNgcH(wd){ // по ряду замеров скважины; null — сезонный ход не наблюдался достаточно полно
+  const all=wd.s.map(x=>x[0]);
+  const months=new Set(all.map(d=>+d.slice(5,7))), years=new Set(all.map(d=>d.slice(0,4)));
+  if(all.length<6||years.size<2||months.size<4) return null;
+  const byD={};
+  wd.s.forEach(([dt,pts])=>pts.forEach(([d,t])=>{ if(d>=2) (byD[d]=byD[d]||[]).push([dt,t]); }));
+  const depths=Object.keys(byD).map(Number).sort((a,b)=>a-b);
+  for(const d of depths){
+    const rows=byD[d]; if(rows.length<6) continue;
+    const a=harmAmp(rows.map(r=>r[0]), rows.map(r=>r[1]));
+    if(a!==null&&a<=0.1) return d;
+  }
+  return null;
+}
+function computeNgcAll(){ // НГК скважин и объектов; вызывается один раз при старте
+  DB.objects.forEach(o=>{
+    if(!o.prof) return;
+    const hs=[], ts=[];
+    Object.values(o.prof).forEach(wd=>{
+      wd.ngcH=wellNgcH(wd);
+      if(wd.ngcH===null) return;
+      hs.push(wd.ngcH);
+      const pts=wd.s[wd.s.length-1][1];
+      if(wd.ngcH<=pts[pts.length-1][0]){ const t=interp(pts,wd.ngcH); if(t!==null) ts.push(t); }
+    });
+    if(hs.length){
+      const sorted=hs.slice().sort((a,b)=>a-b);
+      o.ngc={ h:sorted[Math.floor((sorted.length-1)/2)], t:(ts.length?+(ts.reduce((a,b)=>a+b,0)/ts.length).toFixed(2):null), nW:hs.length };
+    }
+  });
+}
 /* --- глубина оттаивания грунтов: глубина изотермы 0 °C по профилю замера (ГОСТ 25358-2020, прил. Д) --- */
 function thawDepthProfile(pts){ // pts: [[глубина, T], …] → глубина 0 °C | {exceeds: забой} | null (оттаивания нет)
   const p=(pts||[]).slice().sort((a,b)=>a[0]-b[0]);
@@ -944,18 +994,19 @@ function statusDetail(o){ // статус + причины (какие прав�
   const reasons=[];
   if(o.prof){
     const tcrit=(ov.tcrit!==undefined?ov.tcrit:TH.tcrit), tRisk=ov.tRisk;
-    // КРИТИЧНО: температура на глубине
+    // КРИТИЧНО: температура грунта на глубине НГК (ниже зоны сезонных колебаний), последний замер
     let worstT=null, worstTr=null;
     Object.entries(o.prof).forEach(([w,wd])=>{
-      if(!wd.s.length) return;
+      if(!wd.s.length||wd.ngcH==null) return; // НГК по скважине не определяется — в правиле не участвует
       const lastEnt=wd.s[wd.s.length-1], dt=lastEnt[0], pts=lastEnt[1];
-      pts.forEach(([d,t])=>{
-        if(d>=TH.depth&&t>=tcrit&&(!worstT||t>worstT.t)) worstT={w,d,t,dt};
-        if(tRisk!==undefined&&d>=TH.depth&&t>=tRisk&&t<tcrit&&(!worstTr||t>worstTr.t)) worstTr={w,d,t,dt};
-      });
+      if(wd.ngcH>pts[pts.length-1][0]) return; // НГК ниже забоя скважины — нет данных
+      const t=interp(pts, wd.ngcH);
+      if(t===null) return;
+      if(t>=tcrit&&(!worstT||t>worstT.t)) worstT={w,d:wd.ngcH,t,dt};
+      if(tRisk!==undefined&&t>=tRisk&&t<tcrit&&(!worstTr||t>worstTr.t)) worstTr={w,d:wd.ngcH,t,dt};
     });
-    if(worstT) reasons.push({level:'crit', text:`температура ${worstT.t} °C на глубине ${worstT.d} м ≥ порога ${tcrit} °C${ov.tcrit!==undefined?' (К2 декларации: '+ov.src+')':''} (скв. ${worstT.w}, замер ${worstT.dt})`});
-    else if(worstTr) reasons.push({level:'risk', text:`температура мерзлотной завесы ${worstTr.t} °C на глубине ${worstTr.d} м ≥ К1 декларации ${tRisk} °C (${ov.src}) (скв. ${worstTr.w}, замер ${worstTr.dt})`});
+    if(worstT) reasons.push({level:'crit', text:`температура ${worstT.t} °C на глубине НГК (${worstT.d} м) ≥ порога ${tcrit} °C${ov.tcrit!==undefined?' (К2 декларации: '+ov.src+')':''} (скв. ${worstT.w}, замер ${worstT.dt})`});
+    else if(worstTr) reasons.push({level:'risk', text:`температура мерзлотной завесы ${worstTr.t} °C на глубине НГК (${worstTr.d} м) ≥ К1 декларации ${tRisk} °C (${ov.src}) (скв. ${worstTr.w}, замер ${worstTr.dt})`});
     // РИСК: тренд потепления
     let worstK=null;
     Object.entries(o.prof).forEach(([w,wd])=>{
@@ -1476,6 +1527,7 @@ function renderStats(){
   if(a&&b){ a.textContent=txt; b.textContent=txt; }
   gtmCovDraw();
 }
+computeNgcAll(); // НГК по рядам замеров — до первого расчёта статусов
 renderStats();
 setTimeout(()=>loadOsmotry(), 0); // после полной инициализации скрипта (TG_SB и пр.)
 setTimeout(()=>{ wxTick(); setInterval(wxTick, 30*60e3); }, 0); // погода Норильска: первая загрузка + автообновление раз в 30 мин
@@ -2447,13 +2499,13 @@ function tabGeoterm(o, el){
     <div class="normref">ГОСТ 25358-2020 «Грунты. Методы полевых измерений температуры»: график распределения температуры по глубине (прил. Д, рис. Д.1); график термоизоплет (прил. Д, рис. Д.2); глубина НГК — СП 25.13330.2020 (п. 3.1).</div>
     <div class="sect">Тепловое состояние основания</div>
     <table class="kv">
-      <tr><td>Глубина нулевых годовых колебаний (НГК)</td><td>${o.ngc?fmt(o.ngc.h,' м'):'—'}</td></tr>
-      <tr><td>T грунта на уровне НГК (средняя)</td><td>${o.ngc?fmt(o.ngc.t,' °C'):'—'}</td></tr>
+      <tr><td>Глубина нулевых годовых колебаний (НГК)</td><td>${o.ngc?('<b>'+fmt(o.ngc.h,' м')+'</b> <span class="note">(по '+o.ngc.nW+' скв. с полными сезонными рядами)</span>'):'—'}</td></tr>
+      <tr><td>T грунта на уровне НГК (средняя)</td><td>${(o.ngc&&o.ngc.t!==null)?fmt(o.ngc.t,' °C'):'—'}</td></tr>
       <tr><td>Расчётная (проектная) температура</td><td>${tc!==undefined?('<b>'+tc+' °C</b>'):'—'} <span class="note">(задаётся во вкладке «Паспорт объекта»)</span></td></tr>
       <tr><td>Макс. глубина оттаивания грунтов</td><td>${thawMax?('<b>'+(thawMax.m.gt?'&gt; ':'')+fmt(thawMax.m.z,' м')+'</b> <span class="note">(скв. '+esc(thawMax.w)+', замер '+thawMax.m.date+')</span>'):'—'} <span class="note">— по изотерме 0 °C в профилях замеров</span></td></tr>
       <tr><td>Статус (превентивный)</td><td><b style="color:${SCOL[st]}">${st}</b></td></tr>
     </table>
-    <div class="note">Глубина НГК — по амплитуде годовых колебаний ≤ 0,1 °C в рядах замеров (оценка макета).</div>
+    <div class="note">Глубина НГК — вычислена по рядам замеров скважин объекта: глубина, ниже которой амплитуда годовой гармоники температуры ≤ 0,1 °C после снятия многолетнего тренда (СП 25.13330.2020, п. 3.1). Скважины, где сезонный ход наблюдался недостаточно полно (менее 6 замеров, 2 лет или 4 различных месяцев), в расчёте не участвуют.</div>
     ${thaw.length?`
     <div class="sect">Глубина оттаивания грунтов по замерам — изотерма 0 °C · ГОСТ 25358-2020, прил. Д</div>
     <table class="rows static"><thead><tr>
@@ -3860,14 +3912,16 @@ function assess(o){
     sG=100;
     let worstT=null, worstK=null;
     Object.entries(o.prof).forEach(([w,wd])=>{
-      if(!wd.s.length) return;
+      if(!wd.s.length||wd.ngcH==null) return;
       const pts=wd.s[wd.s.length-1][1];
-      pts.forEach(([d,t])=>{ if(d>=TH.depth&&(!worstT||t>worstT.t)) worstT={w,d,t}; });
+      if(wd.ngcH>pts[pts.length-1][0]) return;
+      const t=interp(pts,wd.ngcH);
+      if(t!==null&&(!worstT||t>worstT.t)) worstT={w,d:wd.ngcH,t};
       const s=wellDepthSeries(wd,TH.trendDepth);
       if(s.ys.length>=2){ const k=linreg(s.xs,s.ys); if(k!==null&&(!worstK||k>worstK.k)) worstK={w,k}; }
     });
-    if(worstT&&worstT.t>=TH.tcrit){ sG-=60; notes.grunts.push(`T грунта ${worstT.t} °C на глубине ${worstT.d} м ≥ критического порога ${TH.tcrit} °C — потеря несущей способности мёрзлого грунта (−60)`); }
-    else if(worstT&&worstT.t>=TH.tcrit-0.3){ sG-=25; notes.grunts.push(`T грунта ${worstT.t} °C на глубине ${worstT.d} м — вблизи критического порога (−25)`); }
+    if(worstT&&worstT.t>=TH.tcrit){ sG-=60; notes.grunts.push(`T грунта ${worstT.t} °C на глубине НГК (${worstT.d} м) ≥ критического порога ${TH.tcrit} °C — потеря несущей способности мёрзлого грунта (−60)`); }
+    else if(worstT&&worstT.t>=TH.tcrit-0.3){ sG-=25; notes.grunts.push(`T грунта ${worstT.t} °C на глубине НГК (${worstT.d} м) — вблизи критического порога (−25)`); }
     if(worstK&&worstK.k>TH.trend){ sG-=25; notes.grunts.push(`устойчивый тренд потепления основания +${worstK.k.toFixed(2)} °C/год > порога ${TH.trend} °C/год (−25)`); }
     const tc=TCALC[o.a];
     if(tc!==undefined&&o.ngc){
@@ -4503,12 +4557,12 @@ document.getElementById('regExport').onclick=()=>{
 const setEl=document.getElementById('settings');
 document.getElementById('gear').onclick=()=>{
   setEl.style.display=setEl.style.display==='block'?'none':'block';
-  sTcrit.value=TH.tcrit; sDepth.value=TH.depth; sTrend.value=TH.trend; sTrendDepth.value=TH.trendDepth; sAbove.value=TH.above;
+  sTcrit.value=TH.tcrit; sTrend.value=TH.trend; sTrendDepth.value=TH.trendDepth; sAbove.value=TH.above;
   sGRisk.value=TH.geodRiskSpeed; sGCrit.value=TH.geodCritSpeed; sGTotal.value=TH.geodCritTotal;
   sGSpreadR.value=TH.geodRiskSpread; sGSpreadC.value=TH.geodCritSpread;
 };
 document.getElementById('sSave').onclick=()=>{
-  TH={tcrit:+sTcrit.value, depth:+sDepth.value, trend:+sTrend.value, trendDepth:+sTrendDepth.value, above:+sAbove.value,
+  TH={tcrit:+sTcrit.value, depth:TH.depth, trend:+sTrend.value, trendDepth:+sTrendDepth.value, above:+sAbove.value,
       geodRiskSpeed:+sGRisk.value, geodCritSpeed:+sGCrit.value, geodCritTotal:+sGTotal.value,
       geodRiskSpread:+sGSpreadR.value, geodCritSpread:+sGSpreadC.value,
       bearRisk:TH.bearRisk, bearCrit:TH.bearCrit};
