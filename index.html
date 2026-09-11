@@ -682,7 +682,7 @@
 <script src="db_p7.js?v=37abd28b"></script>
 <script src="db_p8.js?v=37abd28b"></script>
 <script src="kadastr.js?v=20260911b"></script>
-<script src="niokr.js?v=311e584678"></script>
+<script src="niokr.js?v=7c77fa5d49"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -4724,7 +4724,7 @@ const niokrModal=document.getElementById('niokrModal');
 const NK_ST={notstarted:{t:'не начато',c:'#8a93a3'},started:{t:'начато',c:'#2f6fb2'},control:{t:'сдан на входной контроль',c:'#e08a00'},accepted:{t:'принято Заказчиком',c:'#2e7d32'}};
 const NK_KIND={report:'📕 Отчёт',reestr:'📋 Реестр замечаний',letter:'✉ Письмо',act:'📑 Акт',program:'🗺 Программа',plan:'📅 План',app:'📎 Приложение'};
 const NK_LKIND={status:'🔁 Смена статуса',remark:'⚠ Замечание',change:'✎ Изменение',message:'✉ Сообщение',contact:'👤 Контакт'};
-let NK=null, NK_LOG=[];
+let NK=null, NK_LOG=[], NK_LOCAL=[];
 const _nkB64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _nkKMC(){ return crypto.subtle.importKey('raw',new TextEncoder().encode(sessionStorage.getItem('gtm_niokr')),'PBKDF2',false,['deriveKey']); }
 async function nkEncObj(obj){
@@ -4777,6 +4777,67 @@ async function nkDownloadDoc(btn, enc, orig){
   }catch(e){ alert('Не удалось расшифровать файл: '+e); }
   btn.disabled=false; btn.textContent=old;
 }
+/* ---------- загрузка документов НИОКР с автораскладкой (локальное шифрованное хранилище IndexedDB) ---------- */
+function nkIDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('gtm_niokr_upl',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('docs',{keyPath:'id'});
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function nkIDBput(rec){ const db=await nkIDB(); return new Promise((res,rej)=>{ const t=db.transaction('docs','readwrite'); t.objectStore('docs').put(rec); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
+async function nkIDBget(id){ const db=await nkIDB(); return new Promise((res,rej)=>{ const q=db.transaction('docs').objectStore('docs').get(id); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
+async function nkIDBdel(id){ const db=await nkIDB(); return new Promise((res,rej)=>{ const t=db.transaction('docs','readwrite'); t.objectStore('docs').delete(id); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
+async function nkIDBlist(){ const db=await nkIDB(); return new Promise((res,rej)=>{ const q=db.transaction('docs').objectStore('docs').getAll(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>rej(q.error); }); }
+/* Автораскладка: распознавание этапа и вида документа по имени файла */
+function nkClassify(fname){
+  const s=fname.toLowerCase();
+  if(/сопровод|сч[её]т|договор|^акт|_акт|акт_|счет-факт|упд|накладн/.test(s)) return {skip:'административно-финансовый документ — в разделе не размещается'};
+  let stage=null; const m=s.match(/этап[ _-]?(\d)/); if(m) stage=+m[1];
+  let kind='app';
+  if(/реестр_?замеч/.test(s)) kind='reestr';
+  else if(/отч[её]т|отчет/.test(s)) kind='report';
+  else if(/программа/.test(s)) kind='program';
+  else if(/план/.test(s)) kind='plan';
+  else if(/презентац/.test(s)) kind='app';
+  return {stage, kind};
+}
+async function nkUploadDoc(file, forcedStage){
+  const st=document.getElementById('nkUpStat');
+  const c=nkClassify(file.name);
+  if(c.skip){ if(st) st.textContent='✕ '+file.name+': '+c.skip; return; }
+  const stage=forcedStage||c.stage;
+  if(!stage){ if(st) st.textContent='✕ '+file.name+': этап по имени файла не распознан — загрузите кнопкой в карточке нужного этапа'; return; }
+  if(st) st.textContent='⏳ шифрование «'+file.name+'»…';
+  try{
+    const buf=await file.arrayBuffer();
+    const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+    const K=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},await _nkKMC(),{name:'AES-GCM',length:256},false,['encrypt']);
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},K,buf);
+    const pack=new Uint8Array(28+ct.byteLength); pack.set(salt); pack.set(iv,16); pack.set(new Uint8Array(ct),28);
+    const id='u'+Date.now().toString(36);
+    await nkIDBput({id, stage, kind:c.kind, title:file.name.replace(/\.[^.]+$/,''), orig:file.name, date:new Date().toISOString().slice(0,10), size:file.size, pack});
+    try{ await nkPost('change', stage, 'АНИИГБ', {by:'', text:'Загружен документ: '+file.name+' ('+nkMB(file.size)+'), вид: '+(NK_KIND[c.kind]||c.kind)+' — локальная копия до включения в пакет'}); }catch(e){}
+    renderNiokrBody(NK);
+    const st2=document.getElementById('nkUpStat'); if(st2) st2.textContent='✔ «'+file.name+'» → Этап '+stage+' · '+(NK_KIND[c.kind]||c.kind);
+  }catch(e){ if(st) st.textContent='✕ ошибка: '+e; }
+}
+async function nkDownloadLocal(btn, id, orig){
+  btn.disabled=true; const old=btn.textContent; btn.textContent='⏳ расшифровка…';
+  try{
+    const rec=await nkIDBget(id); if(!rec) throw 'запись не найдена';
+    const buf=new Uint8Array(rec.pack);
+    const K=await crypto.subtle.deriveKey({name:'PBKDF2',salt:buf.slice(0,16),iterations:150000,hash:'SHA-256'},await _nkKMC(),{name:'AES-GCM',length:256},false,['decrypt']);
+    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:buf.slice(16,28)},K,buf.slice(28));
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([plain])); a.download=orig; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+  }catch(e){ alert('Не удалось расшифровать файл: '+e); }
+  btn.disabled=false; btn.textContent=old;
+}
+async function nkLocalHtml(){
+  let rows=[]; try{ rows=await nkIDBlist(); }catch(e){ return ''; }
+  if(!rows.length) return '<div class="note">Локальных загрузок нет.</div>';
+  rows.sort((a,b)=>a.stage-b.stage||b.date.localeCompare(a.date));
+  return '<table class="rows static" style="font-size:11.8px"><thead><tr><th style="width:60px">Этап</th><th style="width:130px">Вид</th><th>Файл</th><th style="width:90px">Размер</th><th style="width:150px">Действия</th></tr></thead><tbody>'
+    +rows.map(r=>'<tr><td>Этап '+r.stage+'</td><td>'+(NK_KIND[r.kind]||'📎')+'</td><td><b>'+esc(r.title)+'</b><br><span class="note">'+esc(r.orig)+' · '+esc(r.date)+' · локальная копия</span></td><td>'+nkMB(r.size)+'</td><td><button class="nkDl" data-nkdlloc="'+r.id+'|'+esc(r.orig)+'">⬇</button> <button class="nkDl" data-nkdelloc="'+r.id+'" title="Удалить локальную копию">✕</button></td></tr>').join('')
+    +'</tbody></table>';
+}
 async function nkSetStatus(n, st){
   const note=prompt('Комментарий к смене статуса этапа '+n+' → «'+NK_ST[st].t+'» (необязательно):','')||'';
   const by=prompt('Ваши фамилия и инициалы (кто зафиксировал):','')||'';
@@ -4817,7 +4878,7 @@ function renderNiokrBody(N){
   N.stages.forEach(s=>counts[nkStageStatus(s).st]++);
   const docsOf=n=>N.docs.filter(d=>d.stage===n);
   document.getElementById('niokrBody').innerHTML=`
-    <div class="normref">${esc(N.topic)}<br>${esc(N.contract)} · Заказчик: ${esc(N.customer)} · Исполнитель: <b>${esc(N.executor)}</b> · ${esc(N.year)} г.</div>
+    <div class="normref">${esc(N.topic)}<br>${N.contract?esc(N.contract)+' · ':''}Заказчик: ${esc(N.customer)} · Исполнитель: <b>${esc(N.executor)}</b> · ${esc(N.year)} г.</div>
     <div class="note">${esc(N.planNote||'')}<br>🔄 Документы этапов сверяются с рабочими папками ежедневно и заменяются на актуальные версии. Последняя сверка: <b>${N.sync?esc(N.sync.ts.slice(0,10)):'—'}</b> (файлов: ${N.sync?N.sync.files:0}, ${N.sync?nkMB(N.sync.bytes):'—'}).</div>
     <div class="sect">Цель работ</div>
     <div style="font-size:12.8px">${esc(N.goal)}</div>
@@ -4837,7 +4898,17 @@ function renderNiokrBody(N){
       </div>
       ${docs.length?`<ul class="files">${docs.map(d=>`<li>${NK_KIND[d.kind]||'📄'} <b>${esc(d.title)}</b>: ${esc(d.orig)} <span class="note">(ред. ${esc(d.date)}, ${nkMB(d.size)})</span>
         <button class="nkDl" data-nkdl="${esc(d.enc)}|${esc(d.orig)}">⬇ скачать</button></li>`).join('')}</ul>`:'<div class="note">Документы по этапу пока не поступали — появятся при очередной ежедневной сверке.</div>'}
+      <div id="nkLocStage_${s.n}"></div>
+      <div style="margin-top:6px"><button class="nkDl" data-nkupl="${s.n}">📤 Загрузить документ на этап ${s.n} (автораскладка)</button></div>
     </div>`; }).join('')}
+    <div class="sect">Загрузка документов с автораскладкой</div>
+    <div class="note">Выберите файл — система автоматически распознает этап и вид документа по имени файла (отчёт / реестр замечаний / программа / план / приложение) и положит его в карточку соответствующего этапа. Документ шифруется паролем раздела и сохраняется локально до включения в общий пакет при очередной сверке. Административно-финансовые документы (договоры, акты, счета, сопроводительные письма) в разделе не размещаются — только техническая документация.</div>
+    <div class="nkForm">
+      <button id="nkUpBtn">📤 Выбрать файл документа…</button>
+      <input type="file" id="nkUpFile" accept=".pdf,.docx,.doc,.xlsx,.xls" style="display:none">
+      <span id="nkUpStat" class="note"></span>
+    </div>
+    <div id="nkLocalList"></div>
     <div class="sect">Реестр замечаний, изменений и сообщений — живой журнал (общий, Supabase · GTS_ZFNornik)</div>
     <div class="nkForm">
       <select id="nkKind"><option value="remark">⚠ Замечание</option><option value="change">✎ Изменение</option><option value="message">✉ Сообщение</option></select>
@@ -4869,6 +4940,24 @@ function renderNiokrBody(N){
   document.querySelectorAll('#niokrBody [data-nkst]').forEach(b=>b.onclick=()=>{ const [n,k]=b.dataset.nkst.split('|'); nkSetStatus(+n, k); });
   document.querySelectorAll('#niokrBody [data-nkdl]').forEach(b=>b.onclick=()=>{ const [enc,orig]=b.dataset.nkdl.split('|'); nkDownloadDoc(b, enc, orig); });
   document.querySelectorAll('#niokrBody [data-nkmsg]').forEach(b=>b.onclick=()=>nkMsgTo(b.dataset.nkmsg));
+  document.querySelectorAll('#niokrBody [data-nkupl]').forEach(b=>b.onclick=()=>{ const st=+b.dataset.nkupl; const fi=document.getElementById('nkUpFile'); fi.dataset.forced=st; fi.click(); });
+  document.querySelectorAll('#niokrBody [data-nkdlloc]').forEach(b=>b.onclick=()=>{ const [id,orig]=b.dataset.nkdlloc.split('|'); nkDownloadLocal(b, id, orig); });
+  document.querySelectorAll('#niokrBody [data-nkdelloc]').forEach(b=>b.onclick=async()=>{ if(!confirm('Удалить локальную копию документа?')) return; await nkIDBdel(b.dataset.nkdelloc); renderNiokrBody(NK); });
+  const upBtn=document.getElementById('nkUpBtn'), upFile=document.getElementById('nkUpFile');
+  if(upBtn&&upFile){ upBtn.onclick=()=>{ delete upFile.dataset.forced; upFile.click(); };
+    upFile.onchange=()=>{ if(upFile.files&&upFile.files[0]) nkUploadDoc(upFile.files[0], upFile.dataset.forced?+upFile.dataset.forced:null); upFile.value=''; }; }
+  nkLocalHtml().then(h=>{ const el=document.getElementById('nkLocalList'); if(el&&NK===N) el.innerHTML=h;
+    nkIDBlist().then(rows=>{ if(NK!==N) return;
+      rows.sort((a,b)=>a.stage-b.stage||b.date.localeCompare(a.date));
+      N.stages.forEach(s=>{ const box=document.getElementById('nkLocStage_'+s.n); if(!box) return;
+        const mine=rows.filter(r=>r.stage===s.n);
+        box.innerHTML=mine.length?`<ul class="files" style="border-top:1px dashed var(--line); padding-top:4px">${mine.map(r=>`<li>${NK_KIND[r.kind]||'📎'} <b>${esc(r.title)}</b> <span class="note">(загружено ${esc(r.date)}, ${nkMB(r.size)} · локальная копия)</span>
+          <button class="nkDl" data-nkdlloc="${r.id}|${esc(r.orig)}">⬇</button> <button class="nkDl" data-nkdelloc="${r.id}" title="Удалить локальную копию">✕</button></li>`).join('')}</ul>`:'';
+      });
+      document.querySelectorAll('#niokrBody [data-nkdlloc]').forEach(b=>b.onclick=()=>{ const [id,orig]=b.dataset.nkdlloc.split('|'); nkDownloadLocal(b, id, orig); });
+      document.querySelectorAll('#niokrBody [data-nkdelloc]').forEach(b=>b.onclick=async()=>{ if(!confirm('Удалить локальную копию документа?')) return; await nkIDBdel(b.dataset.nkdelloc); renderNiokrBody(NK); });
+    }).catch(()=>{});
+  });
   document.getElementById('nkAdd').onclick=nkAddLog;
   document.getElementById('nkCSave').onclick=nkSaveContact;
   document.getElementById('niokrLock').style.display='none';
