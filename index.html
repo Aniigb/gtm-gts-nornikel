@@ -4842,11 +4842,13 @@ function gsJournalSync(){
 }
 /* --- серверный журнал тревог (Supabase, таблица gs_journal): запись новых событий, чтение общей истории, офлайн-очередь --- */
 function gsSbPush(events){
-  if(!sbMode()||!events||!events.length) return;
-  const rows=events.map(e=>({ts:e.ts,obj:e.obj,name:e.name,ent:e.ent,from_status:e.from,to_status:e.to,reasons:e.reasons}));
-  sbFetch('/rest/v1/gs_journal',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(rows)})
-    .then(()=>{ const ob=gsLoad(GS_STORE.out,[]); if(ob.length){ gsSave(GS_STORE.out,[]); gsSbPush(ob); } }) // соединение есть — выгружаем офлайн-очередь
-    .catch(()=>{ const ob=gsLoad(GS_STORE.out,[]); ob.push(...events); gsSave(GS_STORE.out,ob.slice(-200)); });
+  try{
+    if(!sbMode()||!events||!events.length) return;
+    const rows=events.map(e=>({ts:e.ts,obj:e.obj,name:e.name,ent:e.ent,from_status:e.from,to_status:e.to,reasons:e.reasons}));
+    sbFetch('/rest/v1/gs_journal',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(rows)})
+      .then(()=>{ const ob=gsLoad(GS_STORE.out,[]); if(ob.length){ gsSave(GS_STORE.out,[]); gsSbPush(ob); } }) // соединение есть — выгружаем офлайн-очередь
+      .catch(()=>{ const ob=gsLoad(GS_STORE.out,[]); ob.push(...events); gsSave(GS_STORE.out,ob.slice(-200)); });
+  }catch(e){ const ob=gsLoad(GS_STORE.out,[]); ob.push(...events); gsSave(GS_STORE.out,ob.slice(-200)); }
 }
 async function gsJournalPull(){ // общая история из центральной БД + слияние с локальным кэшем (дедупликация по ts+obj)
   if(!sbMode()) return;
@@ -5132,7 +5134,7 @@ function gsOpen(key, silent){
 }
 document.querySelectorAll('#gsMenu button').forEach(b=>b.addEventListener('click',()=>gsOpen(b.dataset.gs)));
 gsJournalSync();
-gsJournalPull(); // общая история тревог из центральной БД
+setTimeout(gsJournalPull,0); // после полной инициализации скрипта (TG_SB/sbFetch объявлены ниже)
 setInterval(gsJournalSync,60000);
 setInterval(gsJournalPull,300000); // сверка серверного журнала каждые 5 минут
 
