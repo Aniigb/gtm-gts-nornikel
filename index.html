@@ -1264,7 +1264,7 @@ const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{max
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
 const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup},{position:'topright'}).addTo(map);
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup},{position:'topright'}).addTo(map);
 map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); });
 
@@ -1462,7 +1462,27 @@ function inDistricts(la, lo){
   return false;
 }
 const THERM_DEPTHS=[3,5,7,10,12,15];
-let thermDepth=10, thermCv=null, thermOn=false, thermCtl=null;
+let thermDepth='ngk', thermCv=null, thermOn=false, thermCtl=null;   // по умолчанию — температура на глубине НГК
+function thermPointsNgc(){
+  // t на глубине НГК (нулевых годовых колебаний) по каждой скважине (последний замер) → статистика объекта
+  const pts=[];
+  DB.objects.forEach(o=>{
+    if(!o.prof||o.lat==null) return;
+    const vs=[]; let hsum=0;
+    Object.values(o.prof).forEach(wd=>{
+      const h=(wd.ngcH!==undefined)?wd.ngcH:wellNgcH(wd);
+      if(h===null||h===undefined) return;
+      const pr=wd.s[wd.s.length-1][1];
+      if(h>pr[pr.length-1][0]) return;
+      const t=interp(pr,h); if(t===null) return;
+      vs.push(t); hsum+=h;
+    });
+    if(!vs.length) return;
+    pts.push([o.lat, o.lon, +(vs.reduce((a,b)=>a+b,0)/vs.length).toFixed(2), o.a,
+      {n:vs.length, min:+Math.min.apply(null,vs).toFixed(2), max:+Math.max.apply(null,vs).toFixed(2), h:+(hsum/vs.length).toFixed(1)}]);
+  });
+  return pts;
+}
 function thermPoints(dep){
   // по каждому объекту: средняя t на глубине dep за последние 3 года замеров
   const cut=new Date(); cut.setFullYear(cut.getFullYear()-3);
@@ -1495,8 +1515,9 @@ function thermDraw(){
   thermCv.width=r.width; thermCv.height=r.height;
   const ctx=thermCv.getContext('2d');
   ctx.clearRect(0,0,r.width,r.height);
-  const pts=thermPoints(thermDepth);
-  if(pts.length<4){ ctx.fillStyle='#666'; ctx.font='12px sans-serif'; ctx.fillText('мало данных на этой глубине',10,20); return; }
+  const isNgc=(thermDepth==='ngk');
+  const pts=isNgc?thermPointsNgc():thermPoints(thermDepth);
+  if(pts.length<4){ ctx.fillStyle='#666'; ctx.font='12px sans-serif'; ctx.fillText(isNgc?'мало скважин с определённой НГК':'мало данных на этой глубине',10,20); return; }
   const b=map.getBounds().pad(0.15);
   const GX=110, GY=Math.round(GX*r.height/r.width);
   const STEP=0.3;                     // шаг изолиний, °C
@@ -1563,17 +1584,28 @@ function thermDraw(){
       }
     }
   }
-  // 3) точки объектов (из скважин)
-  pts.forEach(([la,lo,t])=>{
+  // 3) точки объектов (из скважин); в режиме НГК — с подписями t(НГК)
+  pts.forEach(([la,lo,t,nm,st])=>{
     const p=map.latLngToContainerPoint([la,lo]);
     ctx.beginPath(); ctx.arc(p.x,p.y,2.6,0,7);
     ctx.fillStyle=isoColor(t,tmin,tmax); ctx.fill();
     ctx.strokeStyle='#333'; ctx.lineWidth=.6; ctx.stroke();
+    if(isNgc&&st){
+      const l1=t.toFixed(1).replace('.',',')+' °C', l2='НГК ≈ '+String(st.h).replace('.',',')+' м · '+st.n+' скв.';
+      ctx.font='600 11px sans-serif';
+      const w=Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width)+8;
+      ctx.fillStyle='rgba(255,255,255,.88)'; ctx.fillRect(p.x+6,p.y-20,w,26);
+      ctx.strokeStyle='rgba(60,60,60,.35)'; ctx.lineWidth=.6; ctx.strokeRect(p.x+6,p.y-20,w,26);
+      ctx.fillStyle=t>=0?'#b3202c':'#08306b'; ctx.fillText(l1,p.x+10,p.y-11);
+      ctx.fillStyle='#444'; ctx.font='10px sans-serif'; ctx.fillText(l2,p.x+10,p.y+1);
+    }
   });
   thermCtl.style.display='block';
-  thermCtl.innerHTML='🌡 Глубина: '+THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#0077c8;color:#fff':''}">${d} м</button>`).join(' ')+
-    ` · изолинии 0,3 °C · <span style="color:#08306b">━</span> 0 °C · <span style="color:#08306b">■</span><0°C <span style="color:#f50818">■</span>>0°C`;
-  thermCtl.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ thermDepth=+bt.dataset.td; thermDraw(); });
+  thermCtl.innerHTML='🌡 Глубина: <button class="wbtn" data-td="ngk" style="padding:1px 6px; '+(isNgc?'background:#0077c8;color:#fff':'')+'">НГК</button> '+
+    THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#0077c8;color:#fff':''}">${d} м</button>`).join(' ')+
+    ` · изолинии 0,3 °C · <span style="color:#08306b">━</span> 0 °C · <span style="color:#08306b">■</span><0°C <span style="color:#f50818">■</span>>0°C`+
+    (isNgc?'<br><span style="font-size:10.5px;color:#555">t на глубине НГК (нулевых годовых колебаний), среднее по скважинам объекта за последний замер; IDW-интерполяция — между объектами. Поточечная интерполяция по скважинам включается после геопривязки журнальных скважин (координаты в исходных журналах отсутствуют).</span>':'');
+  thermCtl.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ const v=bt.dataset.td; thermDepth=(v==='ngk')?'ngk':+v; thermDraw(); });
 }
 function thermToggle(on){
   thermOn=on;
