@@ -7416,6 +7416,23 @@ function enterApp(role){
   };
 })();
 
+/* ---------- шлюз прямого доступа к разделу НИОКР 2026 по секретной ссылке ----------
+   Формат: .../#nk=<base64url(пароль раздела)>. Открывает раздел сразу, минуя экран ролей
+   и ввод пароля НИОКР; ссылку хранить в тайне — обладатель получает полный доступ. */
+(function nkGateway(){
+  try{
+    const m=(location.hash||'').match(/nk=([A-Za-z0-9\-_]+)/);
+    if(!m) return;
+    const b64=m[1].replace(/-/g,'+').replace(/_/g,'/');
+    const pwd=new TextDecoder().decode(Uint8Array.from(atob(b64),c=>c.charCodeAt(0)));
+    if(!pwd) return;
+    sessionStorage.setItem('gtm_niokr', pwd);
+    if(!sessionStorage.getItem('gtm_role')) enterApp('edit');
+    try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+    setTimeout(()=>{ try{ openNiokr(); }catch(e){} }, 700);
+  }catch(e){}
+})();
+
 /* ---------- мобильная адаптация: обёртка прокрутки для широких таблиц карточки ----------
    Раньше на ≤900px table.rows становилась display:block, а thead/tbody — двумя независимыми
    таблицами: ширины столбцов считались раздельно и тело съезжало относительно шапки.
