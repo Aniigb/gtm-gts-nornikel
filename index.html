@@ -316,6 +316,17 @@
   #niokrModal .stage .files{font-size:12px; color:var(--mut); margin-top:6px}
   #niokrModal .stage .files li{margin:1px 0}
   .niokr-lock{max-width:420px; margin:8vh auto; text-align:center}
+  /* ---------- этап 4: аккордеон объектов + блок «Проект отчёта» ---------- */
+  #niokrModal details.nkObj{border:1px solid var(--line); border-radius:8px; margin:6px 0; background:#fbfcfe}
+  #niokrModal details.nkObj>summary{cursor:pointer; padding:8px 12px; font-weight:600; font-size:12.8px; list-style:none; user-select:text}
+  #niokrModal details.nkObj>summary::-webkit-details-marker{display:none}
+  #niokrModal details.nkObj>summary::before{content:'▸ '; color:#5a4a6c}
+  #niokrModal details.nkObj[open]>summary::before{content:'▾ '}
+  #niokrModal details.nkObj .nkObjBody{padding:4px 12px 10px; border-top:1px dashed var(--line)}
+  .nkExpert{background:#f3f1f8; border:1px solid #d9d2e8; border-radius:8px; padding:8px 12px; margin-top:8px; font-size:12.3px}
+  .nkExpert h4{margin:2px 0 6px; font-size:12.6px; color:#3d2f5a}
+  .nkExpert ul{margin:4px 0; padding-left:18px}
+  .nkExpert li{margin:2px 0}
   .niokr-lock input{width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; font-size:14px; margin:10px 0 6px; text-align:center}
   .nkBadge{color:#fff; border-radius:12px; padding:3px 12px; font-size:11.5px; font-weight:600; white-space:nowrap}
   .nkStBtn{border:1px solid var(--line); background:#fff; border-radius:5px; padding:2px 9px; font-size:11px; cursor:pointer; margin-left:4px}
@@ -758,7 +769,7 @@
 <script src="db_p7.js?v=e5af0c08"></script>
 <script src="db_p8.js?v=e5af0c08"></script>
 <script src="kadastr.js?v=20260911b"></script>
-<script src="niokr.js?v=2a2678272c"></script>
+<script src="niokr.js?v=99a7fb2711"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -5690,11 +5701,54 @@ async function nkMsgTo(name){
   else alert('Номер телефона контакта не задан — сообщение записано только в журнал.');
   renderNiokrBody(NK);
 }
+/* ---------- «Проект отчёта»: анонимная научно-техническая экспертиза по объекту (из данных базы ГТМ и НТД, без выдумывания) ---------- */
+function nkExpertHtml(objId){
+  const o=((window.DB&&DB.objects)||[]).find(x=>x.id===objId); if(!o) return '';
+  const P=o.points||{};
+  const nT=(P.thermal||[]).length, nP=(P.piezo||[]).length, nM=(P.marks||[]).length;
+  const nIgiRep=(o.igirep||[]).length, nIgiW=(o.igiWells||[]).length, nIge=(o.igeList||[]).length;
+  const kkRows=(o.kkd&&o.kkd.rows||[]).length;
+  const g=o.gts||{};
+  const checks=[
+    {ok:nIge>0||nIgiRep>0, t:'Модель грунтового основания (ИГЭ, материалы ИГИ)', v:'отчётов ИГИ: '+nIgiRep+(nIge?' · ИГЭ в сводном перечне: '+nIge:''),
+     rec:'Сформировать инженерно-геологическую модель основания по материалам ИГИ (разрез ИГЭ, физико-механические характеристики) — базис теплофизических и НДС-расчётов.'},
+    {ok:nIgiW>0, t:'Скважины ИГИ с координатами (привязка расчётных створов)', v:nIgiW? nIgiW+' выработок в базе':'нет',
+     rec:'Загрузить каталоги выработок ИГИ с координатами — без привязки расчётные створы к разрезу не обосновать.'},
+    {ok:nT>0, t:'Термометрия — калибровка теплофизической модели', v:nT? nT+' действующих термоскважин':'нет действующих',
+     rec:'Действующей термометрии нет: калибровку температурной модели выполнять по архивным завесным скважинам ИГИ; целесообразно восстановление/завеска термоскважин для прямого контроля по критериям декларации.'},
+    {ok:nP>0, t:'Пьезометрия — фильтрационный режим', v:nP? nP+' пьезометров':'нет',
+     rec:'Пьезометрический контроль отсутствует: фильтрационную составляющую устойчивости оценивать расчётным путём с консервативными параметрами.'},
+    {ok:nM>0, t:'Геодезические марки — НДС и деформации', v:nM? nM+' марок':'нет',
+     rec:'Геодезический контроль отсутствует: НДС оценивать по материалам обследований и расчётным путём.'},
+    {ok:kkRows>0, t:'Контрольные критерии из декларации безопасности', v:kkRows? kkRows+' критериев':'не загружены',
+     rec:'Загрузить контрольные критерии из декларации безопасности ГТС — они задают пороги оценки результатов моделирования.'}
+  ];
+  const ready=checks.filter(c=>c.ok).length;
+  const rc=ready>=5?'#2e7d32':ready>=3?'#e08a00':'#a52a22';
+  const gaps=checks.filter(c=>!c.ok);
+  return `<div class="nkExpert">
+    <h4>🧭 Проект отчёта — научно-техническая экспертиза объекта</h4>
+    <div class="note">Экспертная оценка формируется системой автоматически — строго из данных базы ГТМ, деклараций безопасности и требований НТД, без атрибуции и без домысливания; обновляется при каждом открытии раздела.</div>
+    <div style="margin:6px 0"><b>Объект:</b> ${esc(o.a)}${g.type?` · тип: ${esc(g.type)}`:''}${g.klass?` · класс: ${esc(g.klass)}`:''}</div>
+    <div style="margin:4px 0"><b>Готовность исходных данных к расчётам этапа 4: <span style="color:${rc}; font-weight:700">${ready} из ${checks.length}</span></b></div>
+    <ul>${checks.map(c=>`<li>${c.ok?'✅':'❌'} <b>${esc(c.t)}</b> — <span class="note">${esc(c.v)}</span></li>`).join('')}</ul>
+    ${gaps.length?`<div style="margin-top:4px"><b>Рекомендации по устранению пробелов:</b><ul>${gaps.map(c=>`<li>${esc(c.rec)}</li>`).join('')}</ul></div>`:'<div style="margin-top:4px; color:#2e7d32"><b>Пробелов в исходных данных не выявлено — объект готов к расчётному этапу.</b></div>'}
+    <div style="margin-top:6px"><b>Состав проекта отчёта по объекту (по ТЗ, этап 4):</b>
+      <ul><li>1. Общие сведения, исходные данные, контрольные критерии (декларация, паспорт ГТС)</li>
+      <li>2. Инженерно-геологическая и геокриологическая модель основания</li>
+      <li>3. Нестационарная теплофизическая модель с климатическими сценариями до 2050 г.</li>
+      <li>4. Расчёт мощности сезонно-талого слоя и температурного профиля</li>
+      <li>5. НДС и устойчивость ключевых створов (не менее двух на сооружение, створы — по согласованию с Заказчиком)</li>
+      <li>6. Калибровка моделей по натурным наблюдениям</li>
+      <li>7. Прогноз состояния и рекомендации по обеспечению эксплуатационной надёжности</li></ul></div>
+  </div>`;
+}
 function renderNiokrBody(N){
   NK=N;
   const counts={notstarted:0,started:0,control:0,accepted:0};
   N.stages.forEach(s=>counts[nkStageStatus(s).st]++);
-  const docsOf=n=>N.docs.filter(d=>d.stage===n);
+  const docsOf=n=>N.docs.filter(d=>d.stage===n&&!d.obj);
+  const objDocsOf=(n,ob)=>N.docs.filter(d=>d.stage===n&&d.obj===ob);
   document.getElementById('niokrBody').innerHTML=`
     <div class="normref">${esc(N.topic)}<br>${N.contract?esc(N.contract)+' · ':''}Заказчик: ${esc(N.customer)} · Исполнитель: <b>${esc(N.executor)}</b> · ${esc(N.year)} г.</div>
     <div class="note">${esc(N.planNote||'')}<br>🔄 Документы этапов сверяются с рабочими папками ежедневно и заменяются на актуальные версии. Последняя сверка: <b>${N.sync?esc(N.sync.ts.slice(0,10)):'—'}</b> (файлов: ${N.sync?N.sync.files:0}, ${N.sync?nkMB(N.sync.bytes):'—'}).</div>
@@ -5716,6 +5770,13 @@ function renderNiokrBody(N){
       </div>
       ${docs.length?`<ul class="files">${docs.map(d=>`<li>${NK_KIND[d.kind]||'📄'} <b>${esc(d.title)}</b>: ${esc(d.orig)} <span class="note">(ред. ${esc(d.date)}, ${nkMB(d.size)})</span>
         <button class="nkDl" data-nkdl="${esc(d.enc)}|${esc(d.orig)}">⬇ скачать</button></li>`).join('')}</ul>`:'<div class="note">Документы по этапу пока не поступали — появятся при очередной ежедневной сверке.</div>'}
+      ${(s.objects&&s.objects.length)?`<div class="sect" style="margin-top:10px">Отчётность по объектам этапа (${s.objects.length}) — раскрывающийся перечень</div>`+s.objects.map(ob=>{
+        const odocs=objDocsOf(s.n,ob.id);
+        return `<details class="nkObj"><summary>${esc(ob.name)} <span class="note" style="font-weight:400">· документов: ${odocs.length}</span></summary><div class="nkObjBody">
+          ${odocs.length?`<ul class="files">${odocs.map(d=>`<li>${NK_KIND[d.kind]||'📄'} <b>${esc(d.title)}</b>: ${esc(d.orig)} <span class="note">(ред. ${esc(d.date)}, ${nkMB(d.size)})</span>
+            <button class="nkDl" data-nkdl="${esc(d.enc)}|${esc(d.orig)}">⬇ скачать</button></li>`).join('')}</ul>`:'<div class="note">Отчётная документация по объекту пока не поступала — появится при очередной ежедневной сверке.</div>'}
+          ${nkExpertHtml(ob.id)}
+        </div></details>`; }).join(''):''}
       <div id="nkLocStage_${s.n}"></div>
       <div style="margin-top:6px"><button class="nkDl" data-nkupl="${s.n}">📤 Загрузить документ на этап ${s.n} (автораскладка)</button></div>
     </div>`; }).join('')}
