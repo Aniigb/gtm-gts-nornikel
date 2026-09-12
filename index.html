@@ -13,14 +13,20 @@
 <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
 <style>
   :root{
-    --bg:#0c1720; --panel:#eee9dc; --ink:#1a232e; --mut:#5f6b78;
-    --c-centr:#2f6fb2; --c-talnakh:#c05a2e; --c-kayerkan:#3d8a5a;
+    /* Фирменная палитра ПАО «ГМК «Норильский никель» — Стандарт фирменного стиля, стр. 35 (палитра) и стр. 40 (ЗФ) */
+    --nn-blue:#0077c8;   /* фирменный синий · Pantone 3005 · RGB 0/119/200 */
+    --nn-deep:#004c97;   /* тёмно-синий · Pantone 2945 · RGB 0/76/151 */
+    --zf:#654ea3;        /* фиолетовый Заполярного филиала · Pantone 2096 · RGB 101/78/163 */
+    --nn-gray:#63666a;   /* фирменный серый · Pantone Cool Gray 10 */
+    --bg:#0b1c2e; --panel:#eee9dc; --ink:#1a232e; --mut:#63666a;
+    --c-centr:#0077c8; --c-talnakh:#c05a2e; --c-kayerkan:#3d8a5a;
     --ok:#2e7d32; --risk:#e08a00; --crit:#c8372d; --line:#cdc6b4;
   }
   *{box-sizing:border-box; margin:0; padding:0}
   html,body{height:100%; font:14px/1.45 "Segoe UI","PT Sans",-apple-system,"Helvetica Neue",Arial,sans-serif; color:var(--ink)}
   #app{display:grid; grid-template-columns:330px 1fr 420px; grid-template-rows:56px auto 1fr auto; height:100vh}
-  header{grid-column:1/4; background:var(--bg); color:#eef2f6; display:flex; align-items:center; gap:18px; padding:0 18px}
+  header{grid-column:1/4; background:var(--bg); color:#eef2f6; display:flex; align-items:center; gap:18px; padding:0 18px; position:relative}
+  header::before{content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--nn-blue) 0%,var(--nn-deep) 45%,var(--zf) 100%)}
   header h1{font-size:16px; font-weight:600; letter-spacing:.3px; white-space:nowrap}
   header .sub{font-size:12px; color:#9fb0bf}
   header .stats{margin-left:auto; display:flex; gap:14px; font-size:12px; align-items:center}
@@ -46,14 +52,14 @@
   #list{overflow-y:auto; flex:1; border-top:1px solid var(--line)}
   .item{padding:8px 14px; border-bottom:1px solid #e7e1d6; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:baseline}
   .item:hover{background:#ece7dd}
-  .item.sel{background:#e2ecf6; border-left:3px solid var(--c-centr); padding-left:11px}
+  .item.sel{background:#e6f1fa; border-left:3px solid var(--c-centr); padding-left:11px}
   .item .a{font-size:13px}
   .item .a .sdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
   .item .t{font-size:11.5px; color:var(--mut); white-space:nowrap}
   .item .t.has{color:var(--crit); font-weight:600}
   .fitem{padding:5px 14px 5px 26px; border-bottom:1px solid #efe9df; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:baseline; background:#faf8f3}
   .fitem:hover{background:#ece7dd}
-  .fitem.sel{background:#e2ecf6; border-left:3px solid var(--c-centr); padding-left:23px}
+  .fitem.sel{background:#e6f1fa; border-left:3px solid var(--c-centr); padding-left:23px}
   .fitem .a{font-size:12px; color:#4a4438}
   .fitem .t{font-size:11px; color:var(--mut); white-space:nowrap}
   .fac-toggle{padding:3px 14px 3px 22px; font-size:11px; color:var(--mut); cursor:pointer; user-select:none; background:#f3efe7; border-bottom:1px solid #efe9df}
@@ -80,8 +86,8 @@
   .b-card{background:#e3e8ec; color:var(--mut)}
   .legend{position:absolute; right:14px; bottom:34px; z-index:600; background:rgba(255,255,255,.92); border:1px solid var(--line); border-radius:6px; padding:8px 12px; font-size:12px; user-select:none; height:160px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center}
   .legend div{margin:2px -6px; padding:1px 6px; cursor:pointer; border-radius:4px}
-  .legend div:hover{background:#e8eff4}
-  .legend div.sel{outline:2px solid var(--c-centr); background:#e8eff4; font-weight:700}
+  .legend div:hover{background:#eaf3fb}
+  .legend div.sel{outline:2px solid var(--c-centr); background:#eaf3fb; font-weight:700}
   .legend .cnt{margin-left:5px; font-weight:700; color:#1d2733}
   header .stats .stchip{cursor:pointer; padding:1px 5px; border-radius:4px}
   header .stats .stchip:hover{background:rgba(255,255,255,.16)}
@@ -135,8 +141,8 @@
   .normref{font-size:11px; color:#8a94a0; margin:0 0 10px; font-style:normal}
   .igiTxt{font-size:13px; line-height:1.55; color:var(--ink); white-space:pre-wrap}
   .igiSrcRow{margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); display:flex; flex-wrap:wrap; gap:6px; align-items:center}
-  .igiSrc{border:1px solid var(--line); background:var(--panel); color:var(--c-centr); font-size:11px; padding:3px 8px; border-radius:10px; cursor:pointer; font-family:inherit}
-  .igiSrc:hover{border-color:var(--c-centr); background:#fff}
+  .igiSrc{border:1px solid var(--line); background:var(--panel); color:var(--zf); font-size:11px; padding:3px 8px; border-radius:10px; cursor:pointer; font-family:inherit}
+  .igiSrc:hover{border-color:var(--zf); background:#f3eef8}
   .photos{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px}
   .photos figure{border:1px solid var(--line); border-radius:4px; overflow:hidden; background:#fff}
   .photos img{width:100%; height:90px; object-fit:cover; display:block; cursor:pointer}
@@ -238,7 +244,7 @@
   #warnStrip.crit{background:#fbeeea; color:#a33c2a; border-bottom-color:#d99a8d; font-weight:600}
   #warnStrip:hover{filter:brightness(.97)}
   /* ---------- футер: охрана авторских прав и интеллектуальной собственности (ст. 1259, 1261, 1271, 1333–1336 ГК РФ) ---------- */
-  #appFooter{grid-column:1/4; font-size:10.5px; color:#7e93a3; text-align:center; padding:5px 14px; border-top:1px solid #1b3040; background:#091119; line-height:1.45}
+  #appFooter{grid-column:1/4; font-size:10.5px; color:#7e93a3; text-align:center; padding:5px 14px; border-top:2px solid; border-image:linear-gradient(90deg,var(--zf) 0%,var(--nn-blue) 100%) 1; background:#091119; line-height:1.45}
   .crline{font-size:10.5px; color:var(--mut); text-align:center; margin-top:10px; border-top:1px solid var(--line); padding-top:7px; line-height:1.45}
   #repOut .cr{margin-top:16px; border-top:1px solid #999; padding-top:7px; font-size:10.5px; color:#555; text-align:center; line-height:1.45}
   /* ---------- термометрия: таблицы измерений и блок этапов изысканий ---------- */
@@ -350,21 +356,23 @@
   body.authed #app{visibility:visible}
   body.authed #loginModal{display:none !important}
   #loginModal{position:fixed; inset:0; z-index:2000; background:var(--bg); display:flex; align-items:center; justify-content:center}
-  #loginModal .lbox{background:var(--panel); border-radius:10px; padding:30px 34px; width:370px; max-width:92vw; box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  #loginModal .lbox{background:var(--panel); border-radius:10px; padding:30px 34px; width:370px; max-width:92vw; box-shadow:0 10px 40px rgba(0,0,0,.4); position:relative; overflow:hidden}
+  #loginModal .lbox::before{content:""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--nn-blue) 0%,var(--nn-deep) 45%,var(--zf) 100%)}
   #loginModal h2{font-size:15.5px; margin-bottom:2px}
   #loginModal .sub2{font-size:12px; color:var(--mut); margin-bottom:16px}
   #loginModal input{width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:6px; font-size:14px; margin-bottom:10px}
-  #loginModal button[type=submit]{width:100%; padding:9px; background:var(--bg); color:#fff; border:none; border-radius:6px; font-size:14px; cursor:pointer}
-  #loginModal button[type=submit]:hover{background:#1b2c3a}
+  #loginModal input:focus{border-color:var(--nn-blue); outline:none}
+  #loginModal button[type=submit]{width:100%; padding:9px; background:var(--nn-blue); color:#fff; border:none; border-radius:6px; font-size:14px; cursor:pointer}
+  #loginModal button[type=submit]:hover{background:var(--nn-deep)}
   #loginModal .lerr{color:var(--crit); font-size:12.5px; min-height:17px; margin-top:8px}
   #loginModal .lnote{font-size:11.3px; color:var(--mut); margin-top:10px; border-top:1px solid var(--line); padding-top:10px}
   #loginModal .rbtn{display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:8px; background:#f6f8f9; border:1px solid var(--line); border-radius:8px; cursor:pointer; font-size:13px; font-family:inherit}
   #loginModal .rbtn b{display:block; font-size:13.5px; margin-bottom:2px; color:var(--bg)}
   #loginModal .rbtn span{color:var(--mut); font-size:11.5px; line-height:1.35; display:block}
-  #loginModal .rbtn:hover{border-color:var(--bg); background:#eef2f4}
-  #loginModal .rbtn:focus-visible{outline:2px solid var(--bg); outline-offset:1px}
+  #loginModal .rbtn:hover{border-color:var(--nn-blue); background:#eaf3fb}
+  #loginModal .rbtn:focus-visible{outline:2px solid var(--nn-blue); outline-offset:1px}
   #loginModal .pwrole{font-size:12.5px; margin-bottom:10px; color:var(--mut)}
-  #loginModal .pwrole b{color:var(--bg)}
+  #loginModal .pwrole b{color:var(--nn-deep)}
   #loginModal .pwrole a{margin-left:8px; font-size:11.5px}
   #logoutBtn{background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px}
   #logoutBtn:hover{background:#1b2c3a}
@@ -400,7 +408,7 @@
   .mt-kpi .k span{font-size:11px; color:var(--mut)}
   .mt-tabs{display:flex; gap:6px; flex-wrap:wrap; margin:8px 0}
   .mt-tabs button{border:1px solid var(--line); background:#fff; border-radius:6px; padding:4px 12px; font-size:12.5px; cursor:pointer}
-  .mt-tabs button.on{background:#2f6fb2; color:#fff; border-color:#2f6fb2}
+  .mt-tabs button.on{background:#0077c8; color:#fff; border-color:#0077c8}
   .mt-tbl{border-collapse:collapse; font-size:11.5px; width:100%; margin-top:6px}
   .mt-tbl td,.mt-tbl th{border:1px solid var(--line); padding:2px 5px; text-align:right}
   .mt-tbl th{background:#eef3f7; text-align:center; position:sticky; top:0}
@@ -754,7 +762,7 @@
 })();
 </script>
 <script>window.__initApp=function(){
-const DCOL = {"ТОФ":"#c05a2e","НМЗ":"#2f6fb2","НОФ":"#3d8a5a","Дудинка":"#8a5aa8"};
+const DCOL = {"ТОФ":"#c05a2e","НМЗ":"#0077c8","НОФ":"#3d8a5a","Дудинка":"#8a5aa8"};
 const SCOL = {"НОРМА":"#2e7d32","РИСК":"#e08a00","КРИТИЧНО":"#c8372d"};
 const DB = window.DB;
 
@@ -1516,7 +1524,7 @@ function thermDraw(){
     ctx.strokeStyle='#333'; ctx.lineWidth=.6; ctx.stroke();
   });
   thermCtl.style.display='block';
-  thermCtl.innerHTML='🌡 Глубина: '+THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#2f6fb2;color:#fff':''}">${d} м</button>`).join(' ')+
+  thermCtl.innerHTML='🌡 Глубина: '+THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#0077c8;color:#fff':''}">${d} м</button>`).join(' ')+
     ` · изолинии 0,3 °C · <span style="color:#08306b">━</span> 0 °C · <span style="color:#08306b">■</span><0°C <span style="color:#f50818">■</span>>0°C`;
   thermCtl.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ thermDepth=+bt.dataset.td; thermDraw(); });
 }
@@ -1661,7 +1669,7 @@ function gtmCovDraw(){
     if(t)tw++; if(p)pz++; if(g)gd++; if(m)os++; if(t&&p&&g&&m)full++;
   });
   const n=objs.length||1;
-  const rows=[['tw','Термоскважины',tw,'#2f6fb2'],['pz','Пьезометры',pz,'#7a3fc9'],['gd','Геодезические марки',gd,'#2e7d32'],['os','Осмотры (12 мес.)',os,'#e08a00'],['full','Полный ГТМ',full,'#7b5ea7']];
+  const rows=[['tw','Термоскважины',tw,'#0077c8'],['pz','Пьезометры',pz,'#7a3fc9'],['gd','Геодезические марки',gd,'#2e7d32'],['os','Осмотры (12 мес.)',os,'#e08a00'],['full','Полный ГТМ',full,'#7b5ea7']];
   const ctx=cv.getContext('2d'); const W=cv.width, H=cv.height;
   ctx.clearRect(0,0,W,H);
   ctx.font='bold 10.5px Segoe UI, sans-serif'; ctx.fillStyle='#33404d';
@@ -1827,7 +1835,7 @@ function facOf(pid){ return (DB.facilities||[]).filter(f=>f.parent===pid); }
 renderList();
 
 /* ---------- ГОСТ-график (ГОСТ 25358-2020, прил. Д, рис. Д.1) ---------- */
-const DATE_COLORS=['#c8372d','#2f6fb2','#3d8a5a','#8a5aa8','#c8871a','#555'];
+const DATE_COLORS=['#c8372d','#0077c8','#3d8a5a','#8a5aa8','#c8871a','#555'];
 function drawGostProfile(cv, o, wliter){
   const ctx=cv.getContext('2d');
   const W=cv.clientWidth, H=Math.max(430, cv.clientHeight||430);
@@ -5140,7 +5148,7 @@ document.getElementById('wxDutyModal').addEventListener('click',e=>{ if(e.target
 /* ---------- скрытый раздел «НИОКР 2026 НПО Фундамент» (отдельный пароль) ---------- */
 const niokrModal=document.getElementById('niokrModal');
 /* ===== НИОКР 2026: трекер этапов · документы · живой журнал · связь с исполнителями ===== */
-const NK_ST={notstarted:{t:'не начато',c:'#8a93a3'},started:{t:'начато',c:'#2f6fb2'},control:{t:'сдан на входной контроль',c:'#e08a00'},accepted:{t:'принято Заказчиком',c:'#2e7d32'}};
+const NK_ST={notstarted:{t:'не начато',c:'#8a93a3'},started:{t:'начато',c:'#0077c8'},control:{t:'сдан на входной контроль',c:'#e08a00'},accepted:{t:'принято Заказчиком',c:'#2e7d32'}};
 const NK_KIND={report:'📕 Отчёт',reestr:'📋 Реестр замечаний',letter:'✉ Письмо',act:'📑 Акт',program:'🗺 Программа',plan:'📅 План',app:'📎 Приложение'};
 const NK_LKIND={status:'🔁 Смена статуса',remark:'⚠ Замечание',change:'✎ Изменение',message:'✉ Сообщение',contact:'👤 Контакт'};
 let NK=null, NK_LOG=[], NK_LOCAL=[];
@@ -7289,7 +7297,7 @@ function mtRenderView(d){
       .map(r=>'<tr><td style="text-align:left">'+r[0]+'</td><td>'+r[1]+'</td><td><b>'+r[2]+'</b></td></tr>').join('')}
     </table>
     <div style="font-size:11.5px; color:var(--mut); margin-top:4px">* для формул прил. Г требуется температура поверхности грунта; в инженерной методике допускается принимать по температуре воздуха с поправками на покров — уточняется при расчёте в карточке объекта.</div>
-    <button id="mtToCalc" style="margin-top:8px; border:1px solid #2f6fb2; color:#fff; background:#2f6fb2; border-radius:6px; padding:6px 14px; font-size:12.5px; cursor:pointer">Передать в раздел «РАСЧЕТЫ» карточки объекта</button>
+    <button id="mtToCalc" style="margin-top:8px; border:1px solid #0077c8; color:#fff; background:#0077c8; border-radius:6px; padding:6px 14px; font-size:12.5px; cursor:pointer">Передать в раздел «РАСЧЕТЫ» карточки объекта</button>
     <span id="mtToCalcSt" style="font-size:12px; color:#2e7d32; margin-left:8px"></span>`;
     document.getElementById('mtToCalc').onclick=()=>{
       try{ sessionStorage.setItem('gtm_meteo_sp', JSON.stringify(sp)); }catch(e){}
@@ -7328,7 +7336,7 @@ function mtChart(cv,d,k){
   ctx.stroke();
   const ma=[];
   for(let i=0;i<pts.length;i++){ let s=0,n=0; for(let j=Math.max(0,i-11);j<=i;j++){ s+=pts[j].v; n++; } ma.push({x:pts[i].x, v:s/n}); }
-  ctx.strokeStyle='#2f6fb2'; ctx.lineWidth=2; ctx.beginPath();
+  ctx.strokeStyle='#0077c8'; ctx.lineWidth=2; ctx.beginPath();
   ma.forEach((p,i)=>{ const X=px(p.x), Y=py(p.v); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
   ctx.stroke();
   const ag=mtYearAgg(d,k).filter(a=>a.y>=mtY0&&a.y<=mtY1);
@@ -7374,7 +7382,7 @@ function mtChartFc(cv,ag,lin,sigma,k){
   ys.forEach((p,i)=>{ const X=px(p.y), Y=py(p.v-1.96*sigma); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
   for(let i=ys.length-1;i>=0;i--) ctx.lineTo(px(ys[i].y),py(ys[i].v+1.96*sigma));
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle='#2f6fb2'; ctx.lineWidth=2; ctx.beginPath();
+  ctx.strokeStyle='#0077c8'; ctx.lineWidth=2; ctx.beginPath();
   tail.forEach((p,i)=>{ const X=px(p.y), Y=py(p.v); if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
   ctx.stroke();
   ctx.strokeStyle='#c8372d'; ctx.setLineDash([5,4]); ctx.beginPath();
