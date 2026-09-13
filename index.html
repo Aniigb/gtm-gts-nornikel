@@ -277,6 +277,29 @@
   details.wt>summary, details.igt>summary{cursor:pointer; padding:6px 10px; font-size:12.5px; user-select:none}
   details.wt>summary:hover, details.igt>summary:hover{background:#f3eee2}
   details.wt[open]>summary, details.igt[open]>summary{border-bottom:1px solid #e2dccc}
+  /* Реестр документов архива исходных данных (вкладка «Документация») */
+  .dreg-stats{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 8px}
+  .dreg-stat{border:1px solid var(--line); background:#fffdf8; border-radius:14px; padding:3px 11px; font-size:12px; color:var(--mut)}
+  .dreg-stat b{color:var(--ink)}
+  .dreg-qrow{display:flex; align-items:center; gap:10px; margin:0 0 8px}
+  .dreg-q{flex:1; max-width:460px; padding:6px 10px; border:1px solid var(--line); border-radius:6px; font-size:12.5px; background:#fff}
+  .dreg-q:focus{outline:none; border-color:var(--nn-blue); box-shadow:0 0 0 2px rgba(0,119,200,.15)}
+  .dreg-found{font-size:11.5px; color:var(--nn-deep); font-weight:600; white-space:nowrap}
+  details.dreg-cat{border:1px solid #cfc9bb; border-radius:8px; margin:0 0 6px; background:#fffdf8}
+  details.dreg-cat>summary{cursor:pointer; padding:7px 10px; font-size:12.5px; user-select:none; display:flex; align-items:baseline; gap:8px; list-style:none}
+  details.dreg-cat>summary::-webkit-details-marker{display:none}
+  details.dreg-cat>summary::before{content:"▸"; color:var(--nn-deep); font-size:11px; transition:transform .15s}
+  details.dreg-cat[open]>summary::before{transform:rotate(90deg)}
+  details.dreg-cat>summary:hover{background:#f3eee2}
+  details.dreg-cat[open]>summary{border-bottom:1px solid #e2dccc; background:linear-gradient(90deg,rgba(0,119,200,.06),transparent 60%)}
+  .dreg-name{font-weight:600; color:#2a3240; flex:0 1 auto}
+  .dreg-meta{margin-left:auto; font-size:11.5px; color:var(--mut); white-space:nowrap}
+  .dreg-meta b{color:var(--nn-deep)}
+  .dreg-vis{color:var(--nn-blue); font-weight:600}
+  .dreg-wrap{max-height:420px; overflow:auto}
+  table.dreg td{vertical-align:top}
+  table.dreg td:first-child{text-align:right; color:var(--mut)}
+  .dreg-fmt{font-size:10.5px; font-weight:700; letter-spacing:.4px; color:var(--nn-deep); border:1px solid #c9dcec; background:#eef5fb; border-radius:4px; padding:1px 5px; white-space:nowrap}
   /* ---------- термометрия: сводка + выпадающие подразделы ---------- */
   .twsum{border:1px solid var(--line); border-left:4px solid #8a97a3; border-radius:8px; background:#fff; padding:8px 12px 2px; margin:0 0 10px}
   .twnav{display:flex; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin; gap:6px; margin:0 0 8px; position:-webkit-sticky; position:sticky; top:var(--tabsh,0px); z-index:16; background:var(--panel); padding:6px 2px 8px; border-radius:0 0 8px 8px; box-shadow:0 3px 8px rgba(15,28,38,.10)}
@@ -790,14 +813,14 @@
   </div>
 </div>
 
-<script src="db_p1.js?v=4a968702"></script>
-<script src="db_p2.js?v=4a968702"></script>
-<script src="db_p3.js?v=4a968702"></script>
-<script src="db_p4.js?v=4a968702"></script>
-<script src="db_p5.js?v=4a968702"></script>
-<script src="db_p6.js?v=4a968702"></script>
-<script src="db_p7.js?v=4a968702"></script>
-<script src="db_p8.js?v=4a968702"></script>
+<script src="db_p1.js?v=53c76287"></script>
+<script src="db_p2.js?v=53c76287"></script>
+<script src="db_p3.js?v=53c76287"></script>
+<script src="db_p4.js?v=53c76287"></script>
+<script src="db_p5.js?v=53c76287"></script>
+<script src="db_p6.js?v=53c76287"></script>
+<script src="db_p7.js?v=53c76287"></script>
+<script src="db_p8.js?v=53c76287"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=99a7fb2711"></script>
 
@@ -3347,14 +3370,35 @@ function tabClimate(o, el){
 
 function tabGtsDocs(o, el){
   const isx=o.isx;
-  const isxHtml=isx?`
-  <div class="sect">Материалы архива исходных данных НИР по объекту · всего файлов: ${isx.total}</div>
-  <table class="rows static isx-cats"><thead><tr>
-    <th style="width:38%">Категория материалов</th><th style="width:12%">Файлов</th><th style="width:20%">Годы</th><th>Примечание</th>
-  </tr></thead><tbody>
-  ${isx.cats.map(c=>`<tr><td>${esc(c.cat)}</td><td><b>${c.n}</b></td><td>${c.yrs&&c.yrs.length?esc(c.yrs[0]+(c.yrs.length>1?' – '+c.yrs[c.yrs.length-1]:'')):'—'}</td><td class="note">архив «Исходники», папка объекта</td></tr>`).join('')}
-  </tbody></table>
-  <div class="note" style="margin:-4px 0 10px">Папка объекта: «${esc(isx.folder)}». Файлы хранятся в архиве исходных данных НИР; числовые ряды (термометрия, пьезометрия, геодезия) извлекаются во вкладки мониторинга на этапе загрузки данных.</div>`:'';
+  const DREG_ORDER=['Проектная и рабочая документация','Декларации, паспорта, критерии','Эксплуатационная документация','Инженерные изыскания','Отчёты НИР и аналитика','Акты обследований технического состояния','Журналы и ведомости мониторинга','Геодезический мониторинг (марки)','Прочие материалы'];
+  const dregExt=n=>{ const m=/\.([a-z0-9]+)$/i.exec(n||''); return m?m[1].toUpperCase():'—'; };
+  const dregSz=kb=>{ kb=+kb||0; return kb>=1024?(kb/1024).toFixed(1).replace('.',',')+' МБ':Math.max(1,kb)+' КБ'; };
+  let isxHtml='';
+  if(isx){
+    const cats=(isx.cats||[]).slice().sort((a,b)=>{ const ia=DREG_ORDER.indexOf(a.cat), ib=DREG_ORDER.indexOf(b.cat); return (ia<0?99:ia)-(ib<0?99:ib)||b.n-a.n; });
+    const allY=[]; cats.forEach(c=>(c.yrs||[]).forEach(y=>allY.push(y)));
+    allY.sort();
+    const ySpan=allY.length?allY[0]+' – '+allY[allY.length-1]:'—';
+    isxHtml=`
+  <div class="sect">Материалы архива исходных данных НИР — реестр документов по категориям</div>
+  <div class="dreg-stats">
+    <span class="dreg-stat">Файлов: <b>${isx.total}</b></span>
+    <span class="dreg-stat">Категорий: <b>${cats.length}</b></span>
+    <span class="dreg-stat">Период материалов: <b>${esc(ySpan)}</b></span>
+    <span class="dreg-stat">Папка архива: «${esc(isx.folder)}»</span>
+  </div>
+  <div class="dreg-qrow"><input id="dregQ" class="dreg-q" type="text" placeholder="Поиск по реестру: название, шифр комплекта, раздел архива…" autocomplete="off"><span id="dregFound" class="dreg-found"></span></div>
+  ${cats.map(c=>{
+    const yrs=(c.yrs&&c.yrs.length)?c.yrs[0]+(c.yrs.length>1?' – '+c.yrs[c.yrs.length-1]:''):'';
+    return `<details class="dreg-cat"><summary><span class="dreg-name">${esc(c.cat)}</span><span class="dreg-meta"><b>${c.n}</b> файлов${yrs?' · '+esc(yrs):''}<span class="dreg-vis"></span></span></summary>
+    <div class="twrap dreg-wrap"><table class="rows static dreg"><thead><tr>
+      <th style="width:4%">№</th><th style="width:42%">Наименование документа (файла)</th><th style="width:30%">Раздел архива</th><th style="width:7%">Год</th><th style="width:8%">Формат</th><th>Размер</th>
+    </tr></thead><tbody>
+    ${(c.files||[]).map((f,i)=>`<tr data-q="${esc((f[0]+' '+f[1]).toLowerCase())}"><td>${i+1}</td><td>${esc(f[0])}</td><td class="mut">${esc(f[1]||'—')}</td><td>${esc(f[2]||'—')}</td><td><span class="dreg-fmt">${dregExt(f[0])}</span></td><td class="mut">${dregSz(f[3])}</td></tr>`).join('')}
+    </tbody></table></div></details>`;
+  }).join('')}
+  <div class="note" style="margin:2px 0 10px">Реестр сформирован автоматически по фактическому листингу архива исходных данных НИР (папка объекта): наименования, разделы, годы и размеры файлов приведены как в архиве. Сами файлы хранятся в архиве; числовые ряды (термометрия, пьезометрия, геодезия) извлекаются во вкладки мониторинга на этапе загрузки данных.</div>`;
+  }
   /* --- статичные реестры из базы (db.js): документация ГТС (по видам) и отчёты ИГИ --- */
   const GTS_V_ORDER=['Декларация безопасности ГТС','Проект эксплуатации (ПЭ)','Правила эксплуатации','Инструкция по эксплуатации','Проект/программа мониторинга','Проектная документация (ПД)','Рабочая документация (РД)','Проектная и рабочая документация (прочие комплекты)','Журналы контроля (формы)','Прочее'];
   const txtBtn=(store,r)=>{
@@ -3398,6 +3442,27 @@ function tabGtsDocs(o, el){
   <button class="addrow" id="igiAdd">+ добавить отчёт ИГИ</button>`;
   renderRows2(o, el.querySelector('#docsTbl'), 'docs', ['name','shifr','org','year','stage','note'], {stage:['','П','Р','РД','ИД','ЭД']}, el.querySelector('#docsAdd'));
   renderRows2(o, el.querySelector('#igiTbl'), 'igi', ['report','year','org','wells','grunt','ugv','note'], null, el.querySelector('#igiAdd'));
+  const dregQ=el.querySelector('#dregQ');
+  if(dregQ){
+    dregQ.oninput=()=>{
+      const q=dregQ.value.trim().toLowerCase();
+      let found=0, total=0;
+      el.querySelectorAll('details.dreg-cat').forEach(d=>{
+        let vis=0;
+        d.querySelectorAll('tbody tr').forEach(tr=>{
+          const hit=!q||tr.dataset.q.indexOf(q)>=0;
+          tr.style.display=hit?'':'none';
+          total++; if(hit) vis++;
+        });
+        d.open=!!q&&vis>0;
+        d.style.display=(!q||vis>0)?'':'none';
+        const b=d.querySelector('.dreg-vis'); if(b) b.textContent=q&&vis?(' · показано '+vis):'';
+        found+=vis;
+      });
+      const fe=el.querySelector('#dregFound');
+      if(fe) fe.textContent=q?('Найдено: '+found+' из '+total):'';
+    };
+  }
   el.querySelectorAll('.vbtn').forEach(b=>b.onclick=()=>txtOpen(b.dataset.store,b.dataset.id));
 }
 function igiThermHtml(o){ // блок «Термометрия этапов изысканий» — дословные сведения из отчётов ИГИ (IGI_THERM)
@@ -8584,8 +8649,8 @@ setTimeout(()=>{ try{
 })();
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"HGz/c6zJ/UcZwXck"};
-const BUILD="4a968702";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"UumEkck7kXL1DUcE"};
+const BUILD="53c76287";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
