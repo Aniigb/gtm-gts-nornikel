@@ -3103,7 +3103,7 @@ function tabCalcGts(o, el){ // вкладка «Расчёты» карточк�
     <tr><td>Период моделирования</td><td>${esc(cl.modeling_period||'—')}</td></tr>
     <tr><td>Статус работ</td><td>${esc(cl.status||'в разработке')}</td></tr>
   </table>
-  <div class="note">Численное теплотехническое моделирование оснований (ТЗ НИР, этап 3) — после комплектации исходных данных; тренд потепления грунтов по фактическим рядам уже оценивается во вкладке «Термометрия».</div>
+  <div class="note">Численная теплотехническая модель t(z,t) основания реализована во вкладке «Климат до 2050» (этап C1): неустановившаяся 1D-задача с фазовым переходом (эффективная теплоёмкость), неявная схема, верхнее ГУ — климатология метеоряда + тренд потепления, начальное условие — фактический профиль скважины; контроль стационарности и сверка с линейным прогнозом (A2). Ставки сценариев МГИК (SSP2-4.5/SSP5-8.5) подставляются в поле тренда после этапа 3 НИР.</div>
   <div class="noprint" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
     <button class="wbtn" id="calcGoClim">→ Климат до ${esc(String(cl.horizon||2050))}</button>
     <button class="wbtn" id="calcGoTherm">→ Термометрия</button>
@@ -3132,23 +3132,217 @@ function tabCalcGts(o, el){ // вкладка «Расчёты» карточк�
   if(host&&typeof tabCalc==='function'){ try{ tabCalc(o, host); }catch(e){ host.innerHTML='<div class="note">Калькуляторы недоступны: '+esc(e&&e.message||e)+'</div>'; } }
 }
 
+/* --- C1. Теплотехническая модель t(z,t) основания: неустановившаяся 1D-задача, фазовый переход методом
+   эффективной теплоёмкости, неявная схема (алгоритм прогонки), месячный шаг, горизонт 2050 (DB.climate).
+   Верхнее ГУ — месячная климатология метеоряда + линейный тренд потепления; начальное условие — последний
+   фактический профиль термоскважины; нижнее ГУ — геотермический поток. Режимная оценка (не проектный расчёт). --- */
+function c1InterpSafe(pts, z){ // линейная интерполяция профиля [[d,t]...] с постоянным продлением за края
+  if(!pts||!pts.length) return null;
+  const p=[...pts].sort((a,b)=>a[0]-b[0]);
+  if(z<=p[0][0]) return p[0][1];
+  if(z>=p[p.length-1][0]) return p[p.length-1][1];
+  for(let i=1;i<p.length;i++){ if(z<=p[i][0]){ const dz=p[i][0]-p[i-1][0]; return dz>0? p[i-1][1]+(p[i][1]-p[i-1][1])*(z-p[i-1][0])/dz : p[i][1]; } }
+  return p[p.length-1][1];
+}
+function c1Thomas(a,b,c,d){ // прогонка: a — поддиагональ, b — диагональ, c — наддиагональ, d — правая часть
+  const n=b.length, cp=new Array(n), dp=new Array(n), x=new Array(n);
+  cp[0]=c[0]/b[0]; dp[0]=d[0]/b[0];
+  for(let i=1;i<n;i++){ const m=b[i]-a[i]*cp[i-1]; cp[i]=c[i]/m; dp[i]=(d[i]-a[i]*dp[i-1])/m; }
+  x[n-1]=dp[n-1];
+  for(let i=n-2;i>=0;i--) x[i]=dp[i]-cp[i]*x[i+1];
+  return x;
+}
+function c1Run(P){ // P: {zmax,dz,y0,y1,clim[12],r,dtp,lam,cv,w,rho,q,init[[z,t]..],ngcH,snapStep}
+  const nz=Math.round(P.zmax/P.dz)+1, zs=[]; for(let i=0;i<nz;i++) zs.push(i*P.dz);
+  let T=zs.map(z=>c1InterpSafe(P.init,z));
+  const dtSec=30.4375*86400, dz2=P.dz*P.dz;
+  const Lvol=334e3*(P.w||0)*(P.rho||0); // скрытая теплота льдотаяния на 1 м³ грунта, Дж/м³
+  const cEff=t=>(t>-1&&t<0&&Lvol>0)? P.cv+Lvol/1e6 : P.cv; // полоса фазовых переходов (−1;0) °C, δ=1 °C; C в МДж/(м³·°C)
+  const lamW=P.lam; // Вт/(м·°C); cv хранится в МДж/(м³·°C) → перевод в Дж внутри коэффициента
+  const steps=Math.round((P.y1-P.y0)*12);
+  const snaps={}; const tNgcYr={};
+  const snapY=[]; for(let y=P.y0;y<=P.y1;y+=(P.snapStep||5)) snapY.push(y); if(snapY[snapY.length-1]!==P.y1) snapY.push(P.y1);
+  snaps[P.y0]=T.slice(); if(P.ngcH!=null) tNgcYr[P.y0]=c1InterpSafe(zs.map((z,i)=>[z,T[i]]), P.ngcH);
+  for(let s=1;s<=steps;s++){
+    const y=P.y0+Math.floor((s-1)/12), mo=(s-1)%12;
+    const ts=(P.clim[mo]!==null&&P.clim[mo]!==undefined?P.clim[mo]:0)+P.r*(y-P.y0)+(P.dtp||0);
+    const a=new Array(nz).fill(0), b=new Array(nz), c=new Array(nz).fill(0), d=new Array(nz);
+    for(let i=1;i<nz-1;i++){
+      const al=lamW*dtSec/(cEff(T[i])*1e6*dz2);
+      a[i]=al; c[i]=al; b[i]=1+2*al; d[i]=T[i];
+    }
+    a[0]=0; b[0]=1; c[0]=0; d[0]=ts; // верхнее ГУ (Дирихле): t поверхности по месячной климатологии + тренд
+    const iN=nz-1, alN=lamW*dtSec/(cEff(T[iN])*1e6*dz2);
+    a[iN]=alN; b[iN]=1+alN; c[iN]=0; d[iN]=T[iN]+alN*(P.q||0)*P.dz/lamW; // нижнее ГУ (Нейман): геотермический поток q
+    T=c1Thomas(a,b,c,d);
+    if(s%12===0){
+      const yr=P.y0+s/12;
+      if(snapY.indexOf(yr)>=0) snaps[yr]=T.slice();
+      if(P.ngcH!=null) tNgcYr[yr]=c1InterpSafe(zs.map((z,i)=>[z,T[i]]), P.ngcH);
+    }
+  }
+  return {zs, snaps, snapY, tNgcYr};
+}
+function c1ChartDraw(cv, zs, snaps, snapY, meas, ngcH, k1, k2){
+  const ctx=cv.getContext('2d');
+  const W=Math.max(cv.clientWidth||760,320), H=400;
+  cv.width=W; cv.height=H; cv.style.width='100%';
+  const padL=44, padR=14, padT=12, padB=30;
+  let tMin=1e9, tMax=-1e9;
+  const all=[]; snapY.forEach(y=>{ if(snaps[y]) all.push(...snaps[y]); }); if(meas) meas.forEach(p=>all.push(p[1]));
+  [k1,k2].forEach(k=>{ if(k!==null&&k!==undefined){ all.push(k); } });
+  all.forEach(t=>{ if(t<tMin)tMin=t; if(t>tMax)tMax=t; });
+  if(tMin>0) tMin=0; if(tMax<0) tMax=0;
+  tMin=Math.floor(tMin-0.4); tMax=Math.ceil(tMax+0.4);
+  const zMax=zs[zs.length-1];
+  const X=t=>padL+(t-tMin)/(tMax-tMin)*(W-padL-padR);
+  const Y=z=>padT+z/zMax*(H-padT-padB);
+  ctx.clearRect(0,0,W,H);
+  ctx.font='10px sans-serif'; ctx.fillStyle='#666'; ctx.strokeStyle='#e3e0d8'; ctx.lineWidth=1;
+  for(let t=tMin;t<=tMax;t++){ ctx.beginPath(); ctx.moveTo(X(t),padT); ctx.lineTo(X(t),H-padB); ctx.stroke(); ctx.fillText((t>0?'+':'')+t, X(t)-8, H-padB+12); }
+  for(let z=0;z<=zMax;z+=5){ ctx.beginPath(); ctx.moveTo(padL,Y(z)); ctx.lineTo(W-padR,Y(z)); ctx.stroke(); ctx.fillText(z+' м', 12, Y(z)+3); }
+  ctx.fillText('t, °C', W-padR-30, H-padB+12);
+  const vLine=(k,txt,col)=>{ if(k===null||k===undefined) return; ctx.save(); ctx.strokeStyle=col; ctx.setLineDash([5,4]); ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(X(k),padT); ctx.lineTo(X(k),H-padB); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle=col; ctx.fillText(txt, X(k)+3, padT+10); ctx.restore(); };
+  vLine(k1,'К1','#e08a00'); vLine(k2,'К2','#c8372d');
+  if(ngcH!=null){ ctx.save(); ctx.strokeStyle='#8a6d3b'; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(padL,Y(ngcH)); ctx.lineTo(W-padR,Y(ngcH)); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle='#8a6d3b'; ctx.fillText('НГК '+String(ngcH).replace('.',',')+' м', padL+4, Y(ngcH)-4); ctx.restore(); }
+  const cols=['#2e7d32','#3366cc','#7e57c2','#e08a00','#bf360c','#c8372d'];
+  snapY.forEach((y,si)=>{ const pr=snaps[y]; if(!pr) return;
+    ctx.strokeStyle=cols[si%cols.length]; ctx.lineWidth=1.6; ctx.beginPath();
+    pr.forEach((t,i)=>{ const px=X(t), py=Y(zs[i]); i?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+    ctx.stroke(); ctx.fillStyle=cols[si%cols.length]; ctx.fillText(String(y), X(pr[0])-14, Y(zs[0])+10+si*11);
+  });
+  if(meas&&meas.length){ ctx.strokeStyle='#111'; ctx.lineWidth=2.4; ctx.beginPath();
+    meas.forEach((p,i)=>{ const px=X(p[1]), py=Y(p[0]); i?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+    ctx.stroke(); }
+}
+
 function tabClimate(o, el){
   const cl=DB.climate||{};
+  const d=mtData(), sp=d?mtSP(d):null;
+  const horizon=+cl.horizon||2050;
+  const ov=DECL_OVR[o.id]||{};
+  const tcrit=(ov.tcrit!==undefined?ov.tcrit:null), tRisk=(ov.tRisk!==undefined?ov.tRisk:null);
+  const fmtT=v=>(v>0?'+':'')+(+v).toFixed(2).replace('.',',');
+  /* скважины объекта с фактическими профилями замеров */
+  const wells=[]; let worstT=null;
+  Object.entries(o.prof||{}).forEach(([w,wd])=>{
+    if(!wd.s||!wd.s.length) return;
+    const last=wd.s[wd.s.length-1], pts=last[1];
+    if(!pts||!pts.length) return;
+    const tN=(wd.ngcH!=null)?c1InterpSafe(pts,wd.ngcH):null;
+    wells.push({w, wd, date:last[0], pts, ngcH:wd.ngcH, tN});
+    if(tN!==null&&(!worstT||tN>worstT.t)) worstT={w,t:tN};
+  });
+  const defWell=worstT?worstT.w:(wells.length?wells[0].w:null);
+  /* фактический тренд потепления метеоряда — ставка по умолчанию (сценарные ставки МГИК — после этапа 3 НИР) */
+  let rFact=null, rInfo='';
+  if(d){
+    const agg=mtYearAgg(d,'t').filter(r=>r.full);
+    const lr=agg.length>=3?mtLin(agg.map(r=>r.y),agg.map(r=>r.v)):null;
+    if(lr){ rFact=lr.k; rInfo='фактический тренд метеоряда '+agg[0].y+'–'+agg[agg.length-1].y+' (n='+lr.n+', R²='+String(lr.r2).replace('.',',')+'): '+(lr.k*10>=0?'+':'')+(lr.k*10).toFixed(2).replace('.',',')+' °C / 10 лет'; }
+  }
+  const c=cardOf(o.a);
+  const S=Object.assign({well:defWell, lam:2.0, cv:2.5, w:0.25, rho:1600, q:0.05, dtp:0, r:(rFact!==null?+rFact.toFixed(4):0)}, c.c1||{});
   el.innerHTML=`
-  <div class="normref">Прогноз температурного режима оснований с учётом климатических изменений — теплотехническое моделирование (ТЗ НИР, этап 3): период ${esc(cl.modeling_period||'2025–2050')}, шаг не более 1 года; климатические сценарии МГИК (IPCC): ${(cl.scenarios||[]).map(esc).join(', ')||'—'}.</div>
+  <div class="normref">C1 · Теплотехническая модель t(z,t) основания (СП 25.13330.2020; климатические сценарии МГИК — ставки подставляются после этапа 3 НИР): неустановившаяся одномерная задача с фазовым переходом (метод эффективной теплоёмкости, полоса −1…0 °C), неявная конечно-разностная схема (алгоритм прогонки), шаг 1 месяц, горизонт ${horizon} г. Верхнее граничное условие — месячная климатология метеоряда системы + линейный тренд потепления; начальное условие — последний фактический профиль термоскважины; нижнее ГУ — геотермический поток. Режимная оценка для оперативного контроля — не заменяет проектное теплотехническое обоснование.</div>
   <table class="kv">
-    <tr><td>Горизонт прогноза</td><td><b>${esc(String(cl.horizon||2050))} г.</b></td></tr>
-    <tr><td>Климатические сценарии</td><td>${(cl.scenarios||[]).map(esc).join(' · ')||'—'}</td></tr>
-    <tr><td>Период моделирования</td><td>${esc(cl.modeling_period||'—')}</td></tr>
-    <tr><td>Статус работ</td><td>${esc(cl.status||'в разработке')}</td></tr>
+    <tr><td>Горизонт прогноза / период моделирования</td><td><b>${horizon} г.</b> · ${esc(cl.modeling_period||'—')}, шаг 1 год</td></tr>
+    <tr><td>Климатические сценарии МГИК (IPCC)</td><td>${(cl.scenarios||[]).map(esc).join(' · ')||'—'}</td></tr>
+    <tr><td>Метеоряд</td><td>${d?esc(d.station||'метеостанция')+' · '+esc(d.src||''):'недоступен — верхнее ГУ не сформировать'}</td></tr>
+    ${rInfo?`<tr><td>Тренд потепления по умолчанию</td><td>${esc(rInfo)}</td></tr>`:''}
   </table>
-  <div class="note">По итогам моделирования для каждого объекта будут построены прогнозные поля температур и карты рисков деградации мерзлоты в основании сооружений (ТЗ НИР). Прогноз по фактическим рядам замеров объекта (до ${esc(String(cl.horizon||2050))} г.) — во вкладке «Термометрия» после загрузки журналов замеров (этап 2).</div>
+  ${wells.length?`
+  <div class="sect" style="margin-top:8px">Параметры модели и исходные данные</div>
+  <div style="display:flex; gap:8px 12px; flex-wrap:wrap; align-items:flex-end; font-size:12px" class="noprint">
+    <label>Скважина<br><select id="c1Well" style="max-width:220px">${wells.map(x=>`<option value="${esc(x.w)}"${x.w===S.well?' selected':''}>${esc(x.w)} · замер ${esc(x.date)}${x.ngcH!=null?' · НГК '+String(x.ngcH).replace('.',',')+' м':''}</option>`).join('')}</select></label>
+    <label>λ, Вт/(м·°C)<br><input id="c1Lam" type="number" step="0.1" min="0.5" max="4" value="${S.lam}" style="width:66px"></label>
+    <label>C, МДж/(м³·°C)<br><input id="c1Cv" type="number" step="0.1" min="1" max="4" value="${S.cv}" style="width:66px"></label>
+    <label>W, д.е.<br><input id="c1W" type="number" step="0.05" min="0" max="0.8" value="${S.w}" style="width:60px"></label>
+    <label>ρд, кг/м³<br><input id="c1Rho" type="number" step="50" min="1000" max="2200" value="${S.rho}" style="width:70px"></label>
+    <label>q, Вт/м²<br><input id="c1Q" type="number" step="0.01" min="0" max="0.15" value="${S.q}" style="width:60px"></label>
+    <label>ΔTпов, °C<br><input id="c1Dtp" type="number" step="0.5" min="-5" max="8" value="${S.dtp}" style="width:60px"></label>
+    <label>Тренд r, °C/год<br><input id="c1R" type="number" step="0.005" min="-0.05" max="0.2" value="${S.r}" style="width:74px"></label>
+    <button class="wbtn" id="c1RFact" title="Подставить измеренный тренд метеоряда">факт</button>
+    <button class="wbtn" id="c1RZero" title="Стационарный климат (проверочный расчёт)">r=0</button>
+    <button class="wbtn" id="c1Go" style="background:#2e7d32; color:#fff; border-color:#2e7d32">▶ Рассчитать</button>
+    <button class="wbtn" id="c1Save">Сохранить параметры объекта</button>
+  </div>
+  <div class="note" style="margin:4px 0">λ и C — типовые значения для дисперсных грунтов площадки (уточняются по лабораторным данным ИГИ); W — суммарная влажность в долях единицы; ΔTпов — поправка температуры поверхности грунта (снеговой покров, намывной пляж, техногенные тепловые потоки; консервативно — 0); r — тренд среднегодовой температуры поверхности (по умолчанию — фактический тренд метеоряда; ставки сценариев SSP2-4.5 / SSP5-8.5 подставляются сюда после этапа 3 НИР).</div>
+  <div id="c1Out"></div>
+  `:'<div class="note">По объекту нет термометрических рядов с профилями замеров — модель недоступна. Загрузка журналов — вкладка «Термометрия».</div>'}
   <div class="noprint" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
     <button class="wbtn" id="clMeteo">🌦 Открыть метеоданные</button>
     <button class="wbtn" id="clGoTherm">→ Термометрия (ряды и прогноз)</button>
   </div>`;
   el.querySelector('#clMeteo').onclick=()=>meteoOpen();
   el.querySelector('#clGoTherm').onclick=()=>{curTab='geoterm'; renderDetail(o);};
+  if(!wells.length) return;
+  const out=el.querySelector('#c1Out');
+  const renderC1=()=>{
+    const wSel=wells.find(x=>x.w===el.querySelector('#c1Well').value)||wells[0];
+    const d0y=(()=>{ const dt=new Date(wSel.date); return isNaN(dt)?new Date().getFullYear():dt.getFullYear(); })();
+    const P={
+      lam:+el.querySelector('#c1Lam').value||2.0, cv:+el.querySelector('#c1Cv').value||2.5,
+      w:Math.max(0,+el.querySelector('#c1W').value||0), rho:+el.querySelector('#c1Rho').value||1600,
+      q:+el.querySelector('#c1Q').value||0, dtp:+el.querySelector('#c1Dtp').value||0,
+      r:+el.querySelector('#c1R').value||0,
+      y0:d0y, y1:horizon, dz:0.5,
+      zmax:Math.ceil((Math.max(wSel.ngcH||0, wSel.pts[wSel.pts.length-1][0])+5)/5)*5,
+      clim:(d?mtClim(d,'t').mean:new Array(12).fill(null)).map(v=>v===null?(sp?sp.MGT:0):v),
+      init:wSel.pts, ngcH:wSel.ngcH, snapStep:5
+    };
+    const R=c1Run(P);
+    const R0=c1Run(Object.assign({},P,{r:0, y1:P.y0+5})); // контроль стационарности: повторный прогон без тренда
+    const drift=(P.ngcH!=null&&R0.tNgcYr[P.y0+5]!=null&&R.tNgcYr[P.y0]!=null)?(R0.tNgcYr[P.y0+5]-R.tNgcYr[P.y0]):null;
+    const cross=K=>{ if(K===null||P.ngcH==null) return null;
+      const ys=Object.keys(R.tNgcYr).map(Number).sort((a,b)=>a-b);
+      if(ys.length&&R.tNgcYr[ys[0]]>=K) return P.y0-0.5; // уже превышен на момент последнего замера
+      for(let i=1;i<ys.length;i++){ const y1=ys[i-1], y2=ys[i], t1=R.tNgcYr[y1], t2=R.tNgcYr[y2];
+        if(t1<K&&t2>=K) return +(y1+(K-t1)/(t2-y1? t2-t1:1e-9)*(y2-y1)).toFixed(1); }
+      return null; };
+    const yK1m=cross(tRisk), yK2m=cross(tcrit);
+    const crossTxt=(v,K)=>K===null?'— (порог не задан)':(v===null?'не прогнозируется до '+horizon+' г.':(v<P.y0?'<b style="color:#c8372d">уже превышен</b>':'<b>'+String(v).replace('.',',')+' г.</b>'));
+    /* сверка с линейным прогнозом (модуль A2): тренд t на НГК по фактическому ряду скважины */
+    let linK1=null, linK2=null, linNote='недостаточно замеров для линейной сверки';
+    if(P.ngcH!=null){
+      const xs=[], ys=[];
+      wSel.wd.s.forEach(en=>{ const t=c1InterpSafe(en[1],P.ngcH); if(t===null) return; const dt=new Date(en[0]); if(isNaN(dt)) return; xs.push(dt.getFullYear()+dt.getMonth()/12); ys.push(t); });
+      if(xs.length>=3){ const lr=mtLin(xs,ys);
+        if(lr&&lr.k>1e-5){ const last=ys[ys.length-1], xLast=xs[xs.length-1];
+          if(tRisk!==null) linK1=last>=tRisk?-0.5:+(xLast+(tRisk-last)/lr.k).toFixed(1);
+          if(tcrit!==null) linK2=last>=tcrit?-0.5:+(xLast+(tcrit-last)/lr.k).toFixed(1);
+          linNote='тренд '+(lr.k*10>=0?'+':'')+(lr.k*10).toFixed(2).replace('.',',')+' °C / 10 лет (R²='+String(lr.r2).replace('.',',')+', замеров: '+lr.n+')';
+        } else linNote='тренд по ряду ≤ 0 — выход на критерии линейным методом не прогнозируется';
+      }
+    }
+    const linTxt=v=>v===null?'—':(v<0?'<b style="color:#c8372d">уже превышен</b>':(v>horizon?'за горизонтом '+horizon+' г.':'<b>'+String(v).replace('.',',')+' г.</b>'));
+    const rowSt=t=>{ if(t===null||t===undefined) return '<span class="mut">—</span>'; if(tcrit!==null&&t>=tcrit) return '<b style="color:#c8372d">≥ К2</b>'; if(tRisk!==null&&t>=tRisk) return '<b style="color:#a86400">≥ К1</b>'; return '<span style="color:#2e7d32">норма</span>'; };
+    const tbl=P.ngcH!=null?`<table class="rows static" style="margin-top:6px; font-size:11.5px"><thead><tr><th style="text-align:left">Год</th>${R.snapY.map(y=>'<th>'+y+'</th>').join('')}</tr></thead>
+      <tbody><tr><td><b>t на НГК (${String(P.ngcH).replace('.',',')} м), °C</b></td>${R.snapY.map(y=>{const t=R.tNgcYr[y]; return '<td><b>'+(t==null?'—':fmtT(t))+'</b></td>';}).join('')}</tr>
+      <tr><td>Статус к порогам</td>${R.snapY.map(y=>'<td>'+rowSt(R.tNgcYr[y])+'</td>').join('')}</tr></tbody></table>`:'';
+    const spd=(P.ngcH!=null&&R.tNgcYr[horizon]!=null&&R.tNgcYr[P.y0]!=null)?(R.tNgcYr[horizon]-R.tNgcYr[P.y0])/(horizon-P.y0)*10:null;
+    const spdTxt=spd===null?'—':'<b>'+(spd>=0?'+':'')+spd.toFixed(2).replace('.',',')+' °C / 10 лет</b>';
+    out.innerHTML=`
+      ${drift!==null?`<div class="note" style="margin-top:8px">Контроль стационарности модели (повторный прогон с r=0 на 5 лет): дрейф t на НГК = <b>${(drift>=0?'+':'')+drift.toFixed(3).replace('.',',')} °C</b> — ${Math.abs(drift)<0.1?'<span style="color:#2e7d32">модель устойчива (дрейф < 0,1 °C)</span>':'<b style="color:#c8372d">дрейф ≥ 0,1 °C — проверьте параметры грунта и исходный профиль</b>'}.</div>`:''}
+      <div class="sect" style="margin-top:8px">Профили температуры грунта t(z) — скв. ${esc(wSel.w)}: факт (${esc(wSel.date)}) и модель до ${horizon} г.</div>
+      <canvas id="c1Chart" style="width:100%; border:1px solid var(--line); background:#fff"></canvas>
+      <div style="font-size:11px; margin:2px 0 4px">Чёрный жирный — фактический замер ${esc(wSel.date)}; цветные — модель по годам (подписи у поверхности); пунктир — пороги К1/К2 и глубина НГК.</div>
+      ${tbl}
+      <table class="kv" style="margin-top:8px">
+        <tr><td>Выход на К1 ${tRisk!==null?'('+fmtT(tRisk)+' °C)':''} — модель C1 / линейный прогноз A2</td><td>${crossTxt(yK1m,tRisk)} / ${linTxt(linK1)}</td></tr>
+        <tr><td>Выход на К2 ${tcrit!==null?'('+fmtT(tcrit)+' °C)':''} — модель C1 / линейный прогноз A2</td><td>${crossTxt(yK2m,tcrit)} / ${linTxt(linK2)}</td></tr>
+        <tr><td>Скорость потепления на НГК по модели (средняя ${P.y0}–${horizon})</td><td>${spdTxt}</td></tr>
+      </table>
+      <div class="note">Линейная сверка (A2): ${linNote}. Расхождение двух методов отражает неопределённость прогноза — консервативным считается более ранний год выхода на критерий. Модель учитывает инерцию прогрева толщи и фазовые переходы, линейный метод — только экстраполяцию ряда.</div>
+      <div class="note">Оценочная режимная модель (этап C1 дорожной карты): не заменяет проектное теплотехническое обоснование основания. Параметры грунта (λ, C, W, ρд) — типовые для дисперсных грунтов площадки и подлежат уточнению по лабораторным данным ИГИ объекта; начальный профиль — фактический замер ${esc(wSel.date)} (фаза годового хода не вычиталась — оценка консервативная).</div>`;
+    c1ChartDraw(out.querySelector('#c1Chart'), R.zs, R.snaps, R.snapY, wSel.pts, P.ngcH, tRisk, tcrit);
+  };
+  el.querySelector('#c1Go').onclick=renderC1;
+  el.querySelector('#c1Well').onchange=renderC1;
+  el.querySelector('#c1RFact').onclick=()=>{ if(rFact!==null){ el.querySelector('#c1R').value=+rFact.toFixed(4); renderC1(); } };
+  el.querySelector('#c1RZero').onclick=()=>{ el.querySelector('#c1R').value=0; renderC1(); };
+  el.querySelector('#c1Save').onclick=()=>{ c.c1={well:el.querySelector('#c1Well').value, lam:+el.querySelector('#c1Lam').value, cv:+el.querySelector('#c1Cv').value, w:+el.querySelector('#c1W').value, rho:+el.querySelector('#c1Rho').value, q:+el.querySelector('#c1Q').value, dtp:+el.querySelector('#c1Dtp').value, r:+el.querySelector('#c1R').value}; saveCARD(); const b=el.querySelector('#c1Save'); b.textContent='✔ Сохранено'; setTimeout(()=>{ b.textContent='Сохранить параметры объекта'; },1500); };
+  renderC1();
 }
 
 function tabGtsDocs(o, el){
@@ -5124,7 +5318,7 @@ const GS_ROAD=[
    {k:'B5', t:'Скоринг рисков и матрица 5×5 по классам ГТС (реализовано в Центре контроля ГТМ)', d0:'готово'},
    {k:'B6', t:'InSAR-пилот по архивам Sentinel-1: деформации гребней и откосов между циклами геодезии', d0:'план'}]},
  {g:'Этап В · 9–24 мес — прогноз и интеграция', items:[
-   {k:'C1', t:'Теплотехническая модель t(x,t) оснований по объектам (СП 25.13330.2020 + сценарии МГИК)', d0:'план'},
+   {k:'C1', t:'Теплотехническая модель t(x,t) оснований по объектам (СП 25.13330.2020 + сценарии МГИК)', d0:'готово'},
    {k:'C2', t:'Модель поверхностного стока по ЦМР: подтопление и эрозия в границах объектов', d0:'план'},
    {k:'C3', t:'Интеграция с мерзлотным надзором ЗФ и ПМЛА — автоматические входные события', d0:'план'},
    {k:'C4', t:'АМС в районе объектов и валидация метеомодели по местным замерам', d0:'план'},
