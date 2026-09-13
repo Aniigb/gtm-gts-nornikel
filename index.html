@@ -1807,8 +1807,10 @@ map.on('click', e=>{
   b1.onclick=()=>{ map.closePopup(); select(best); };
   const b2=document.createElement('button'); b2.textContent='📍 Перенести координату сюда'; b2.style.cssText='margin:4px 0 0; padding:3px 8px; cursor:pointer; background:#2e7d32; color:#fff; border:none; border-radius:4px';
   b2.onclick=()=>{
+    const _pv=[o.lat,o.lon];
     o.lat=+lat.toFixed(6); o.lon=+lng.toFixed(6); o.p='уточнено вручную';
     GEOVR[o.a]=[o.lat,o.lon]; localStorage.setItem('gtm_geo', JSON.stringify(GEOVR));
+    audLog('coords', o.a, null, 'перенос кликом по карте: '+_pv.join(', ')+' → '+o.lat+', '+o.lon, null);
     if(markers[best]) markers[best].setLatLng([o.lat,o.lon]);
     map.closePopup(); select(best);
   };
@@ -2750,9 +2752,11 @@ function tabGtsPassport(o, el){
     gA.onclick=()=>{
       const la=parseFloat(el.querySelector('#geoLat').value), lo=parseFloat(el.querySelector('#geoLon').value);
       if(!(la>68.5&&la<69.8&&lo>85.5&&lo<89.3)){ alert('Координаты вне района работ (Норильская промышленная площадка — Дудинка) — проверьте ввод (WGS-84).'); return; }
+      const _pv=[o.lat,o.lon];
       GEOVR[o.a]=[+la.toFixed(6), +lo.toFixed(6)];
       localStorage.setItem('gtm_geo', JSON.stringify(GEOVR));
       o.lat=GEOVR[o.a][0]; o.lon=GEOVR[o.a][1]; o.p='уточнено вручную';
+      audLog('coords', o.a, null, 'ручной ввод в карточке: '+_pv.join(', ')+' → '+o.lat+', '+o.lon, null);
       const i=DB.objects.indexOf(o);
       if(markers[i]) markers[i].setLatLng([o.lat,o.lon]);
       renderDetail(o);
@@ -3813,6 +3817,7 @@ async function handleUpload(file){
     const entries=[];
     Object.entries(grouped[okey]).forEach(([w,dates])=>Object.entries(dates).forEach(([date,rec])=>entries.push({w,date,dep:rec.dep,pts:rec.pts})));
     stgPush('geotherm', o.a, {entries}, file.name, null);
+    audLog('geotherm', o.a, Object.keys(grouped[okey]), 'точек: '+entries.reduce((s,e)=>s+Object.keys(e.pts).length,0)+'; скважин: '+Object.keys(grouped[okey]).length+'; дат: '+entries.length, file.name);
   });
   Object.keys(grouped).forEach(okey=>refreshObjStats(DB.objects.find(x=>x.id===okey)));
   saveUSERDATA();
@@ -4192,6 +4197,7 @@ async function handleObjUpload(file){
         tSa:(a4.tSa!==null&&a4.tSa!==undefined?a4.tSa:null)});
     }));
     stgPush('geotherm_obj', obj.a, {entries}, file.name, org); }
+  audLog('geotherm_obj', obj.a, Object.keys(wells), 'рядов (скв×дата): '+n+'; t нар. воздуха покрыто: '+nOut+' из '+ex.airRows.length, file.name);
   refreshObjStats(obj);
   saveUSERDATA();
   drawMarkers(); renderStats(); renderList();
@@ -4255,6 +4261,7 @@ async function stgSet(id, status){
   try{
     await sbFetch('/rest/v1/uploads_staging?id=eq.'+id,{method:'PATCH', token:tok, headers:{'Prefer':'return=minimal'},
       body:JSON.stringify({status, moderated_at:new Date().toISOString()})});
+    audLog('moderation', null, null, (status==='approved'?'Принята':'Отклонена')+' загрузка #'+id+' в центральной базе', null);
     stgRefresh();
   }catch(e){ alert('Не удалось обновить статус: '+e.message); }
 }
@@ -4351,6 +4358,7 @@ function showReportPreview(o, R, fname, text){
     if(R.year){ c.pf=c.pf||{}; if(!c.pf.obsled) c.pf.obsled=R.year; }
     saveCARD();
     await stgPush('report', o.a, {sections:R.sections, piles:R.piles||null, floors:R.floors||null, year:R.year||null, org:R.org}, fname, R.org);
+    audLog('report', o.a, null, 'разделы карточки: '+Object.keys(R.sections).filter(k=>R.sections[k]&&R.sections[k].length).join(', ')+(R.piles?'; свай: '+R.piles:'')+(R.year?'; год обследования: '+R.year:''), fname);
     if(R.org){ TPLMEM[R.org]=Object.assign(TPLMEM[R.org]||{},{report:true, ts:Date.now()}); localStorage.setItem('gtm_tplmem',JSON.stringify(TPLMEM)); tplMemLine(); }
     el.innerHTML='';
     upLog('✔ Отчёт перенесён в карточку «'+o.a+'» (разделы: фундаменты, подполье, цокольное ограждение, условия эксплуатации).');
@@ -4428,6 +4436,7 @@ function showGeodPreview(o, rows, fname, org){
     rows.forEach(r=>{ const k=r.date+'|'+r.marka; if(!have.has(k)){ c.geod.push({date:r.date, marka:r.marka, otm:String(r.otm), osad:String(r.osad), speed:'', note:'из файла '+fname}); have.add(k); n++; } });
     saveCARD();
     await stgPush('geodesy', o.a, {rows}, fname, org);
+    audLog('geodesy', o.a, [...new Set(rows.map(r=>r.marka||'—'))], 'новых измерений: '+n+' из '+rows.length+' (дублей пропущено: '+(rows.length-n)+')', fname);
     if(org){ TPLMEM[org]=Object.assign(TPLMEM[org]||{},{geod:true, ts:Date.now()}); localStorage.setItem('gtm_tplmem',JSON.stringify(TPLMEM)); tplMemLine(); }
     el.innerHTML='';
     upLog('✔ Геодезия: добавлено '+n+' измерений в «'+o.a+'» (вкладка «Геодезия»).');
@@ -4547,6 +4556,7 @@ function showPiezoPreview(o, series, fname){
     });
     saveCARD();
     await stgPush('piezo', o.a, {series}, fname, null);
+    audLog('piezo', o.a, series.map(kv=>kv[0]), 'рядов: '+nRow+'; новых замеров: '+nNew, fname);
     el.innerHTML='';
     upLog('✔ Пьезометрия: '+nRow+' рядов, добавлено '+nNew+' замеров в «'+o.a+'» (вкладка «Пьезометрия»).');
     if(curObj===o){ curTab='piezo'; renderDetail(o); }
@@ -4637,6 +4647,7 @@ async function handleUni(f){
     refreshObjStats(obj); saveUSERDATA();
     drawMarkers(); renderStats(); renderList();
     await stgPush('geotherm_uni', obj.a, {points:best.pts, mode:best.mode, sheet:bestSn}, f.name, org);
+    audLog('geotherm_uni', obj.a, Object.keys(g), 'точек: '+best.pts.length+'; формат «'+best.mode+'», лист «'+bestSn+'»', f.name);
     TPLMEM[memKey]=Object.assign(TPLMEM[memKey]||{},{therm:{mode:best.mode, sheet:bestSn}, org:org||null, ts:Date.now()});
     localStorage.setItem('gtm_tplmem',JSON.stringify(TPLMEM)); tplMemLine();
     el.innerHTML='';
@@ -5092,7 +5103,7 @@ document.getElementById('ntdClose').onclick=()=>ntdModal.style.display='none';
 ntdModal.addEventListener('click',e=>{ if(e.target===ntdModal) ntdModal.style.display='none'; });
 
 /* ================= ЦЕНТР КОНТРОЛЯ ГТМ — контур развития и раннего предупреждения (по «Предложениям…», разд. 1–6) ================= */
-const GS_STORE={j:'gs_journal_v1', snap:'gs_snap_v1', road:'gs_road_v1', sens:'gs_sensors_v1', out:'gs_outbox_v1', ntf:'gs_notify_v1', duty:'gs_duty_v1'};
+const GS_STORE={j:'gs_journal_v1', snap:'gs_snap_v1', road:'gs_road_v1', sens:'gs_sensors_v1', out:'gs_outbox_v1', ntf:'gs_notify_v1', duty:'gs_duty_v1', aud:'gs_audit_v1', audOut:'gs_audit_out_v1', audV:'gs_audit_ver_v1'};
 function gsLoad(k,dflt){ try{ const v=JSON.parse(localStorage.getItem(k)); return v==null?dflt:v; }catch(e){ return dflt; } }
 function gsSave(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
 let gsJournal=gsLoad(GS_STORE.j,[]), gsRoad=gsLoad(GS_STORE.road,{}), gsSens=gsLoad(GS_STORE.sens,{}), gsCur=null, gsRemote=false;
@@ -5103,7 +5114,7 @@ const GS_ROAD=[
    {k:'A2', t:'Тренды температуры на глубине НГК с 95% ДИ и прогноз выхода на К2 по каждой скважине', d0:'готово'},
    {k:'A3', t:'Индексы промерзания/оттаивания (Стефан) по метеорядам Open-Meteo — сезонный прогноз протаивания', d0:'готово'},
    {k:'A4', t:'Разделение признака «нет актуальных замеров» по видам КИА и нормативной периодичности объекта (ФНП № 151)', d0:'готово'},
-   {k:'A5', t:'Версионирование замеров и аудит изменений в общем реестре (кто/когда/что — неизменяемая история)', d0:'план'},
+   {k:'A5', t:'Версионирование замеров и аудит изменений в общем реестре (кто/когда/что — неизменяемая история)', d0:'готово'},
    {k:'A6', t:'Автовыгрузка паспорта объекта мониторинга по ГОСТ 31937-2024 одним документом (карточка объекта → «Паспорт ГТС»)', d0:'готово'}]},
  {g:'Этап Б · 3–9 мес — непрерывность данных', items:[
    {k:'B1', t:'API-ингест электронных журналов замеров эксплуатации (термометрия/пьезометрия/геодезия)', d0:'план'},
@@ -5179,6 +5190,59 @@ function gsDownload(name,text,mime){
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
 function gsExpJournalCsv(){ const rows=[['ts','object_id','name','from','to','reasons']].concat(gsJournal.map(e=>[e.ts,e.obj,e.name,e.from,e.to,(e.reasons||[]).join(' | ')])); gsDownload('gtm_journal_'+new Date().toISOString().slice(0,10)+'.csv', rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv;charset=utf-8'); }
+/* --- А5. Версионирование замеров и аудит изменений: кто/когда/что, неизменяемая история ---
+   Append-only журнал: локальный кэш (localStorage) + центральная таблица Supabase gs_audit
+   (при недоступности — офлайн-очередь с автовыгрузкой). Правка/удаление записей не предусмотрены.
+   Версии рядов измерений: счётчики пополнений по каждому ряду (вид|объект|ряд). */
+const AUD_KINDS={geotherm:'Термометрия', geotherm_obj:'Термометрия (ведомость)', geotherm_uni:'Термометрия (универс.)', piezo:'Пьезометрия', geodesy:'Геодезия', report:'Отчёт → карточка', thresholds:'Пороги и КК', coords:'Координаты', moderation:'Приёмка загрузок'};
+const TH_LABELS={tcrit:'t крит. на НГК, °C', depth:'глубина НГК, м', trend:'тренд РИСК, °C/год', trendDepth:'глубина тренда, м', above:'превышение над КК, °C', geodRiskSpeed:'геодезия РИСК, мм/год', geodCritSpeed:'геодезия КРИТИЧНО, мм/год', geodCritTotal:'суммарная осадка КРИТИЧНО, мм', geodRiskSpread:'неравномерность РИСК, мм', geodCritSpread:'неравномерность КРИТИЧНО, мм', bearRisk:'несущая способность РИСК', bearCrit:'несущая способность КРИТИЧНО'};
+let gsAudit=gsLoad(GS_STORE.aud,[]), gsAudVer=gsLoad(GS_STORE.audV,{}), gsAudRemote=false;
+let gsAudF={kind:'', obj:''};
+function audRole(){ const r=sessionStorage.getItem('gtm_role'); return r==='edit'?'оператор':r==='insp'?'надзор':r==='view'?'наблюдатель':'—'; }
+function audDiffTh(a,b){ const ch=[]; for(const k in TH_LABELS){ if(a[k]!==b[k]) ch.push(TH_LABELS[k]+': '+(a[k]===undefined?'—':a[k])+' → '+(b[k]===undefined?'—':b[k])); } return ch.length?ch.join('; '):'значения не изменились'; }
+function audBump(kind, addr, target){ const k=kind+'|'+(addr||'')+'|'+(target||''); const v=gsAudVer[k]||{n:0,last:null}; v.n++; v.last=new Date().toISOString(); gsAudVer[k]=v; gsSave(GS_STORE.audV,gsAudVer); return v.n; }
+function audLog(kind, addr, targets, det, file){
+  try{
+    const ts=new Date().toISOString();
+    let ver=null, tname='';
+    if(Array.isArray(targets)&&targets.length){
+      const vs=targets.map(t=>audBump(kind,addr,t));
+      tname=targets.length<=3?targets.join(', '):targets.length+' рядов';
+      if(targets.length===1) ver=vs[0];
+    }
+    const ev={ts, role:audRole(), kind, addr:addr||'', target:tname, det:det||'', file:file||'', ver};
+    gsAudit.push(ev); if(gsAudit.length>1000) gsAudit=gsAudit.slice(-1000);
+    gsSave(GS_STORE.aud,gsAudit);
+    audSbPush([ev]);
+    if(gsCur==='data') gsOpen('data',true);
+  }catch(e){}
+}
+function audSbPush(events){
+  try{
+    if(!sbMode()||!events||!events.length) return;
+    const rows=events.map(e=>({ts:e.ts, role:e.role, kind:e.kind, addr:e.addr, target:e.target, det:e.det, file:e.file, ver:e.ver}));
+    sbFetch('/rest/v1/gs_audit',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(rows)})
+      .then(()=>{ const ob=gsLoad(GS_STORE.audOut,[]); if(ob.length){ gsSave(GS_STORE.audOut,[]); audSbPush(ob); } }) // соединение есть — выгружаем офлайн-очередь
+      .catch(()=>{ const ob=gsLoad(GS_STORE.audOut,[]); ob.push(...events); gsSave(GS_STORE.audOut,ob.slice(-300)); });
+  }catch(e){ const ob=gsLoad(GS_STORE.audOut,[]); ob.push(...events); gsSave(GS_STORE.audOut,ob.slice(-300)); }
+}
+async function gsAuditPull(){ // общая история аудита из центральной БД + слияние с локальным кэшем (дедупликация по ts+addr+det)
+  if(!sbMode()) return;
+  try{
+    const rows=await sbFetch('/rest/v1/gs_audit?select=ts,role,kind,addr,target,det,file,ver&order=ts.desc&limit=1000');
+    if(Array.isArray(rows)){
+      const map=new Map();
+      rows.forEach(r=>map.set(r.ts+'|'+r.addr+'|'+r.det,{ts:r.ts,role:r.role,kind:r.kind,addr:r.addr,target:r.target,det:r.det,file:r.file,ver:r.ver}));
+      gsAudit.forEach(e=>{ const k=e.ts+'|'+e.addr+'|'+e.det; if(!map.has(k)) map.set(k,e); });
+      gsAudit=[...map.values()].sort((a,b)=>a.ts<b.ts?-1:1).slice(-1000);
+      gsSave(GS_STORE.aud,gsAudit);
+      gsAudRemote=true;
+      if(gsCur==='data') gsOpen('data',true);
+    }
+  }catch(e){ /* таблица gs_audit ещё не создана или центральная БД недоступна — аудит ведётся локально */ }
+}
+function audCsv(){ const rows=[['ts','role','kind','addr','target','det','file','ver']].concat(gsAudit.map(e=>[e.ts,e.role,AUD_KINDS[e.kind]||e.kind,e.addr,e.target,e.det,e.file,e.ver==null?'':e.ver])); gsDownload('gtm_audit_'+new Date().toISOString().slice(0,10)+'.csv', rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv;charset=utf-8'); }
+const AUD_SQL='create table if not exists public.gs_audit (\n  id bigint generated always as identity primary key,\n  ts timestamptz not null, role text, kind text, addr text,\n  target text, det text, file text, ver int,\n  created_at timestamptz default now()\n);\nalter table public.gs_audit enable row level security;\ncreate policy "gs_audit_read" on public.gs_audit for select to anon using (true);\ncreate policy "gs_audit_add" on public.gs_audit for insert to anon with check (true);\n-- политики update/delete не создаются: история неизменяема (append-only)';
 /* --- Б4. Уведомления дежурному: очередь, шлюз WhatsApp/Telegram/e-mail, квитирование --- */
 const GS_SEV={'нет данных':0,'НОРМА':1,'РИСК':2,'КРИТИЧНО':3};
 function gsNotifyPush(events){ // очередь уведомлений: только ухудшения до РИСК/КРИТИЧНО
@@ -5454,12 +5518,20 @@ function gsViewSensors(){
 function gsViewData(){
   let mN=0; DB.objects.forEach(o=>{ if(o.prof) Object.values(o.prof).forEach(wd=>mN+=(wd.s||[]).length); });
   const mode=sbMode()?'Supabase — общий реестр, облачная синхронизация':'локальный режим (localStorage + файлы выгрузки)';
+  const audRows=[...gsAudit].reverse().filter(e=>(!gsAudF.kind||e.kind===gsAudF.kind)&&(!gsAudF.obj||e.addr===gsAudF.obj)).slice(0,200);
+  const audTbl=audRows.length?('<div style="max-height:340px; overflow:auto"><table class="gsTbl" style="font-size:11.5px"><tr><th>Дата/время</th><th>Роль</th><th>Вид</th><th>Объект</th><th>Ряд/цель</th><th>Что изменилось</th><th>Файл</th><th>Вер.</th></tr>'+
+    audRows.map(e=>`<tr><td style="white-space:nowrap">${String(e.ts).slice(0,16).replace('T',' ')}</td><td>${esc(e.role)}</td><td style="white-space:nowrap">${esc(AUD_KINDS[e.kind]||e.kind)}</td><td>${esc(e.addr||'—')}</td><td>${esc(e.target||'—')}</td><td>${esc(e.det||'')}</td><td class="mut">${esc(e.file||'')}</td><td>${e.ver==null?'':e.ver}</td></tr>`).join('')+'</table></div>')
+    :'<div class="note">Записей аудита пока нет — они появятся при первой загрузке замеров, правке порогов/координат или приёмке файлов.</div>';
+  const verKeys=Object.keys(gsAudVer).sort();
+  const verTbl=verKeys.length?('<table class="gsTbl" style="font-size:11.5px; margin-top:4px"><tr><th>Ряд измерений</th><th>Объект</th><th>Вид</th><th>Версия</th><th>Последнее пополнение</th></tr>'+
+    verKeys.map(k=>{ const v=gsAudVer[k]; const p=k.split('|'); return `<tr><td>${esc(p[2]||'—')}</td><td>${esc(p[1]||'—')}</td><td>${esc(AUD_KINDS[p[0]]||p[0])}</td><td><b>v${v.n}</b></td><td style="white-space:nowrap">${String(v.last||'').slice(0,16).replace('T',' ')}</td></tr>`; }).join('')+'</table>')
+    :'<div class="note" style="margin-top:4px">Версии появятся после первых загрузок рядов измерений.</div>';
   const infra=[
     ['Ролевой доступ и шифрование разделов','реализовано'],
     ['Резервное копирование базы одной кнопкой (ниже)','реализовано'],
     ['Журнал тревог переходов статусов — серверный (Supabase) + локальный кэш с офлайн-очередью','реализовано'],
     ['Неизменяемая история событий в центральной БД (таблица gs_journal, общая для всех ролей)','реализовано'],
-    ['Версионирование замеров и аудит изменений (кто/когда/что)','в работе — этап А5'],
+    ['Версионирование замеров и аудит изменений — неизменяемый журнал (кто/когда/что) + счётчики версий рядов','реализовано — этап А5'],
     ['API-ингест электронных журналов замеров','план — этап Б1'],
     ['Регламентные отчёты по расписанию (автоформирование)','план'],
     ['Интеграция с АСУ ТП / мерзлотным надзором ЗФ / ПМЛА','план — этап В3']
@@ -5471,6 +5543,7 @@ function gsViewData(){
       <tr><td>Объектов ГТС в реестре</td><td>${DB.objects.length}</td></tr>
       <tr><td>Замеров термометрии</td><td>${mN}</td></tr>
       <tr><td>Событий в журнале тревог</td><td>${gsJournal.length}</td></tr>
+      <tr><td>Записей в журнале аудита (А5)</td><td>${gsAudit.length}</td></tr>
     </table>
     <div style="margin-top:8px">
       <button class="dbtn" id="gsBackup">⬇ Резервная копия базы (JSON)</button>
@@ -5482,6 +5555,19 @@ function gsViewData(){
     <table class="gsTbl"><tr><th>Мера</th><th>Статус</th></tr>
     ${infra.map(r=>`<tr><td>${r[0]}</td><td style="white-space:nowrap">${r[1]}</td></tr>`).join('')}
     </table>
+  </div>
+  <div class="gsCard"><h3>Журнал аудита изменений (А5) — кто · когда · что</h3>
+    <div class="mut" style="margin-bottom:6px">Неизменяемая история (append-only, без правок и удалений): каждая загрузка замеров, перенос отчёта в карточку, правка порогов и координат, приёмка файлов в центральной базе. Хранение: локальный кэш + центральная БД ${gsAudRemote?'· <b>синхронизировано с Supabase</b>':'· локальный режим (SQL для таблицы gs_audit — ниже)'}.</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:6px">
+      <select class="gsSt" id="audFKind"><option value="">Все виды</option>${Object.keys(AUD_KINDS).map(k=>`<option value="${k}" ${gsAudF.kind===k?'selected':''}>${AUD_KINDS[k]}</option>`).join('')}</select>
+      <select class="gsSt" id="audFObj"><option value="">Все объекты</option>${DB.objects.map(o=>`<option ${gsAudF.obj===o.a?'selected':''}>${esc(o.a)}</option>`).join('')}</select>
+      <button class="dbtn" id="audExpC">⬇ Аудит (CSV)</button>
+      <button class="dbtn" id="audExpJ">⬇ Аудит (JSON)</button>
+      <span class="mut" style="margin-left:auto">записей: ${gsAudit.length} · версий рядов: ${Object.keys(gsAudVer).length}</span>
+    </div>
+    ${audTbl}
+    <details style="margin-top:8px"><summary style="cursor:pointer; font-size:12px">Версии рядов измерений (счётчики пополнений, ${Object.keys(gsAudVer).length})</summary>${verTbl}</details>
+    <details style="margin-top:6px"><summary style="cursor:pointer; font-size:12px">SQL: создание таблицы gs_audit в центральной БД (один раз, Supabase → SQL Editor)</summary><pre style="font-size:11px; background:#fff; border:1px solid var(--line); padding:8px; overflow:auto; white-space:pre-wrap">${esc(AUD_SQL)}</pre></details>
   </div>`;
 }
 /* --- 6. Дорожная карта --- */
@@ -5513,6 +5599,10 @@ function gsBindCommon(){
   const eJ=document.getElementById('gsExpJ'); if(eJ) eJ.onclick=()=>gsDownload('gtm_journal_'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(gsJournal,null,1));
   const eC=document.getElementById('gsExpC'); if(eC) eC.onclick=gsExpJournalCsv;
   const eJ2=document.getElementById('gsExpJson'); if(eJ2) eJ2.onclick=()=>gsDownload('gtm_journal_'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(gsJournal,null,1));
+  const aK=document.getElementById('audFKind'); if(aK) aK.onchange=()=>{ gsAudF.kind=aK.value; gsOpen('data',true); };
+  const aO=document.getElementById('audFObj'); if(aO) aO.onchange=()=>{ gsAudF.obj=aO.value; gsOpen('data',true); };
+  const aC=document.getElementById('audExpC'); if(aC) aC.onclick=audCsv;
+  const aJ=document.getElementById('audExpJ'); if(aJ) aJ.onclick=()=>gsDownload('gtm_audit_'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify({audit:gsAudit, versions:gsAudVer},null,1));
   const eC2=document.getElementById('gsExpCsv'); if(eC2) eC2.onclick=gsExpJournalCsv;
   const dE=document.getElementById('gsDutyEdit'); if(dE) dE.onclick=()=>{ const f=document.getElementById('gsDutyForm'); if(f) f.style.display=(f.style.display==='none'||!f.style.display)?'':'none'; };
   const dS=document.getElementById('gsDutySave'); if(dS) dS.onclick=()=>{ gsDuty={name:document.getElementById('gsDutyName').value.trim(), phone:document.getElementById('gsDutyPhone').value.trim(), tg:document.getElementById('gsDutyTg').value.trim().replace(/^@/,''), mail:document.getElementById('gsDutyMail').value.trim()}; gsSave(GS_STORE.duty,gsDuty); gsOpen('alerts',true); };
@@ -5545,8 +5635,10 @@ document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&document.getElem
 document.querySelectorAll('#gsMenu button').forEach(b=>b.addEventListener('click',()=>gsOpen(b.dataset.gs)));
 gsJournalSync();
 setTimeout(gsJournalPull,0); // после полной инициализации скрипта (TG_SB/sbFetch объявлены ниже)
+setTimeout(gsAuditPull,1200); // история аудита из центральной БД (если таблица gs_audit создана)
 setInterval(gsJournalSync,60000);
 setInterval(gsJournalPull,300000); // сверка серверного журнала каждые 5 минут
+setInterval(gsAuditPull,300000); // сверка серверного аудита каждые 5 минут
 
 /* ---------- просмотрщик текстов документов (ИГИ / документация ГТС, ленивая подгрузка igi_txt/ docs_txt/) ---------- */
 const txtModal=document.getElementById('txtModal');
@@ -6295,11 +6387,13 @@ document.getElementById('gear').onclick=()=>{
   sGSpreadR.value=TH.geodRiskSpread; sGSpreadC.value=TH.geodCritSpread;
 };
 document.getElementById('sSave').onclick=()=>{
+  const _thOld=Object.assign({},TH);
   TH={tcrit:+sTcrit.value, depth:TH.depth, trend:+sTrend.value, trendDepth:+sTrendDepth.value, above:+sAbove.value,
       geodRiskSpeed:+sGRisk.value, geodCritSpeed:+sGCrit.value, geodCritTotal:+sGTotal.value,
       geodRiskSpread:+sGSpreadR.value, geodCritSpread:+sGSpreadC.value,
       bearRisk:TH.bearRisk, bearCrit:TH.bearCrit};
   saveTH(); setEl.style.display='none';
+  audLog('thresholds', null, null, audDiffTh(_thOld,TH), null);
   drawMarkers(); renderStats(); renderList(); if(curObj) renderDetail(curObj);
 };
 
