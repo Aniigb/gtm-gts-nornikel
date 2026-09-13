@@ -790,14 +790,14 @@
   </div>
 </div>
 
-<script src="db_p1.js?v=e5af0c08"></script>
-<script src="db_p2.js?v=e5af0c08"></script>
-<script src="db_p3.js?v=e5af0c08"></script>
-<script src="db_p4.js?v=e5af0c08"></script>
-<script src="db_p5.js?v=e5af0c08"></script>
-<script src="db_p6.js?v=e5af0c08"></script>
-<script src="db_p7.js?v=e5af0c08"></script>
-<script src="db_p8.js?v=e5af0c08"></script>
+<script src="db_p1.js?v=4a968702"></script>
+<script src="db_p2.js?v=4a968702"></script>
+<script src="db_p3.js?v=4a968702"></script>
+<script src="db_p4.js?v=4a968702"></script>
+<script src="db_p5.js?v=4a968702"></script>
+<script src="db_p6.js?v=4a968702"></script>
+<script src="db_p7.js?v=4a968702"></script>
+<script src="db_p8.js?v=4a968702"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=99a7fb2711"></script>
 
@@ -857,6 +857,8 @@ const DECL_OVR={
     // и 4 кв. 2025 (ЗФ-39-02-03_004 от 29.01.2026, табл. 6–7); валидация: head − глубина журнала = УГВ акта (точно).
     // 8П-1/9П-1/10П-1 — замёрзшие скважины (факт ДБ «лёд»; акт 4 кв. 2025, табл. 11: «конденсатная пробка», «не достигает К1»),
     // журнальные значения по ним не являются уровнем воды → отм. оголовков не вводятся, контроль после восстановления КИА.
+    // Ряды 0П-1 и 2'П-1 в db.js оцифрованы из квартальных актов (3 кв. 2024 – 4 кв. 2025): отм. УГВ актов
+    // пересчитаны в глубину от оголовка (50,445 / 50,590 м) — контроль К1/К2 по ним активен.
     piezo:{'0П-1':{k1:38.4,k2:39.6,fact:'26,1',head:50.445},'1П-1':{k1:38.4,k2:39.6,fact:'37,8',head:50.510},"2'П-1":{k1:38.8,k2:40.8,fact:'34,7',head:50.590},'5П-1':{k1:55.8,k2:57.7,fact:'нет воды',head:73.653},'8П-1':{k1:58.8,k2:60.4,fact:'лёд'},'9П-1':{k1:58.8,k2:60.4,fact:'лёд'},'10П-1':{k1:58.8,k2:60.4,fact:'лёд'}},
     pond:{re:/уровень водоёма/i, k1:45.5, k2:46.0, fact:'45,35', nm:'отметка уровня воды в отстойном пруду'}, // ряд водоёма ведётся в отметках — автоконтроль активен
     src:'ДБ хвостохранилища ТОФ (1 очередь), 2023 — разд. 11.5, табл. 2.2 (стр. 56–57)'},
@@ -2880,7 +2882,7 @@ function tabPiezo(o, el){
     <td>${esc(k)}</td><td><b>${s.length}</b></td><td>${esc(s[0][0])} — ${esc(last[0])}</td><td><b>${last[1]}</b> м</td>
     <td><label class="pzpick"><input type="checkbox" data-pz="${esc(k)}"${i<6?' checked':''}></label></td></tr>`;}).join('')}
   </tbody></table>
-  <div class="note" style="margin:-4px 0 8px">Значения — как в журнале-источнике: глубина от поверхности/оголовка либо абс. отметка, м; ряд «Уровень водоёма (отм.), м» — отметка уровня воды в водоёме (форма 5). Источники — во вкладке «Документация» / поле «Источники» карточки.</div>
+  <div class="note" style="margin:-4px 0 8px">Значения — как в журнале-источнике: глубина от поверхности/оголовка либо абс. отметка, м; ряд «Уровень водоёма (отм.), м» — отметка уровня воды в водоёме (форма 5). Источники — во вкладке «Документация» / поле «Источники» карточки.${o.id==='gts01'?' Ряды 0П-1 и 2\'П-1 оцифрованы из квартальных актов обследования техсостояния (3 кв. 2024 — 4 кв. 2025): отметки УГВ актов пересчитаны в глубину от оголовка (50,445 / 50,590 м по актам 2 кв. и 4 кв. 2025).':''}</div>
   ${(()=>{ const ov=DECL_OVR[o.id]||{}; if(!ov.piezo&&!ov.pond) return '';
     const stP=(v,k1,k2)=> v===null?'<span style="color:#888">нет ряда наблюдений</span>':(v>=k2?'<b style="color:#c62828">К2 — превышение</b>':(v>=k1?'<b style="color:#a86400">К1 — внимание</b>':'<span style="color:#2e7d32">норма</span>'));
     const rows=[];
@@ -8294,8 +8296,8 @@ setTimeout(()=>{ try{
 })();
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"rMz6JyN6NzL69HXw"};
-const BUILD="e5af0c08";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"HGz/c6zJ/UcZwXck"};
+const BUILD="4a968702";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
