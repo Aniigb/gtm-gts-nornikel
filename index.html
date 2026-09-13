@@ -25,7 +25,7 @@
   *{box-sizing:border-box; margin:0; padding:0}
   html,body{height:100%; font:14px/1.45 "Segoe UI","PT Sans",-apple-system,"Helvetica Neue",Arial,sans-serif; color:var(--ink)}
   #app{display:grid; grid-template-columns:330px 1fr 420px; grid-template-rows:56px auto 1fr auto; height:100vh}
-  header{grid-column:1/4; background:var(--bg); color:#eef2f6; display:flex; align-items:center; gap:18px; padding:0 18px; position:relative}
+  header{grid-column:1/4; background:linear-gradient(100deg,#0a1a2b 0%,#0e2c49 42%,var(--nn-deep) 78%,#332c5c 115%); color:#eef2f6; display:flex; align-items:center; gap:18px; padding:0 18px; position:relative}
   header::before{content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--nn-blue) 0%,var(--nn-deep) 45%,var(--zf) 100%)}
   header h1{font-size:16px; font-weight:600; letter-spacing:.3px; white-space:nowrap}
   header .sub{font-size:12px; color:#9fb0bf}
@@ -152,8 +152,8 @@
   /* --- ЦЕНТР КОНТРОЛЯ ГТМ: надстройка развития и раннего предупреждения --- */
   @keyframes gsBlink{0%,100%{background:#c8372d; color:#fff}50%{background:#7e1f18; color:#ffd9d4}}
   #gsBox{margin:10px 10px 12px; border:1px solid #b9a8d8; border-top:3px solid var(--zf); border-radius:8px; background:linear-gradient(180deg,#efeaf6,#f6f2ea 60%); overflow:hidden}
-  #gsHead{padding:7px 10px 6px; font-size:12px; font-weight:700; color:#3d2f5e; letter-spacing:.3px; border-bottom:1px solid #d8cbf0}
-  #gsHead small{display:block; font-weight:400; font-size:10px; color:var(--mut); letter-spacing:0; margin-top:2px}
+  #gsHead{padding:7px 10px 6px; font-size:12px; font-weight:700; color:#fff; letter-spacing:.3px; border-bottom:1px solid #d8cbf0; background:linear-gradient(90deg,var(--nn-deep) 0%,var(--nn-blue) 55%,var(--zf) 100%)}
+  #gsHead small{display:block; font-weight:400; font-size:10px; color:#d8e6f5; letter-spacing:0; margin-top:2px}
   #gsMenu{display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:7px 8px 8px}
   #gsMenu button{font-size:11px; line-height:1.25; padding:6px; border:1px solid #c9b8e2; background:#f7f4fc; color:#43336b; border-radius:6px; cursor:pointer; text-align:left; position:relative}
   #gsMenu button:hover{border-color:var(--zf); background:#efe8f9}
@@ -354,6 +354,17 @@
   .twrap.mb{margin-bottom:8px}
   .twrap>table.rows{margin-bottom:0}
 
+  /* ---------- фокус-режим карты: при работе с картой панели плавно скрываются, по простою возвращаются ---------- */
+  #app{transition:grid-template-columns .45s ease, grid-template-rows .45s ease}
+  header, #warnStrip, #side, #detail, #appFooter{transition:opacity .35s ease}
+  body.map-focus #app{grid-template-columns:0px 1fr 0px; grid-template-rows:0px 0px 1fr 0px}
+  body.map-focus header, body.map-focus #warnStrip, body.map-focus #side, body.map-focus #detail, body.map-focus #appFooter{opacity:0; pointer-events:none; overflow:hidden; min-width:0; min-height:0}
+  body.map-focus #map{cursor:grab}
+  @media (max-width:900px){
+    #map{transition:height .45s ease}
+    body.map-focus #map{height:84vh}
+  }
+
   /* ---------- мобильная адаптация ---------- */
   @media (max-width:900px){
     body{overflow:auto}
@@ -381,7 +392,7 @@
     .twrap>table.rows.narrowT{min-width:0}
     table.reg{min-width:680px}
     .photos{grid-template-columns:repeat(2,1fr)}
-    #regModal .box, #uplModal .box, #repModal .box{width:96vw; max-width:96vw; margin:2vh auto; padding:14px 14px; max-height:94vh}
+    #regModal .box, #uplModal .box, #repModal .box, #ntdModal .box, #txtModal .box, #niokrModal .box, #wxDutyModal .box, #tgModal .box, #meteoModal .box, #skModal .box{width:96vw; max-width:96vw; margin:2vh auto; padding:14px 14px; max-height:94vh}
     #settings{width:92vw; right:0}
     .wells,.depths{overflow-x:auto; flex-wrap:nowrap}
     canvas.plot{min-height:220px}
@@ -484,14 +495,25 @@
   .insp-prog>div{height:100%; background:var(--ok); width:0; transition:width .3s}
   .insp-hist{border:1px solid var(--line); border-radius:8px; background:#fff; padding:8px 12px; margin:8px 0; font-size:12.8px}
   /* ---------- единый стиль кнопок закрытия модальных окон: цветная, с контуром, правый верхний угол ---------- */
-  #uplModal .box, #repModal .box, #regModal .box, #ntdModal .box, #txtModal .box, #niokrModal .box, #wxDutyModal .box, #tgModal .box, #meteoModal .box, #skModal .box{position:relative}
-  #uplModal .close, #repModal .close, #regModal .close, #ntdModal .close, #txtModal .close, #niokrModal .close, #wxDutyModal .close, #tgModal .close, #meteoModal .close, #skModal .close{
+  #uplModal .box, #repModal .box, #regModal .box, #ntdModal .box, #txtModal .box, #niokrModal .box, #wxDutyModal .box, #tgModal .box, #meteoModal .box, #skModal .box, #gsModal .box{position:relative}
+  #uplModal .close, #repModal .close, #regModal .close, #ntdModal .close, #txtModal .close, #niokrModal .close, #wxDutyModal .close, #tgModal .close, #meteoModal .close, #skModal .close, #gsModal .close{
     position:absolute; top:12px; right:12px; float:none; width:30px; height:30px; padding:0; z-index:6;
     border:1.5px solid #8f271e; border-radius:8px; background:var(--crit); color:#fff;
     font-size:15px; font-weight:700; line-height:1; display:flex; align-items:center; justify-content:center;
     cursor:pointer; box-shadow:0 2px 6px rgba(20,10,8,.3); transition:background .15s, transform .15s}
-  #uplModal .close:hover, #repModal .close:hover, #regModal .close:hover, #ntdModal .close:hover, #txtModal .close:hover, #niokrModal .close:hover, #wxDutyModal .close:hover, #tgModal .close:hover, #meteoModal .close:hover, #skModal .close:hover{background:#a52a22; transform:scale(1.07)}
-  #uplModal .box>h2, #repModal .box>h2, #regModal .box>h2, #ntdModal .box>h2, #txtModal .box>h2, #niokrModal .box>h2, #wxDutyModal .box>h2, #tgModal .box>h2, #meteoModal .box>h2, #skModal .box>h2{margin-right:40px}
+  #uplModal .close:hover, #repModal .close:hover, #regModal .close:hover, #ntdModal .close:hover, #txtModal .close:hover, #niokrModal .close:hover, #wxDutyModal .close:hover, #tgModal .close:hover, #meteoModal .close:hover, #skModal .close:hover, #gsModal .close:hover{background:#a52a22; transform:scale(1.07)}
+  #uplModal .box>h2, #repModal .box>h2, #regModal .box>h2, #ntdModal .box>h2, #txtModal .box>h2, #niokrModal .box>h2, #wxDutyModal .box>h2, #tgModal .box>h2, #meteoModal .box>h2, #skModal .box>h2, #gsModal .box>h2{margin-right:40px}
+  /* ---------- Центр контроля ГТМ: разделы открываются отдельными окнами ---------- */
+  #gsModal{display:none; position:fixed; inset:0; z-index:1130; background:rgba(15,28,38,.62)}
+  #gsModal .box{background:var(--panel); width:1080px; max-width:96vw; max-height:92vh; margin:3vh auto; border-radius:10px; padding:18px 22px; box-shadow:0 10px 40px rgba(0,0,0,.42); display:flex; flex-direction:column; border-top:4px solid; border-image:linear-gradient(90deg,var(--nn-blue) 0%,var(--nn-deep) 45%,var(--zf) 100%) 1}
+  #gsModal .box>h2{font-size:16px}
+  #gsModalBody{overflow-y:auto; -webkit-overflow-scrolling:touch; margin-top:8px; padding-right:2px}
+  #gsModalBody .gsCard{overflow-x:auto; -webkit-overflow-scrolling:touch}
+  #gsModalBody .gsCard .gsTbl{min-width:0}
+  @media (max-width:640px){
+    #gsModal .box{width:100vw; max-width:100vw; height:100vh; max-height:100vh; margin:0; border-radius:0; padding:14px 12px}
+    #gsModalBody .gsCard .gsTbl{min-width:540px}
+  }
   @media print{ body.printing #repModal .close{display:none} }
 </style>
 </head>
@@ -520,7 +542,7 @@
     <input id="search" placeholder="Поиск по наименованию объекта ГТС…">
     <div id="list"></div>
     <div id="gsBox">
-      <div id="gsHead">◉ ЦЕНТР КОНТРОЛЯ ГТМ<small>контур развития и раннего предупреждения геотехнического мониторинга</small></div>
+      <div id="gsHead">◉ ЦЕНТР КОНТРОЛЯ ГТМ<small>контур развития и раннего предупреждения геотехнического мониторинга · каждый раздел открывается отдельным окном</small></div>
       <div id="gsMenu">
         <button data-gs="alerts" title="Журнал тревог и эскалация при переходе объектов через контрольные критерии К1/К2 (ФЗ-117, РД 03-259-98, ПМЛА)">⚠ Тревоги и эскалация К1/К2<i class="bdg" id="gsBdgA" style="display:none"></i></button>
         <button data-gs="risk" title="Матрица рисков 5×5 (вероятность × последствия по классу ГТС) и скоринг объектов 0–100">🎯 Матрица рисков и скоринг</button>
@@ -684,6 +706,14 @@
     <button class="close" id="wxDutyClose">✕</button>
     <h2>🛡 Дежурный метеоконтроль ГТС</h2>
     <div id="wxDutyWrap" style="overflow:auto">Загрузка…</div>
+  </div>
+</div>
+
+<div id="gsModal" title="Раздел Центра контроля ГТМ">
+  <div class="box">
+    <button class="close" id="gsClose">✕</button>
+    <h2 id="gsModalTitle"></h2>
+    <div id="gsModalBody"></div>
   </div>
 </div>
 
@@ -1251,10 +1281,51 @@ function statusDetail(o){ // статус + причины (какие прав�
       }
     }
   }
+  // А4: просрочка актуальных замеров по ведущимся видам КИА — предупреждающий признак (ФНП № 151)
+  try{
+    const kf=kiaFreshness(o);
+    ['term','piezo','geod','osm'].forEach(k=>{
+      const f=kf[k];
+      if(f.overdue) reasons.push({level:'risk', text:`нет актуальных замеров: ${KIA_LABEL[k]} — последний замер ${f.last} (${f.age} сут. назад при рабочей периодичности ${f.period} сут.); периодичность уточняется регламентом наблюдений объекта (ФНП № 151)`});
+    });
+  }catch(e){}
   const crit=reasons.some(r=>r.level==='crit'), risk=reasons.some(r=>r.level==='risk');
   return {status: crit?'КРИТИЧНО':(risk?'РИСК':'НОРМА'), reasons};
 }
 function statusOf(o){ return statusDetail(o).status; }
+
+/* --- А4: актуальность замеров по видам КИА с нормативной периодичностью (ФНП № 151; периодичность — рабочие значения макета, уточняются регламентом наблюдений объекта) --- */
+const KIA_PERIOD={term:270, piezo:45, geod:270, osm:120}; // сутки: термометрия ~2 цикла/год, пьезометрия ~ежемесячно, геодезия ~2 цикла/год, осмотры ~ежеквартально
+const KIA_LABEL={term:'термометрия', piezo:'пьезометрия/уровни', geod:'геодезия', osm:'осмотры'};
+function kiaMaxDate(x){ // глубокий поиск максимальной даты (ISO или ДД.ММ.ГГГГ) в структуре ряда
+  let best=null;
+  const walk=v=>{
+    if(v===null||v===undefined) return;
+    if(typeof v==='string'){
+      let d=null;
+      if(/^\d{4}-\d{2}-\d{2}/.test(v)) d=v.slice(0,10);
+      else if(/^\d{2}\.\d{2}\.\d{4}/.test(v)) d=v.slice(6,10)+'-'+v.slice(3,5)+'-'+v.slice(0,2);
+      if(d&&(!best||d>best)) best=d;
+      return;
+    }
+    if(Array.isArray(v)){ v.forEach(walk); return; }
+    if(typeof v==='object'){ Object.keys(v).forEach(k=>walk(v[k])); }
+  };
+  walk(x);
+  return best;
+}
+function kiaFreshness(o){
+  const today=new Date().toISOString().slice(0,10);
+  const age=d=>d?Math.floor((new Date(today)-new Date(d))/86400000):null;
+  const mk=(have,last,period)=>({have:!!have, last:last||null, age:age(last), period, overdue:!!(have&&last&&age(last)>period)});
+  let osArr=[]; try{ osArr=(typeof OSM!=='undefined'&&OSM[o.a])||[]; }catch(e){}
+  return {
+    term:  mk(o.prof&&Object.keys(o.prof).length, o.prof?kiaMaxDate(o.prof):null, KIA_PERIOD.term),
+    piezo: mk(o.ugv&&Object.keys(o.ugv).length,   o.ugv?kiaMaxDate(o.ugv):null,   KIA_PERIOD.piezo),
+    geod:  mk(o.geod&&Object.keys(o.geod).length, o.geod?kiaMaxDate(o.geod):null, KIA_PERIOD.geod),
+    osm:   mk(osArr.length>0, kiaMaxDate(osArr), KIA_PERIOD.osm)
+  };
+}
 
 /* ---------- карта ---------- */
 const map = L.map('map',{zoomControl:true}).setView([69.40,88.00], 9);
@@ -1267,6 +1338,26 @@ const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layer
 L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup},{position:'topright'}).addTo(map);
 map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); });
+
+/* ---------- фокус-режим карты: панели плавно скрываются при работе с картой и возвращаются по простою ---------- */
+let mapFocusT=null, mapFocusMoveT=0;
+function mapFocus(on){
+  document.body.classList.toggle('map-focus',!!on);
+  clearTimeout(mapFocusT); mapFocusT=null;
+  setTimeout(()=>map.invalidateSize(),480); // пересчёт размера тайлов после анимации
+}
+function mapFocusPing(){
+  mapFocus(true);
+  clearTimeout(mapFocusT);
+  mapFocusT=setTimeout(()=>mapFocus(false),3600); // возврат панелей после 3,6 с простоя
+}
+(function mapFocusInit(){
+  const el=document.getElementById('map');
+  ['mousedown','wheel','touchstart'].forEach(ev=>el.addEventListener(ev,mapFocusPing,{passive:true}));
+  el.addEventListener('mousemove',()=>{ const t=Date.now(); if(t-mapFocusMoveT>500){ mapFocusMoveT=t; if(document.body.classList.contains('map-focus')) mapFocusPing(); } },{passive:true});
+  map.on('movestart',mapFocusPing);
+  document.addEventListener('mousedown',ev=>{ if(document.body.classList.contains('map-focus') && !(ev.target&&ev.target.closest&&ev.target.closest('#map'))) mapFocus(false); },true); // клик вне карты — немедленный возврат панелей
+})();
 
 /* ---------- слой термоскважин ИГИ: строится по параметрам перехода местных СК (skTrans) ---------- */
 function igiWellsLayer(notify){
@@ -2294,7 +2385,8 @@ function select(i,fromList){
 
 function renderDetail(o){
   const d=document.getElementById('detail');
-  if(typeof gsCur!=='undefined'){ gsCur=null; document.querySelectorAll('#gsMenu button').forEach(b=>b.classList.remove('on')); }
+  if(typeof gsCloseModal==='function') gsCloseModal(); // закрыть окно Центра контроля при открытии карточки объекта
+  if(typeof mapFocus==='function') mapFocus(false);    // вернуть панели из фокус-режима карты
   const sd=statusDetail(o); const st=sd.status;
   const reasonsHtml = sd.reasons.length
     ? `<div class="reasons">${sd.reasons.map(r=>`<div class="rsn r-${r.level}">${r.level==='crit'?'⛔':'⚠️'} ${esc(r.text)}</div>`).join('')}</div>`
@@ -4838,7 +4930,7 @@ const GS_ROAD=[
    {k:'A1', t:'Журнал тревог и эскалации переходов К1/К2 (локальный + серверный журнал Supabase — Центр контроля ГТМ)', d0:'готово'},
    {k:'A2', t:'Тренды температуры на глубине НГК с 95% ДИ и прогноз выхода на К2 по каждой скважине', d0:'готово'},
    {k:'A3', t:'Индексы промерзания/оттаивания (Стефан) по метеорядам Open-Meteo — сезонный прогноз протаивания', d0:'готово'},
-   {k:'A4', t:'Разделение признака «нет актуальных замеров» по видам КИА и нормативной периодичности объекта (ФНП № 151)', d0:'план'},
+   {k:'A4', t:'Разделение признака «нет актуальных замеров» по видам КИА и нормативной периодичности объекта (ФНП № 151)', d0:'готово'},
    {k:'A5', t:'Версионирование замеров и аудит изменений в общем реестре (кто/когда/что — неизменяемая история)', d0:'план'},
    {k:'A6', t:'Автовыгрузка паспорта объекта мониторинга по ГОСТ 31937-2024 одним документом', d0:'план'}]},
  {g:'Этап Б · 3–9 мес — непрерывность данных', items:[
@@ -4981,6 +5073,23 @@ function gsAckNtf(id){
   gsJournal.push(ev); if(gsJournal.length>500) gsJournal=gsJournal.slice(-500); gsSave(GS_STORE.j,gsJournal); gsSbPush([ev]);
   gsOpen('alerts',true);
 }
+/* --- А4. Актуальность замеров по видам КИА (нормативная периодичность, ФНП № 151) --- */
+function gsKiaCard(){
+  const cell=f=>{
+    if(!f.have) return '<td class="mut" style="text-align:center">—</td>';
+    const over=f.overdue;
+    return `<td style="text-align:center;white-space:nowrap;${over?'background:#fdecea;color:#b3202c;font-weight:600':''}">${f.last||'—'}<br><span class="mut" style="font-size:10.5px">${f.age!==null?f.age+' сут.':'—'} / ${f.period} сут.${over?' · просрочено':''}</span></td>`;
+  };
+  const rows=DB.objects.map((o,i)=>{ const kf=kiaFreshness(o); return {o,i,kf}; });
+  const nOver=rows.reduce((a,r)=>a+['term','piezo','geod','osm'].filter(k=>r.kf[k].overdue).length,0);
+  return `<div class="gsCard"><h3>🗓 Актуальность замеров по видам КИА <span class="mut" style="font-weight:400">(этап А4 · ФНП № 151)</span></h3>
+    <div class="mut" style="margin-bottom:6px">Для каждого вида наблюдений — дата последнего замера и возраст ряда против рабочей периодичности (термометрия ${KIA_PERIOD.term} сут. · пьезометрия ${KIA_PERIOD.piezo} сут. · геодезия ${KIA_PERIOD.geod} сут. · осмотры ${KIA_PERIOD.osm} сут.; уточняются регламентом наблюдений объекта). Просрочка по ведущемуся виду автоматически формирует предупреждающий признак «нет актуальных замеров» и переводит объект в статус РИСК с записью в журнале. «—» — вид на объекте не ведётся (просрочка не считается, объект учитывается в категории «без замеров»).</div>
+    <table class="gsTbl"><tr><th style="text-align:left">Объект</th><th>Термометрия</th><th>Пьезометрия/уровни</th><th>Геодезия</th><th>Осмотры</th></tr>
+    ${rows.map(r=>`<tr><td><a href="#" data-gsobj="${r.i}" style="color:var(--zf);font-weight:600">${esc(r.o.a)}</a></td>${cell(r.kf.term)}${cell(r.kf.piezo)}${cell(r.kf.geod)}${cell(r.kf.osm)}</tr>`).join('')}
+    </table>
+    <div class="mut" style="margin-top:4px">Просроченных видов КИА сейчас: <b>${nOver}</b>. Рабочая периодичность макета: термометрия и геодезия — два цикла в год, пьезометрия/уровни — ежемесячно, осмотры — ежеквартально; при утверждении регламентов наблюдений значения заменяются на объектные.</div>
+  </div>`;
+}
 /* --- 1. Тревоги и эскалация --- */
 function gsViewAlerts(){
   const snap=gsScan();
@@ -5005,6 +5114,7 @@ function gsViewAlerts(){
     }).join('')}</table>`:'<div class="mut">Превышений нет — все объекты в пределах контрольных критериев К1/К2.</div>'}
   </div>
   ${gsDutyCard()}
+  ${gsKiaCard()}
   <div class="gsCard"><h3>Маршрут эскалации (ФЗ-117, РД 03-259-98, ПМЛА)</h3>
     <div style="font-size:12px;line-height:1.7">
       1️⃣ <b>Событие</b> — переход статуса объекта через К1/К2 фиксируется в журнале ниже автоматически (первый уровень документирования);<br>
@@ -5223,7 +5333,7 @@ function gsViewRoad(){
 /* --- диспетчер --- */
 const GS_VIEWS={alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad};
 function gsBindCommon(){
-  const d=document.getElementById('detail');
+  const d=document.getElementById('gsModalBody');
   d.querySelectorAll('[data-gsobj]').forEach(el=>el.addEventListener('click',ev=>{ ev.preventDefault(); select(+el.dataset.gsobj); }));
   d.querySelectorAll('select.gsSt[data-gsk]').forEach(el=>el.addEventListener('change',()=>{ gsSens[el.dataset.gsk]=el.value; gsSave(GS_STORE.sens,gsSens); }));
   d.querySelectorAll('select.gsSt[data-grk]').forEach(el=>el.addEventListener('change',()=>{ gsRoad[el.dataset.grk]=el.value; gsSave(GS_STORE.road,gsRoad); gsBadges(0); gsOpen('road',true); }));
@@ -5237,15 +5347,29 @@ function gsBindCommon(){
   d.querySelectorAll('[data-gsack]').forEach(el=>el.addEventListener('click',()=>gsAckNtf(el.dataset.gsack)));
 }
 function gsOpen(key, silent){
+  const m=document.getElementById('gsModal');
+  if(silent && m.style.display!=='block') return; // тихая синхронизация — только когда окно раздела открыто
   gsCur=key;
   document.querySelectorAll('#gsMenu button').forEach(b=>b.classList.toggle('on', b.dataset.gs===key));
-  curObj=null; curWell=null;
-  const d=document.getElementById('detail');
-  d.innerHTML=GS_VIEWS[key]();
+  let html=GS_VIEWS[key](); // карточка объекта за окном сохраняется — curObj не сбрасываем
+  const mt=html.match(/^\s*<h2>([\s\S]*?)<\/h2>/); // заголовок раздела — в шапку окна, без дублирования в теле
+  if(mt){ document.getElementById('gsModalTitle').innerHTML=mt[1]; html=html.slice(mt[0].length); }
+  document.getElementById('gsModalBody').innerHTML=html;
+  m.style.display='block';
+  document.body.style.overflow='hidden';
   gsBindCommon();
   if(key==='prog') gsLoadStefan();
-  if(!silent&&window.matchMedia('(max-width:900px)').matches) setTimeout(()=>d.scrollIntoView({behavior:'smooth'}),150);
 }
+function gsCloseModal(){
+  const m=document.getElementById('gsModal');
+  if(m) m.style.display='none';
+  document.body.style.overflow='';
+  gsCur=null;
+  document.querySelectorAll('#gsMenu button').forEach(b=>b.classList.remove('on'));
+}
+document.getElementById('gsClose').addEventListener('click',gsCloseModal);
+document.getElementById('gsModal').addEventListener('click',ev=>{ if(ev.target&&ev.target.id==='gsModal') gsCloseModal(); });
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&document.getElementById('gsModal').style.display==='block') gsCloseModal(); });
 document.querySelectorAll('#gsMenu button').forEach(b=>b.addEventListener('click',()=>gsOpen(b.dataset.gs)));
 gsJournalSync();
 setTimeout(gsJournalPull,0); // после полной инициализации скрипта (TG_SB/sbFetch объявлены ниже)
