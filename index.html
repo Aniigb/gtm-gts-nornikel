@@ -609,9 +609,9 @@
 <div id="repModal">
   <div class="box">
     <button class="close" id="repClose">✕</button>
-    <h2 style="font-size:16px">Формирование сводного отчёта по результатам геотехнического мониторинга</h2>
+    <h2 id="repTitle" style="font-size:16px">Формирование сводного отчёта по результатам геотехнического мониторинга</h2>
     <div class="normref noprint">Методика: балльная оценка по направлениям (температурный режим грунтов / деформации сооружений / дефекты и повреждения), категории технического состояния — по ГОСТ 31937-2024; критерии безопасности ГТС — ФЗ-117 (ст. 9), ФНП приказ Ростехнадзора от 08.05.2024 № 151, ГОСТ Р 59873-2021; мониторинг на ММГ — СП 25.13330.2020.</div>
-    <div class="noprint" style="display:flex; gap:18px; flex-wrap:wrap; margin-top:6px">
+    <div class="noprint" id="repCfg" style="display:flex; gap:18px; flex-wrap:wrap; margin-top:6px">
       <div>
         <b style="font-size:12.5px">Задачи отчёта:</b>
         <label class="task"><input type="checkbox" class="repTask" value="passport" checked> Паспорт ГТС и общие сведения</label>
@@ -2725,8 +2725,13 @@ function tabGtsPassport(o, el){
     <th>Средство наблюдений</th><th style="width:22%">План (проект/паспорт)</th><th style="width:18%">В базе (факт)</th>
   </tr></thead><tbody>${kiaRows}</tbody></table>`:'<div class="note">Состав КИА — по проекту мониторинга (этап 2 НИР); в базу не внесён. Плановые количества задаются во вкладке «Паспорт ГТМ».</div>'}
   <div class="sect">Источники данных</div>
-  <div class="srcs">${(o.src||[]).map(esc).join('<br>')}</div>`;
+  <div class="srcs">${(o.src||[]).map(esc).join('<br>')}</div>
+  <div class="noprint" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+    <button class="wbtn" id="gostPassBtn" style="font-weight:600" title="Автовыгрузка паспорта объекта мониторинга одним документом (печать / PDF)">📄 Паспорт объекта мониторинга (ГОСТ 31937-2024) — одним документом</button>
+  </div>`;
   wireEd(o, el, 'pf');
+  const gpB=el.querySelector('#gostPassBtn');
+  if(gpB) gpB.onclick=()=>openGostPassport(o);
   const tcInp=el.querySelector('#tcalcInp');
   tcInp.addEventListener('change', ()=>{
     const v=parseFloat(tcInp.value);
@@ -4714,7 +4719,11 @@ function assess(o){
 
 /* ---------- формирование сводного отчёта ---------- */
 const repModal=document.getElementById('repModal');
-document.getElementById('repBtn').onclick=()=>{ repModal.style.display='block'; };
+document.getElementById('repBtn').onclick=()=>{
+  document.getElementById('repTitle').textContent='Формирование сводного отчёта по результатам геотехнического мониторинга';
+  document.getElementById('repCfg').style.display='';
+  repModal.style.display='block';
+};
 document.getElementById('repClose').onclick=()=>repModal.style.display='none';
 repModal.addEventListener('click',e=>{ if(e.target===repModal) repModal.style.display='none'; });
 
@@ -4768,6 +4777,163 @@ function conclText(a,sd){
   if(sd.status==='НОРМА') return 'Состояние работоспособное: продолжить режимные наблюдения по установленному графику.';
   return 'Недостаточно данных для оценки — требуется восстановление/организация мониторинга.';
 }
+
+/* ---------- автовыгрузка паспорта объекта мониторинга по ГОСТ 31937-2024 — одним документом из карточки объекта ---------- */
+function gost31937Passport(o){
+  const g=o.gts||{}, kia=g.kia||{}, pts=o.points||{};
+  const prec={'точный':'точное положение (OSM)','nominatim':'Nominatim/OSM','уточнено вручную':'уточнено по спутниковому снимку','оценка (OSM)':'оценка по данным OSM — требует уточнения','требует уточнения':'оценка — требует уточнения по материалам заказчика'}[o.p]||esc(o.p||'—');
+  const pf=(k,d)=>{ const v=edVal(o,'pf',k,d===undefined?'':d); return (v===null||v===undefined||String(v).trim()==='')?'—':esc(String(v)); };
+  const a=assess(o), sd=statusDetail(o), kf=kiaFreshness(o);
+  const today=new Date().toLocaleDateString('ru-RU');
+  const typ=edVal(o,'pf','type', g.type||'')||'—', kls=edVal(o,'pf','klass', g.klass||'')||'—';
+  const tcalc=edVal(o,'pf','tcalc', TCALC[o.a]!==undefined?TCALC[o.a]:'');
+  // разд. 3 — сооружения
+  const stRows=(g.structures||[]).map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.name)}</td><td>${esc(s.kind||'—')}</td><td>${fmt(s.len)}</td><td>${fmt(s.h)}</td><td>${esc(s.crest||'—')}</td><td>${fmt(s.width)}</td><td>${esc(s.note||'—')}</td></tr>`).join('');
+  // разд. 5 — КИА план/факт
+  const kiaDef=[['Термометрические скважины','term','thermal'],['Пьезометрические скважины','piezo','piezo'],['Деформационные марки','marks','marks'],['Реперы','reper','repers'],['Контрольные реперы','kreper',null],['Водомерные рейки','gauge','gauge'],['Наблюдательные скважины','obs','obs']];
+  const kiaRows=kiaDef.map(([nm,k,pk])=>{
+    const plan=kia[k]; const fact=pk?((pts[pk]||[]).length):'—';
+    return `<tr><td>${nm}</td><td>${plan===0?'0':(plan===null||plan===undefined?'—':plan)}</td><td>${fact}</td></tr>`;
+  }).join('');
+  const lst=x=>x.length?esc(x.join(', ')):'—';
+  // разд. 6 — контрольные значения
+  let kkDecl='';
+  const kd=o.kkd;
+  if(kd&&kd.rows&&kd.rows.length){
+    let body='', lastG=null;
+    kd.rows.forEach(r=>{
+      if(r.g!==lastG){ lastG=r.g; body+=`<tr><td colspan="4" style="background:#eee"><b>${esc(r.g)}</b></td></tr>`; }
+      body+=`<tr><td>${esc(r.p||'')}</td><td>${esc(r.k1||'')}</td><td>${esc(r.k2||'')}</td><td>${esc(r.n||'')}</td></tr>`;
+    });
+    kkDecl+=`<h3 style="font-size:12.5px">Критерии безопасности, утверждённые декларацией</h3>
+    <p style="font-size:11px">${esc(kd.decl||'')}${kd.note?(' — '+esc(kd.note)):''}</p>
+    <table><tr><th style="width:30%">Показатель / параметр</th><th style="width:25%">К1 — предупреждающий</th><th style="width:25%">К2 — предельный</th><th>Примечание / обоснование</th></tr>${body}</table>`;
+  }
+  const ov=DECL_OVR[o.id];
+  if(ov){
+    kkDecl+=`<h3 style="font-size:12.5px">Декларационные критерии К1/К2, используемые в автоконтроле системы ГТМ</h3>
+    <table><tr><th>Показатель</th><th>К1 — предупреждающий</th><th>К2 — предельный</th><th>Факт (по декларации)</th></tr>`;
+    if(ov.piezo) Object.entries(ov.piezo).forEach(([w,v])=>{ kkDecl+=`<tr><td>Отметка уровня воды в пьезометре ${esc(w)}, м</td><td>${v.k1}</td><td>${v.k2}</td><td>${esc(String(v.fact))}</td></tr>`; });
+    if(ov.pond) kkDecl+=`<tr><td>${esc(ov.pond.nm||'Отметка уровня воды в водоёме')}, м</td><td>${ov.pond.k1}</td><td>${ov.pond.k2}</td><td>${esc(String(ov.pond.fact))}</td></tr>`;
+    if(ov.tRisk!==undefined||ov.tcrit!==undefined) kkDecl+=`<tr><td>Температура мерзлотной завесы / грунтов основания, °C</td><td>${ov.tRisk!==undefined?ov.tRisk:'—'}</td><td>${ov.tcrit!==undefined?ov.tcrit:'—'}</td><td>—</td></tr>`;
+    if(ov.geodRiskSpeed!==undefined) kkDecl+=`<tr><td>Скорость осадки сооружений, мм/год</td><td>${ov.geodRiskSpeed}</td><td>${ov.geodCritSpeed}</td><td>—</td></tr>`;
+    kkDecl+=`</table><p style="font-size:11px">Источник: ${esc(ov.src||'декларация безопасности ГТС')}.</p>`;
+  }
+  if(!kkDecl) kkDecl='<p>Декларационные критерии К1/К2 по объекту в базу не загружены; автоконтроль ведётся по рабочим превентивным порогам системы ГТМ.</p>';
+  const kk=kkDecl+`<h3 style="font-size:12.5px">Рабочие превентивные пороги системы ГТМ (действующие настройки «⚙ Пороги и КК»)</h3>
+  <table><tr><th>Показатель</th><th>Порог риска</th><th>Критический порог</th></tr>
+  <tr><td>Температура грунта на глубине НГК, °C</td><td>${(TH.tcrit-0.3).toFixed(1)} (вблизи критического)</td><td>${TH.tcrit}</td></tr>
+  <tr><td>Тренд потепления основания на глубине ${TH.trendDepth} м, °C/год</td><td colspan="2">${TH.trend}</td></tr>
+  <tr><td>Скорость осадки марок сооружений, мм/год</td><td>${TH.geodRiskSpeed}</td><td>${TH.geodCritSpeed}</td></tr>
+  <tr><td>Суммарная осадка сооружений, мм</td><td>50 (значительная)</td><td>${TH.geodCritTotal}</td></tr>
+  <tr><td>Неравномерность осадки, мм</td><td>${TH.geodRiskSpread}</td><td>${TH.geodCritSpread}</td></tr></table>`;
+  // разд. 7 — периодичность
+  const fq=(k,label)=>{
+    const v=edVal(o,'gtm',k,'');
+    return `<tr><td>${label}</td><td>${v?esc(v):'— (по проекту мониторинга)'}</td></tr>`;
+  };
+  // разд. 8 — актуальность рядов
+  const fr=(x)=>{
+    if(!x.have) return 'нет данных';
+    let s=x.last||'—';
+    if(x.age!==null&&x.age!==undefined) s+=' ('+x.age+' сут. назад; контрольный период '+x.period+' сут.)';
+    if(x.overdue) s+=' — <b>просрочено</b>';
+    return s;
+  };
+  const notesUl=(arr)=>`<ul style="margin:2px 0 6px 18px">${arr.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`;
+  return `
+  <h1>ПАСПОРТ ОБЪЕКТА МОНИТОРИНГА</h1>
+  <p style="text-align:center">по ГОСТ 31937-2024 «Здания и сооружения. Правила обследования и мониторинга технического состояния»</p>
+  <p style="text-align:center; font-size:14px"><b>${esc(o.a)}</b><br>${esc(o.d||'')}</p>
+  <p style="text-align:center">ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель» · дата формирования: ${today}</p>
+  <p style="font-size:11px">Документ сформирован автоматически из базы данных системы ГТМ. Сведения, отсутствующие в базе, отмечены «—» и подлежат уточнению при официальном оформлении паспорта объекта мониторинга.</p>
+
+  <h2>1. Общие сведения об объекте</h2>
+  <table>
+    <tr><td style="width:38%">Наименование объекта</td><td><b>${esc(o.a)}</b></td></tr>
+    ${o.nameDecl?`<tr><td>Наименование ГТС по декларации безопасности</td><td>${esc(o.nameDecl)}</td></tr>`:''}
+    <tr><td>Предприятие</td><td>${esc(o.d||'—')}</td></tr>
+    <tr><td>Тип ГТС</td><td>${esc(String(typ))}</td></tr>
+    <tr><td>Вид и тип ГТС по декларации безопасности (приказ Ростехнадзора от 07.12.2020 № 499)</td><td>${esc(g.vt||'—')}</td></tr>
+    <tr><td>Класс ГТС (ПП РФ № 1607)</td><td>${esc(String(kls))}</td></tr>
+    <tr><td>Тип по рельефу</td><td>${esc(g.relief||'—')}</td></tr>
+    <tr><td>Способ образования</td><td>${esc(g.fill||'—')}</td></tr>
+    <tr><td>Класс отходов</td><td>${esc(g.waste||'—')}</td></tr>
+    <tr><td>Местоположение</td><td>${esc(g.location||'—')}</td></tr>
+    <tr><td>Назначение</td><td>${esc(g.purpose||'—')}</td></tr>
+    <tr><td>Координаты (WGS-84)</td><td>${fmt(o.lat)}, ${fmt(o.lon)} <span style="color:#666">(${prec})</span></td></tr>
+    <tr><td>Дата последнего обследования</td><td>${pf('obsled')}</td></tr>
+    <tr><td>Организация, ведущая мерзлотный надзор</td><td>${pf('nadzor')}</td></tr>
+    <tr><td>Период наблюдений в базе ГТМ</td><td>${o.d0||'—'} … ${o.d1||'—'}</td></tr>
+  </table>
+
+  <h2>2. Основание для проведения мониторинга</h2>
+  <p>ФЗ-117 «О безопасности гидротехнических сооружений» (ст. 9 — паспорт ГТС, декларация безопасности); ПП РФ № 1892 (правила декларирования безопасности ГТС); ПП РФ № 1607 (классификация ГТС); ФНП «Требования к обеспечению безопасности ГТС» (приказ Ростехнадзора от 08.05.2024 № 151); ГОСТ 31937-2024 (обследование и мониторинг технического состояния); ГОСТ Р 59873-2021 (контрольные критерии); СП 25.13330.2020 и СП 497.1325800.2020 (строительство и эксплуатация на ММГ).</p>
+  <p>Источники данных по объекту:<br>${(o.src||[]).map(esc).join('<br>')||'—'}</p>
+
+  <h2>3. Состав сооружений объекта</h2>
+  ${stRows?`<table><tr><th>№</th><th>Сооружение</th><th>Тип</th><th>Длина, м</th><th>Высота, м</th><th>Отм./гребень</th><th>Ширина гребня, м</th><th>Примечание</th></tr>${stRows}</table>`:'<p>Состав сооружений в базе не заполнен.</p>'}
+
+  <h2>4. Инженерно-геологические и геокриологические условия (краткая характеристика)</h2>
+  <table>
+    <tr><td style="width:38%">Горизонт нулевых годовых колебаний (НГК)</td><td>${o.ngc?('глубина '+o.ngc.h+' м, температура на НГК '+o.ngc.t+' °C'):'—'}</td></tr>
+    <tr><td>Расчётная температура грунта основания T<sub>расч</sub></td><td>${(tcalc===''||tcalc===null||tcalc===undefined)?'—':(esc(String(tcalc))+' °C')}</td></tr>
+    <tr><td>Материалы ИГИ в базе ГТМ</td><td>отчётов ИГИ: ${(o.igirep||[]).length}; скважин ИГИ с координатами: ${(o.igiWells||[]).length}; выделено ИГЭ: ${(o.igeList||[]).length}</td></tr>
+  </table>
+  <p style="font-size:11px">Полные сведения — вкладки карточки объекта «Инженерно-геологические изыскания», «Геокриология», «Гидрология», «Опасные процессы».</p>
+
+  <h2>5. Средства измерений и наблюдательная сеть (КИА)</h2>
+  <table><tr><th>Средство наблюдений</th><th style="width:22%">План (паспорт/проект)</th><th style="width:16%">Факт в базе</th></tr>${kiaRows}</table>
+  <table>
+    <tr><td style="width:38%">Термометрические скважины (факт)</td><td>${lst(Object.keys(o.prof||{}))}</td></tr>
+    <tr><td>Пьезометры / точки уровня (факт)</td><td>${lst(Object.keys(o.ugv||{}))}</td></tr>
+    <tr><td>Деформационные марки (факт)</td><td>${lst(Object.keys(o.geod||{}))}</td></tr>
+  </table>
+
+  <h2>6. Контрольные (предельные) значения показателей состояния</h2>
+  ${kk}
+
+  <h2>7. Периодичность наблюдений</h2>
+  <table>
+    ${fq('freq_term','Термометрия (тело и основание сооружений)')}
+    ${fq('freq_piezo','Пьезометрия / уровень грунтовых вод')}
+    ${fq('freq_geod','Геодезические наблюдения (деформации)')}
+    ${fq('freq_osm','Осмотры сооружений')}
+  </table>
+  <p style="font-size:11px">Рабочие контрольные периоды актуальности данных в системе ГТМ: термометрия — ${KIA_PERIOD.term} сут., пьезометрия — ${KIA_PERIOD.piezo} сут., геодезия — ${KIA_PERIOD.geod} сут., осмотры — ${KIA_PERIOD.osm} сут.; уточняются проектом (регламентом) мониторинга объекта (ФНП № 151).</p>
+
+  <h2>8. Результаты последних наблюдений и оценка технического состояния</h2>
+  <table>
+    <tr><td style="width:38%">Текущий статус объекта (автоконтроль)</td><td><b>${esc(sd.status||'нет данных')}</b></td></tr>
+    <tr><td>Категория технического состояния (ГОСТ 31937-2024)</td><td><b class="cat">${a.cat}</b> (балл: ${a.total===null?'—':a.total}; грунты: ${a.sG===null?'—':a.sG}, прочность/деформации: ${a.sS===null?'—':a.sS}, дефекты: ${a.sD===null?'—':a.sD})</td></tr>
+    <tr><td>Последний замер — термометрия</td><td>${fr(kf.term)}</td></tr>
+    <tr><td>Последний замер — пьезометрия</td><td>${fr(kf.piezo)}</td></tr>
+    <tr><td>Последний цикл — геодезия</td><td>${fr(kf.geod)}</td></tr>
+    <tr><td>Последний осмотр</td><td>${fr(kf.osm)}</td></tr>
+  </table>
+  ${sd.reasons.length?`<h3 style="font-size:12.5px">Сработавшие превентивные правила</h3>${notesUl(sd.reasons.map(r=>r.text))}`:'<p>Превентивные пороги на дату формирования не нарушены.</p>'}
+  <h3 style="font-size:12.5px">Обоснование балльной оценки</h3>
+  ${notesUl(a.notes.grunts)}${notesUl(a.notes.strength)}${notesUl(a.notes.defects)}
+
+  <h2>9. Заключение</h2>
+  <p>${esc(conclText(a,sd))}</p>
+  <h3 style="font-size:12.5px">Подписи</h3>
+  <table>
+    <tr><th>Должность</th><th style="width:24%">Фамилия, инициалы</th><th style="width:16%">Подпись</th><th style="width:12%">Дата</th></tr>
+    <tr><td>Руководитель работ по геотехническому мониторингу</td><td></td><td></td><td></td></tr>
+    <tr><td>Ответственный за безопасность ГТС (мерзлотный надзор)</td><td></td><td></td><td></td></tr>
+    <tr><td>Главный инженер предприятия</td><td></td><td></td><td></td></tr>
+  </table>
+  <div class="cr">© 2026 АНО «АНИИГБ» им. М.В. Кима — программная реализация и база данных (ст. 1259, 1261, 1333–1336 ГК РФ). Данные и документация ГТС — собственность ПАО «ГМК «Норильский никель»; сведения ограниченного доступа об объектах промышленной безопасности (ФЗ-117 «О безопасности ГТС», ФЗ-98 «О коммерческой тайне»). Воспроизведение, передача третьим лицам и публикация без письменного разрешения правообладателей запрещены.</div>`;
+}
+function openGostPassport(o){
+  document.getElementById('repTitle').textContent='Паспорт объекта мониторинга (ГОСТ 31937-2024) — '+o.a;
+  document.getElementById('repCfg').style.display='none';
+  const out=document.getElementById('repOut');
+  out.innerHTML=gost31937Passport(o); out.style.display='block';
+  repModal.style.display='block';
+}
+
 document.getElementById('repGen').onclick=()=>{
   const tasks=new Set([...document.querySelectorAll('.repTask:checked')].map(c=>c.value));
   const scope=document.querySelector('input[name=repScope]:checked').value;
@@ -4932,7 +5098,7 @@ const GS_ROAD=[
    {k:'A3', t:'Индексы промерзания/оттаивания (Стефан) по метеорядам Open-Meteo — сезонный прогноз протаивания', d0:'готово'},
    {k:'A4', t:'Разделение признака «нет актуальных замеров» по видам КИА и нормативной периодичности объекта (ФНП № 151)', d0:'готово'},
    {k:'A5', t:'Версионирование замеров и аудит изменений в общем реестре (кто/когда/что — неизменяемая история)', d0:'план'},
-   {k:'A6', t:'Автовыгрузка паспорта объекта мониторинга по ГОСТ 31937-2024 одним документом', d0:'план'}]},
+   {k:'A6', t:'Автовыгрузка паспорта объекта мониторинга по ГОСТ 31937-2024 одним документом (карточка объекта → «Паспорт ГТС»)', d0:'готово'}]},
  {g:'Этап Б · 3–9 мес — непрерывность данных', items:[
    {k:'B1', t:'API-ингест электронных журналов замеров эксплуатации (термометрия/пьезометрия/геодезия)', d0:'план'},
    {k:'B2', t:'Телеметрия пьезометров — пилот на ключевых сечениях хвостохранилища ТОФ', d0:'план'},
