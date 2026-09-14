@@ -3134,8 +3134,27 @@ function tabCalcGts(o, el){ // вкладка «Расчёты» карточк�
     <button class="wbtn" id="calcGoTherm">→ Термометрия</button>
   </div>`;
 
-  /* --- блок 7: гидрологический расчёт --- */
-  const hydroHtml=`<div class="note">Блок в разработке. Планируемый состав: оценка поверхностного стока с водосборов по ЦМР (слой «Поверхностные стоки по ЦМР» на карте), сопоставление с ливневыми сценариями метеобазы и декларационными требованиями к водопропуску и паводковой безопасности (ФЗ-117; ПБ 03-438-02; СП 33.101-2003 — расчёт поверхностных стоков для ГТС накопительного типа). После реализации результаты (расчётные расходы, отметки НПУ/ФПУ) будут включены в проверку критериев К1/К2.</div>`;
+  /* --- блок 7: гидрологический расчёт (поверхностный сток по ЦМР — этап C2) --- */
+  const hst=(window.STOK&&STOK.objects.find(s=>s.id===o.id))||null;
+  const scenRows=[5,15,30,50].map(mm=>{
+    const v=hst?Math.round(mm*hst.catch_near_km2*1000):0;
+    return `<tr><td style="text-align:center">${mm}</td><td style="text-align:center"><b>${v>=1000?(v/1000).toFixed(1)+' тыс.':v}</b></td><td>${mm>=30?'ОПАСНОЕ явление (≥ 30 мм/сут)':mm>=15?'предупреждение (≥ 15 мм/сут)':'умеренный сток'}</td></tr>`;
+  }).join('');
+  const hydroRiskCol={'низкий':'#2e7d32','средний':'#ef9a1a','высокий':'#c62828'};
+  const hydroHtml=hst?`<table class="kv">
+    <tr><td>Площадь водосбора к объекту (радиус 500 м)</td><td><b>${hst.catch_near_km2} км²</b></td></tr>
+    <tr><td>Расстояние до расчётного русла (водосбор от ~1 км²)</td><td>${hst.dist_stream_m} м</td></tr>
+    <tr><td>Отметка точки объекта по ЦМР</td><td>${hst.elev!==null?hst.elev+' м':'—'}</td></tr>
+    <tr><td>Уклоны в буфере 300 м (средний / максимум)</td><td>${hst.slope_mean}° / ${hst.slope_max}°</td></tr>
+    <tr><td>Замкнутые понижения (зоны застоя талых вод)</td><td>${hst.depr_pct}% площади буфера</td></tr>
+    <tr><td>Скрининговый риск поверхностного стока</td><td><b style="color:${hydroRiskCol[hst.risk]||'#555'}">${hst.risk.toUpperCase()}</b></td></tr>
+  </table>
+  <div class="sect" style="margin-top:8px">Сценарии притока к объекту (суточный сток × водосбор):</div>
+  <table class="rows static"><thead><tr><th style="width:22%">Суточный сток, мм</th><th style="width:26%">Приток к объекту, м³/сут</th><th>Класс явления (критерии Росгидромета)</th></tr></thead><tbody>${scenRows}</tbody></table>
+  <div class="note">Приток (м³/сут) = сток (мм) × водосбор (км²) × 1 000. Суточный сток вычисляется с коэффициентом стока k = 0,9 / 0,6 / 0,4 по температуре грунта 0–7 см (мёрзлый / переходный / протаявший) плюс степень-часовое снеготаяние — оперативные значения на 10 суток вперёд по текущему прогнозу считаются автоматически в окне дежурного метеоконтроля (блок «🌊 Ливневый приток к объектам ГТС», открывается кликом по полосе метеоконтроля над картой). Источник рельефа: Copernicus DEM GLO-30 (открытые данные ESA, ячейка ~31×22 м) — скрининговый уровень; не заменяет расчёт максимального стока по СП 33.101-2003 и проектные гидрологические обоснования (ФЗ-117, ПБ 03-438-02). Метод модели: заполнение понижений priority-flood → направление стока D8 → аккумуляция (этап C2); карты и сводная оценка — Центр контроля ГТМ → «🌊 Модель стока».</div>
+  <div class="noprint" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+    <button class="wbtn" id="calcGoStok">→ Модель стока (Центр контроля)</button>
+  </div>`:`<div class="note">Данные модели стока (stok_data.js) не загружены.</div>`;
 
   const blk=(icon,title,sum,body)=>`<details class="igt" style="margin:6px 0" open><summary style="font-size:13px"><b>${icon} ${title}</b>${sum?` <span style="color:var(--mut);font-weight:400;font-size:12px">— ${sum}</span>`:''}</summary><div style="padding:6px 10px 10px">${body}</div></details>`;
   el.innerHTML=`
@@ -3146,13 +3165,14 @@ function tabCalcGts(o, el){ // вкладка «Расчёты» карточк�
   ${blk('🧊','Температура грунтов на глубине НГК (тепловое состояние основания)', o.ngc?('НГК '+String(o.ngc.h).replace('.',',')+' м · t '+(o.ngc.t===null?'—':fmtT(o.ngc.t)+' °C')):'', ngcHtml)}
   ${blk('🛡','Проверка по контрольным критериям К1/К2 декларации', sd.status?('статус объекта: '+sd.status):'', kkHtml+sdHtml)}
   ${blk('📈','Прогноз температурного режима до '+esc(String(cl.horizon||2050))+' г. (климатические сценарии)', esc(cl.status||'в разработке'), climForecastHtml)}
-  ${blk('💧','Гидрологический расчёт (поверхностный сток, ЦМР)', 'в разработке', hydroHtml)}
+  ${blk('💧','Гидрологический расчёт (поверхностный сток, ЦМР)', hst?('водосбор '+hst.catch_near_km2+' км² · водоток '+hst.dist_stream_m+' м · риск: '+hst.risk):'модель не загружена', hydroHtml)}
   ${blk('🧮','Нормативные калькуляторы (формулы с открытой подстановкой — СП 25.13330.2020)', 'свая · оттаивание/промерзание по прил. Г · прогноз t · запас на НГК · осадка — результаты уходят в «Приложение. Расчёты» отчёта объекта', '<div id="calcToolsHost"></div>')}
   `;
   const sel0=el.querySelector('#calcD0Sel');
   if(sel0) sel0.onchange=()=>{ const c=cardOf(o.a); c.calcD0=+sel0.value; saveCARD(); renderTab(o); };
   const b1=el.querySelector('#calcGoClim'); if(b1) b1.onclick=()=>{curTab='climate'; renderDetail(o);};
   const b2=el.querySelector('#calcGoTherm'); if(b2) b2.onclick=()=>{curTab='geoterm'; renderDetail(o);};
+  const b3=el.querySelector('#calcGoStok'); if(b3) b3.onclick=()=>gsOpen('stok');
   const host=el.querySelector('#calcToolsHost');
   if(host&&typeof tabCalc==='function'){ try{ tabCalc(o, host); }catch(e){ host.innerHTML='<div class="note">Калькуляторы недоступны: '+esc(e&&e.message||e)+'</div>'; } }
 }
@@ -6225,6 +6245,68 @@ function procHighList(d){
   procAnalyze(d).forEach(pp=>pp.procs.forEach(pr=>{ if(pr.lvl==='high') lst.push(W_PROC[pr.proc].nm.toLowerCase()+' '+pr.prob+'% ('+pp.pt.split('(')[1].replace(')','')+')'); }));
   return lst;
 }
+/* --- C2+: ливневый приток к объектам ГТС (водный баланс прогноза × водосборы ЦМР) --- */
+function stokInflowScan(d){
+  const res=[];
+  (d.pts||[]).forEach((pt,pi)=>{
+    const meta=W_PTS[pi]; if(!meta||!pt||!pt.hourly) return;
+    const H=pt.hourly; if(!H.time) return;
+    const days={}, order=[];
+    for(let i=0;i<H.time.length;i++){
+      const t=+H.temperature_2m[i]; if(isNaN(t)) continue;
+      const key=H.time[i].slice(0,10);
+      let a=days[key]; if(!a){ a=days[key]={date:key,rain:0,dh:0,depth:0,soil:0,soilN:0}; order.push(key); }
+      a.rain+=H.rain?(+H.rain[i]||0):0;
+      if(t>0)a.dh+=t;
+      const dep=H.snow_depth?+H.snow_depth[i]:NaN; if(!isNaN(dep)) a.depth=dep*100;
+      const st2=H.soil_temperature_0_to_7cm?+H.soil_temperature_0_to_7cm[i]:NaN;
+      if(!isNaN(st2)){ a.soil+=st2; a.soilN++; }
+    }
+    const arr=order.map(key=>{
+      const a=days[key];
+      const soil=a.soilN?a.soil/a.soilN:null;
+      const melt=(a.depth>0&&a.dh>0)?Math.min(a.dh*0.35,a.depth*3):0;
+      const k=soil==null?0.6:(soil<=-0.5?0.9:(soil<=2?0.6:0.4));
+      let runoff=(a.rain+melt)*k; if(a.rain>0&&a.depth>0) runoff*=1.15;
+      return {date:key, rain:a.rain, melt, k, runoff};
+    });
+    res.push({pi, nm:meta.nm, lat:meta.lat, lon:meta.lon, days:arr});
+  });
+  return res;
+}
+function stokInflowHtml(d){
+  const S=window.STOK; if(!S||!S.objects) return '';
+  const scan=stokInflowScan(d); if(!scan.length) return '';
+  const hav=(la1,lo1,la2,lo2)=>{const r=Math.PI/180,dx=(lo2-lo1)*Math.cos(r*(la1+la2)/2),dy=la2-la1;return Math.hypot(dx,dy);};
+  const rc={'низкий':'#2e7d32','средний':'#ef9a1a','высокий':'#c62828'};
+  let h='<div style="margin-top:10px; border-top:2px solid var(--line); padding-top:8px"><b style="font-size:13px">🌊 Ливневый приток к объектам ГТС на 10 суток</b> <span class="note">— суточный сток (дождь + снеготаяние, k по t грунта) × водосбор из модели ЦМР (этап C2); 1 мм стока с 1 км² = 1 000 м³. Водосборы объектов могут частично перекрываться — объёмы не суммируются между объектами</span>';
+  scan.forEach(pt=>{
+    const objs=DB.objects.map(o=>{
+      const st=S.objects.find(s=>s.id===o.id); if(!st) return null;
+      const dNorm=hav(o.lat,o.lon,pt.lat,pt.lon);
+      const dOther=scan.map(q=>hav(o.lat,o.lon,q.lat,q.lon));
+      if(dNorm!==Math.min.apply(null,dOther)) return null; // объект привязан к ближайшей точке
+      const peak=pt.days.reduce((b,x)=>x.runoff>b.runoff?x:b, {runoff:-1,date:'—'});
+      return {o, st, peak, v: Math.round(Math.max(0,peak.runoff)*st.catch_near_km2*1000)};
+    }).filter(Boolean).sort((a,b)=>b.v-a.v);
+    if(!objs.length) return;
+    const bigDays=pt.days.filter(x=>x.runoff>=12);
+    h+='<div style="margin-top:6px; font-size:12px; color:var(--mut)">Точка прогноза: <b>'+esc(pt.nm)+'</b>'
+      +(bigDays.length?(' · сутки со стоком ≥ 12 мм: <b style="color:#c62828">'+bigDays.map(x=>x.date.split('-').reverse().join('.')+' ('+x.runoff.toFixed(0)+' мм)').join(', ')+'</b>'):' · суток со стоком ≥ 12 мм не прогнозируется')+'</div>';
+    h+='<table class="gsTbl" style="margin-top:4px"><tr><th style="text-align:left">Объект (приток к пиковым суткам '+objs[0].peak.date.split('-').reverse().join('.')+'*)</th><th>Водосбор, км²</th><th>Сток, мм/сут</th><th>Приток, м³/сут</th><th>Риск стока (C2)</th></tr>';
+    objs.forEach(x=>{
+      h+='<tr><td>'+esc(x.o.a)+'</td><td style="text-align:center">'+x.st.catch_near_km2+'</td>'
+        +'<td style="text-align:center">'+Math.max(0,x.peak.runoff).toFixed(1)+'</td>'
+        +'<td style="text-align:center"><b>'+(x.v>=1000?(x.v/1000).toFixed(1)+' тыс.':x.v)+'</b></td>'
+        +'<td><span class="gsPill" style="background:'+(rc[x.st.risk]||'#8a8a8a')+'">'+x.st.risk.toUpperCase()+'</span></td></tr>';
+    });
+    h+='</table>';
+    const hot=objs.filter(x=>x.v>=5000);
+    if(hot.length) h+='<div class="wg" style="margin-top:4px"><b>Меры при реализации пиковых суток:</b> '+hot.map(x=>esc(x.o.a)+' (≈'+(x.v/1000).toFixed(1)+' тыс. м³/сут)').join('; ')+' — усиленный контроль свободного борта и водоотводных канав, готовность водосброса/откачки, внеочередной осмотр нагорных сторон дамб (ВСН 01-89, ФНП № 151).</div>';
+  });
+  h+='<div class="note" style="margin-top:4px">* для каждого объекта взяты его ближайшая точка прогноза и её пиковые сутки стока; сток по той же модели, что и вероятность подтопления выше (дождь + степень-часовое таяние, k = 0,9 мёрзлый / 0,6 переходный / 0,4 протаявший грунт, ×1,15 при дожде по снежному покрову). Скрининговая оценка — не заменяет расчёт максимального стока по СП 33.101-2003.</div></div>';
+  return h;
+}
 function procHtml(d){
   const pa=procAnalyze(d);
   if(!pa.length) return '';
@@ -6245,6 +6327,7 @@ function procHtml(d){
   });
   h+='<div class="warn-meta" style="margin-top:6px">Модели: снеготаяние — степень-часовая (≈0,35 мм/°C·ч при наличии покрова); сток на ММГ — k = 0,9 при t грунта (0–7 см) ≤ −0,5 °C (инфильтрация отсутствует), 0,6/0,4 при переходном/протаявшем; метелевый перенос — от средней скорости ≥ 5 м/с, усиление при свежем снеге и t ≤ −10 °C; наледь — рост при устойчивом морозе после поступления влаги за 7 сут, ускорение при переходе «оттепель → мороз ≤ −8 °C»; freeze-thaw — смены знака t при наличии влаги. Перечень скачиваемых метеоданных расширен: температура и осадки (дождь/снег), код погоды, порывы и СРЕДНЯЯ скорость ветра, высота снежного покрова, температура грунта 0–7 см — почасово на 10 суток.</div>';
   h+='</div>';
+  h+=stokInflowHtml(d);
   return h;
 }
 function wBadge(n){
