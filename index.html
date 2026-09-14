@@ -573,6 +573,7 @@
         <button data-gs="sensors" title="Действующая измерительная база и контуры её развития: телеметрия, InSAR, БПЛА-ЦМР, ЭРТ, АМС">📡 Измерительная база</button>
         <button data-gs="data" title="Режим хранения, объёмы данных, резервное копирование, аудит и интеграции">🗄 Данные·аудит·интеграции</button>
         <button data-gs="road" title="Этапы А/Б/В развития системы: доказательность данных → непрерывность → прогноз и интеграция">🗺 Дорожная карта<i class="bdg" id="gsBdgR" style="display:none"></i></button>
+        <button data-gs="stok" title="Модель поверхностного стока по ЦМР (Copernicus GLO-30): водотоки и водосборы у каждого ГТС, зоны подтопления, скрининг риска ливневых паводков и наледей (этап C2)">🌊 Модель стока</button>
       </div>
     </div>
   </div>
@@ -823,6 +824,7 @@
 <script src="db_p8.js?v=a3872fb1"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=99a7fb2711"></script>
+<script src="stok_data.js?v=20260914a"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -5847,8 +5849,58 @@ function gsViewRoad(){
     </div>`;
   }).join('')}`;
 }
+/* --- 7. Модель поверхностного стока (этап C2, ЦМР) --- */
+function gsViewStok(){
+  const S=window.STOK;
+  if(!S) return `<h2>◉ ЦЕНТР КОНТРОЛЯ ГТМ · Модель поверхностного стока</h2><div class="gsCard"><div class="mut">Модуль данных модели (stok_data.js) не загружен.</div></div>`;
+  const rc={'низкий':'#2e7d32','средний':'#ef9a1a','высокий':'#c62828'};
+  const rows=S.objects.map(st=>{
+    const i=DB.objects.findIndex(o=>o.id===st.id);
+    return `<tr>
+      <td><a href="#" data-gsobj="${i}" style="color:var(--zf);font-weight:600">${esc(st.name)}</a><br><span class="mut">${esc(st.d)}</span></td>
+      <td style="text-align:center">${st.elev!==null?st.elev+' м':'—'}</td>
+      <td style="text-align:center"><b>${st.catch_near_km2}</b></td>
+      <td style="text-align:center">${st.dist_stream_m} м</td>
+      <td style="text-align:center">${st.slope_mean}° / ${st.slope_max}°</td>
+      <td style="text-align:center">${st.depr_pct}%</td>
+      <td><span class="gsPill" style="background:${rc[st.risk]||'#8a8a8a'}">${st.risk.toUpperCase()}</span></td></tr>`;
+  }).join('');
+  const cards=S.objects.map(st=>{
+    return `<details class="dreg-cat" style="margin:6px 0"><summary style="cursor:pointer;font-size:12.5px"><span class="gsPill" style="background:${rc[st.risk]||'#8a8a8a'};margin-right:6px">${st.risk.toUpperCase()}</span> <b>${esc(st.name)}</b> — водосбор ${st.catch_near_km2} км², водоток ${st.dist_stream_m} м</summary>
+      <div style="margin:8px 0 4px"><img src="stok/${st.id}.png" alt="Карта стока: ${esc(st.name)}" style="max-width:100%;border-radius:6px;border:1px solid #3a4c5c"></div>
+      <div class="mut" style="font-size:11.5px">Отметка точки: ${st.elev!==null?st.elev+' м':'—'} · водосбор в радиусе 500 м: ${st.catch_near_km2} км² (ближайший расчётный водоток — ${st.near_off_m} м от точки) · расстояние до русла: ${st.dist_stream_m} м · уклоны в радиусе 300 м: средний ${st.slope_mean}°, максимум ${st.slope_max}° · замкнутые понижения (застойные зоны): ${st.depr_pct}% площади буфера.</div>
+    </details>`;
+  }).join('');
+  const nHigh=S.objects.filter(s=>s.risk==='высокий').length, nMid=S.objects.filter(s=>s.risk==='средний').length;
+  return `<h2>◉ ЦЕНТР КОНТРОЛЯ ГТМ · Модель поверхностного стока <span class="mut" style="font-size:12px;font-weight:400">(этап C2 дорожной карты)</span></h2>
+  <div class="gsCard"><h3>Назначение и метод</h3>
+    <div style="font-size:12.5px;line-height:1.65">
+      Модель отвечает на вопрос: <b>откуда и каким объёмом придёт поверхностная вода к каждому ГТС</b> — при ливнях, снеготаянии и наледных процессах. Это прямой вход для режимных мер: контроль свободного борта накопителей, готовность водоотвода, прогноз подтопления пойменных участков линейных ГТС.<br>
+      <b>Метод:</b> заполнение локальных понижений ЦМР (priority-flood) → направление стока D8 → аккумуляция стока; расчётные водотоки выделяются от водосбора ~1 км². <b>Исходные данные:</b> ${esc(S.src)}.<br>
+      <span class="mut">⚠ Скрининговый уровень точности: ячейка ~31×22 м не разрешает дамбы и канавы (их высота/ширина меньше ячейки). Модель показывает природную организацию стока, а не гидравлику сооружений. При получении инженерной ЦМР (БПЛА-ЦМР, этап Б3) модуль пересчитывается без изменения кода — заменой исходного растра.</span>
+    </div>
+  </div>
+  <div class="gsCard"><h3>Обзорная карта: рельеф, расчётная гидросеть, объекты ГТС</h3>
+    <img src="stok/overview.png" alt="Обзорная карта модели стока" style="max-width:100%;border-radius:6px;border:1px solid #3a4c5c">
+    <div class="mut" style="margin-top:4px">Отмывка рельефа + высотная расцветка; голубые линии — расчётные водотоки (интенсивность ∝ lg площади водосбора); красные маркеры — объекты ГТС. Координатная сетка локальная, км.</div>
+  </div>
+  <div class="gsCard"><h3>Сводная оценка по объектам <span class="gsPill" style="background:#c62828">высокий: ${nHigh}</span> <span class="gsPill" style="background:#ef9a1a">средний: ${nMid}</span> <span class="gsPill" style="background:#2e7d32">низкий: ${S.objects.length-nHigh-nMid}</span></h3>
+    <table class="gsTbl"><tr><th style="text-align:left">Объект</th><th>Отметка</th><th>Водосбор к объекту, км²</th><th>До водотока</th><th>Уклон сред./макс.</th><th>Замкн. понижения</th><th>Риск стока</th></tr>${rows}</table>
+    <div class="mut" style="margin-top:4px">Категории (скрининг): <b>высокий</b> — водосбор ≥ 5 км² у объекта, либо расчётное русло ≤ 150 м при водосборе ≥ 1 км²; <b>средний</b> — водосбор ≥ 1 км², русло ≤ 300 м либо застойные понижения ≥ 10% буфера; иначе — <b>низкий</b>. Пороги скорректируются по результатам полевой верификации.</div>
+  </div>
+  <div class="gsCard"><h3>Карты по объектам (4×4 км)</h3>${cards}</div>
+  <div class="gsCard"><h3>Интерпретация и связь с режимным контролем</h3>
+    <div style="font-size:12.5px;line-height:1.7">
+      • <b>Хвостохранилище НМЗ (ГТС-05) и Гипсохранилище НМЗ (ГТС-06)</b> — расчётный водоток проходит в 83–118 м от точки объекта при водосборе ~1,7 км²: при ливневом триггере ≥ 20 мм/сут (панель дежурного метеоконтроля) — приоритетный осмотр водоотводных канав и нагорных сторон дамб.<br>
+      • <b>ГТС системы трёх озёр (ГТС-10, Дудинка)</b> — наибольший водосбор (~5,5 км²): объект сам является плотиной водотока; стоковый приток — прямой вход в баланс заполнения, учитывать при контроле свободного борта и К2 декларации по уровню.<br>
+      • <b>Линейные объекты (ГТС-03, ГТС-04)</b> — водотоки в 225–960 м: наледный контроль в точках пересечения трасс с расчётной гидросетью (T ≤ −5 °C при незамёрзших источниках), особенно в долинах, пересекаемых эстакадами.<br>
+      • <b>Замкнутые понижения</b> (доля в буфере 300 м) — зоны потенциального застоя талых вод и переувлажнения основания; учитывать при интерпретации пьезометрии.<br>
+      <span class="mut">Методическая база: СП 116.13330 (производственный контроль), СП 446.13330 (инженерно-гидрометеорологические изыскания), ВСН 01-89 (предпаводковые осмотры); мировой опыт арктических ГТС — база знаний проекта. Модуль не заменяет гидрологические расчёты максимального стока по СП 33.101 — он показывает пространственную организацию стока для планирования наблюдений и осмотров.</span>
+    </div>
+  </div>`;
+}
 /* --- диспетчер --- */
-const GS_VIEWS={alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad};
+const GS_VIEWS={alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad, stok:gsViewStok};
 function gsBindCommon(){
   const d=document.getElementById('gsModalBody');
   d.querySelectorAll('[data-gsobj]').forEach(el=>el.addEventListener('click',ev=>{ ev.preventDefault(); select(+el.dataset.gsobj); }));
