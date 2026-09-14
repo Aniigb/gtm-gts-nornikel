@@ -6307,6 +6307,41 @@ function stokInflowHtml(d){
   h+='<div class="note" style="margin-top:4px">* для каждого объекта взяты его ближайшая точка прогноза и её пиковые сутки стока; сток по той же модели, что и вероятность подтопления выше (дождь + степень-часовое таяние, k = 0,9 мёрзлый / 0,6 переходный / 0,4 протаявший грунт, ×1,15 при дожде по снежному покрову). Скрининговая оценка — не заменяет расчёт максимального стока по СП 33.101-2003.</div></div>';
   return h;
 }
+/* --- C2++: автотревога по ливневому притоку — журнал Центра контроля + уведомление дежурному --- */
+const STOK_ALARM_V=5000; // м³/сут — порог записи в журнал тревог (пиковые сутки прогноза)
+GS_SEV['сток в норме']=1; GS_SEV['ПРИТОК ≥ 5 тыс. м³/сут']=2;
+function stokInflowCheck(d){
+  try{
+    const S=window.STOK; if(!S||!S.objects||!d) return;
+    const scan=stokInflowScan(d); if(!scan.length) return;
+    const hav=(la1,lo1,la2,lo2)=>{const r=Math.PI/180,dx=(lo2-lo1)*Math.cos(r*(la1+la2)/2),dy=la2-la1;return Math.hypot(dx,dy);};
+    const state=gsLoad('gs_inflow_v1',{}), now=new Date().toISOString(), newEv=[];
+    DB.objects.forEach(o=>{
+      const st=S.objects.find(s=>s.id===o.id); if(!st) return;
+      let best=null, bd=1e9;
+      scan.forEach(pt=>{ const dd=hav(o.lat,o.lon,pt.lat,pt.lon); if(dd<bd){ bd=dd; best=pt; } });
+      if(!best) return;
+      const peak=best.days.reduce((b,x)=>x.runoff>b.runoff?x:b, {runoff:-1,date:'—'});
+      const v=Math.round(Math.max(0,peak.runoff)*st.catch_near_km2*1000);
+      const lvl=v>=STOK_ALARM_V?1:0;
+      const prev=state[o.id]||{lvl:0};
+      if(lvl!==prev.lvl){
+        const vs=(v>=1000?(v/1000).toFixed(1)+' тыс.':v)+' м³/сут';
+        newEv.push({ts:now, obj:o.id, name:o.a, ent:o.d,
+          from: lvl?'сток в норме':'ПРИТОК ≥ 5 тыс. м³/сут',
+          to: lvl?'ПРИТОК ≥ 5 тыс. м³/сут':'сток в норме',
+          reasons:[(lvl?'⛔':'✔')+' Ливневый приток к объекту по прогнозу: ≈'+vs+' в пиковые сутки '+String(peak.date).split('-').reverse().join('.')+' (сток '+Math.max(0,peak.runoff).toFixed(1)+' мм × водосбор '+st.catch_near_km2+' км² · точка: '+best.nm+')',
+            lvl?'Меры: усиленный контроль свободного борта и водоотводных канав, готовность водосброса/откачки, внеочередной осмотр нагорных сторон дамб (ВСН 01-89, ФНП № 151)':'Пик прогноза ниже порога 5 тыс. м³/сут — штатный режим наблюдений']});
+        state[o.id]={lvl:lvl, v:v, date:peak.date, ts:now};
+      }
+    });
+    if(newEv.length){
+      gsJournal.push(...newEv); if(gsJournal.length>500) gsJournal=gsJournal.slice(-500);
+      gsSave(GS_STORE.j,gsJournal); gsSbPush(newEv); gsNotifyPush(newEv); gsBadges(newEv.length);
+    }
+    gsSave('gs_inflow_v1',state);
+  }catch(e){ /* автотревога по притоку не должна прерывать метеоконтроль */ }
+}
 function procHtml(d){
   const pa=procAnalyze(d);
   if(!pa.length) return '';
@@ -6362,6 +6397,7 @@ function warnRender(d,stale){
   const ws=warnAnalyze(d);
   wBadge(ws.length);
   warnStripSet(d, ws, stale);
+  stokInflowCheck(d);
   if(!z) return;
   const upd=new Date(d.ts).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   let h='<div class="warn-meta">Источник: Open-Meteo (модели ECMWF IFS / GFS), точки: Норильск, Дудинка · обновлено '+upd+', автообновление каждый час'+(stale?' · ⚠ показан закэшированный прогноз (нет связи)':'')+'. Пороги — по критериям опасных явлений Росгидромета; меры — по ФНП ГТС (приказ Ростехнадзора от 08.05.2024 № 151) и практике эксплуатации накопителей на ММГ.</div>';
