@@ -814,14 +814,14 @@
   </div>
 </div>
 
-<script src="db_p1.js?v=a3872fb1"></script>
-<script src="db_p2.js?v=a3872fb1"></script>
-<script src="db_p3.js?v=a3872fb1"></script>
-<script src="db_p4.js?v=a3872fb1"></script>
-<script src="db_p5.js?v=a3872fb1"></script>
-<script src="db_p6.js?v=a3872fb1"></script>
-<script src="db_p7.js?v=a3872fb1"></script>
-<script src="db_p8.js?v=a3872fb1"></script>
+<script src="db_p1.js?v=800cdb1b"></script>
+<script src="db_p2.js?v=800cdb1b"></script>
+<script src="db_p3.js?v=800cdb1b"></script>
+<script src="db_p4.js?v=800cdb1b"></script>
+<script src="db_p5.js?v=800cdb1b"></script>
+<script src="db_p6.js?v=800cdb1b"></script>
+<script src="db_p7.js?v=800cdb1b"></script>
+<script src="db_p8.js?v=800cdb1b"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=99a7fb2711"></script>
 <script src="stok_data.js?v=20260914a"></script>
@@ -1404,7 +1404,7 @@ function igiWellsLayer(notify){
       L.circleMarker([ll.lat,ll.lon],{radius:4, color:'#7a3fc9', weight:1.4, fillColor:'#a06ae0', fillOpacity:.75})
         .bindPopup('<b>Скважина '+esc(w.w)+'</b> · '+esc(o.a)+
           '<br>X '+w.x.toLocaleString('ru-RU')+', Y '+w.y.toLocaleString('ru-RU')+(w.z!=null?', Z '+w.z:'')+' м · СК «'+esc(w.sys||'—')+'»'+(w.dep?'<br>Глубина: '+w.dep+' м':'')+(w.dt?'<br>Дата бурения: '+esc(w.dt):'')+
-          '<br>WGS-84: '+ll.lat.toFixed(6)+', '+ll.lon.toFixed(6)+' <span style="color:#888">(по параметрам перехода — уточнить у геодезиста)</span>'+
+          '<br>WGS-84: '+ll.lat.toFixed(6)+', '+ll.lon.toFixed(6)+' <span style="color:#888">'+(ll.exact?'(геодезические координаты — поправки геодезслужбы 09.2026)':'(по параметрам перехода — уточнить у геодезиста)')+'</span>'+
           '<br><span style="color:#888">Источник: '+esc(cap)+'</span>')
         .addTo(igiWellsGroup);
     });
@@ -2462,7 +2462,8 @@ function skParams(){
   const r={}; for(const k in base){ if(k!=='_model') r[k]=Object.assign({},base[k],ov[k]||{}); }
   return r;
 }
-function skLocalToWgs(w){ // 2D-преобразование Хелмерта от якоря местной СК → WGS-84 (при заданных параметрах)
+function skLocalToWgs(w){ // прямые геодезические WGS-84 (поправки 09.2026) — приоритет; иначе 2D-преобразование Хелмерта от якоря местной СК
+  if(w.lat!=null&&w.lon!=null) return {lat:w.lat, lon:w.lon, exact:true};
   const p=skParams()[w.sys];
   if(!p||p.status!=='ok') return null;
   // порядок осей: axes:'NE' — в каталоге X=север,Y=восток; иначе X=восток,Y=север; поля ex/ny у скважины задают восток/север явно
@@ -2508,7 +2509,7 @@ function igiWellsHtml(o){
       const ll=skLocalToWgs(w);
       const srcs=w.src.map(s=>`<button class="igiSrc" data-f="${esc(s.rep)}" data-p="${s.page}" title="Открыть каталог на стр. ${s.page}">стр. ${s.page}</button>`).join(' ');
       return `<tr><td><b>${esc(w.w)}</b></td><td>${w.x.toLocaleString('ru-RU')}</td><td>${w.y.toLocaleString('ru-RU')}</td><td>${w.z==null?'—':w.z}</td><td>${w.dep||'—'}</td><td>${w.dt||'—'}</td>
-      <td>${ll?(ll.lat.toFixed(6)+', '+ll.lon.toFixed(6)):'<span style="color:var(--mut)" title="Задайте параметры перехода СК (кнопка выше)">— требуются параметры</span>'}</td><td>${srcs}</td></tr>`;
+      <td>${ll?(ll.lat.toFixed(6)+', '+ll.lon.toFixed(6)+(ll.exact?' <span style="color:#1a7f4b" title="Прямые геодезические координаты WGS-84 (поправки геодезслужбы 09.2026)">◆геодез</span>':'')):'<span style="color:var(--mut)" title="Задайте параметры перехода СК (кнопка выше)">— требуются параметры</span>'}</td><td>${srcs}</td></tr>`;
     }).join('')}</tbody></table></div></details>`;
   }).join('');
   const syss=[...new Set(ws.map(w=>w.sys).filter(Boolean))].map(s=>{
@@ -2519,7 +2520,7 @@ function igiWellsHtml(o){
   const edt=(document.body.classList.contains('role-edit')||document.body.classList.contains('role-insp'))?`<button class="dbtn" id="skEditBtn" title="Ввод параметров перехода местных систем координат в WGS-84 (якорь, масштаб, поворот, сдвиг). После задания параметров скважины выводятся на карту">⚙ Параметры перехода СК</button>`:'';
   return `<details class="igt" style="border-width:2px"><summary><b>🗺 Сводный перечень термоскважин и выработок ИГИ</b> · ${ws.length} скв. · ${Object.keys(byRep).length} отч. <span style="color:var(--mut);font-weight:400">— координаты X Y Z в местных СК, как в каталогах отчётов</span></summary>
   <div style="padding:8px 10px">
-    <div class="normref" style="margin:0 0 8px">Координаты X Y Z — из каталогов выработок отчётов ИГИ (местные системы координат; высоты — Балтийская 1977). Базовый пересчёт в систему модели (WGS-84) выполнен по параметрам перехода для каждой СК: для Кайерканской и МСК-165 — по проекционным параметрам (проверены кадастровыми контурами), для Норильской, Талнахской и ГРТ — приближённые якорные привязки (калибровки LGO в отчётах не публикуются) с точностью порядка 50–200 м; уточняются по выпискам Росреестра / данным геодезической службы. ${nOk?`Сейчас пересчитано и выводится на карту: ${nOk} скв.`:'Сейчас параметры не заданы — скважины на карту не выводятся.'}</div>
+    <div class="normref" style="margin:0 0 8px">Координаты X Y Z — из каталогов выработок отчётов ИГИ (местные системы координат; высоты — Балтийская 1977). <b>965 скважин (ХХ ТОФ, пруд-накопитель ТОФ, гидротранспорт ТОФ–НМЗ) получили прямые геодезические координаты WGS-84</b> по поправкам геодезической службы (09.2026); контроль МНК-сверкой «было/стало»: согласованные поля RMS 0,1–0,6 м. Для остальных скважин пересчёт в систему модели (WGS-84) выполняется по параметрам перехода: для Кайерканской и МСК-165 — по проекционным параметрам, для Норильской, Талнахской и ГРТ — приближённые якорные привязки (калибровки LGO в отчётах не публикуются) с точностью порядка 50–200 м; уточняются по выпискам Росреестра / данным геодезической службы. ${nOk?`Сейчас пересчитано и выводится на карту: ${nOk} скв.`:'Сейчас параметры не заданы — скважины на карту не выводятся.'}</div>
     <div style="margin-bottom:8px">${syss} ${edt}</div>
     ${blocks}
   </div></details>`;
@@ -8820,8 +8821,8 @@ setTimeout(()=>{ try{
 })();
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"KuvkRigmCm483GU8"};
-const BUILD="a3872fb1";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"Pr+tCql7gDz8/0JD"};
+const BUILD="800cdb1b";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
