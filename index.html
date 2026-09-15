@@ -5095,8 +5095,39 @@ function repAssessTable(o, tasks){
   return h;
 }
 /* ---------- приложение к отчёту: ливневые события журнала Центра контроля + гидроблок притока (этап C2) ---------- */
+function objWGroup(o){ // группа эксплуатационного режима объекта для модулей метеоконтроля (W_GROUPS)
+  if(o.id==='gts03'||o.id==='gts04') return 'B';                    // гидротранспортные системы (линейные, на опорах/эстакадах)
+  if(o.id==='gts10') return 'C';                                    // плотина водохранилища с водосбросами
+  return 'A';                                                       // накопители с дамбами
+}
+function repProcApp(o){
+  const grp=objWGroup(o), d=wCache();
+  if(!d||!d.pts||!d.pts.length){
+    return '<p style="font-size:11.5px; margin:2px 0; color:#666">Прогноз метеопараметров в этом сеансе не загружался — вероятностная оценка опасных явлений выполняется автоматически в окне дежурного метеоконтроля (полоса над картой, обновление ежечасно) и попадает в отчёт при формировании после загрузки прогноза.</p>';
+  }
+  const ts=new Date(d.ts).toLocaleString('ru-RU');
+  const pp=procAnalyze(d).find(x=>(x.groups||[]).includes(grp));
+  if(!pp) return '';
+  let h='<table><tr><th style="width:24%">Опасный процесс</th><th style="width:12%">Вероятность</th><th style="width:14%">Пиковые сутки</th><th>Обоснование модели</th></tr>';
+  if(pp.procs.length){
+    pp.procs.forEach(pr=>{
+      const col=pr.lvl==='high'?'#c62828':'#a86400';
+      h+='<tr><td>'+W_PROC[pr.proc].ic+' '+esc(W_PROC[pr.proc].nm)+'</td><td style="text-align:center"><b style="color:'+col+'">'+pr.prob+'%</b></td><td style="text-align:center">'+String(pr.peak).split('-').reverse().join('.')+'</td><td style="font-size:11px">'+esc(pr.basis)+'</td></tr>';
+    });
+  } else {
+    h+='<tr><td colspan="4" style="text-align:center; color:#2e7d32">Вероятность опасных процессов на горизонте 10 суток ниже 30 % (порог регистрации)</td></tr>';
+  }
+  h+='</table>';
+  pp.procs.forEach(pr=>{
+    const imp=(W_PROC_IMPACT[pr.proc]||{})[grp];
+    if(imp) h+='<p style="font-size:11px; margin:3px 0"><b>'+esc(W_PROC[pr.proc].nm)+'</b> ('+esc(W_GROUPS[grp])+').<br>· Воздействие: '+esc(imp.i)+'.<br>· Меры: '+esc(imp.m)+'.</p>';
+  });
+  h+='<p style="font-size:11px; color:#666; margin-top:3px">Оценка по срезу прогноза от '+ts+' (точка: '+esc(pp.pt)+', горизонт 10 суток). Эмпирические инженерные модели, калиброваны под условия Заполярья: подтопление — водный баланс суточного стока (k = 0,9/0,6/0,4 по t грунта 0–7 см, дождь по снегу +15 %); наледеобразование — послойное замерзание влаги на промерзшей поверхности (мороз после поступления влаги за 7 суток, ускорение при переходе «оттепель → мороз ≤ −8 °C»); снежные заносы — метелевый перенос от средней скорости ≥ 5 м/с, интенсивность ~ кубу скорости; переходы через 0 °C — морозное выветривание при наличии влаги. Скрининговая оценка — не заменяет специальные гидрологические и теплотехнические расчёты.</p>';
+  return h;
+}
 function repHydroApp(o){
-  let h=`<h3 style="font-size:12.5px">Приложение. Ливневые события и поверхностный приток к объекту</h3>`;
+  let h=`<h3 style="font-size:12.5px">Приложение. Ливневые события и поверхностный приток к объекту</h3>`, secN=0;
+  const sec=(t)=>{ secN++; return `<h4 style="font-size:12px; margin:8px 0 2px">${secN}. ${t}</h4>`; };
   /* 1. гидрологическая характеристика по модели ЦМР (те же данные, что блок 7 вкладки «Расчёты» карточки) */
   const hst=(window.STOK&&STOK.objects.find(s=>s.id===o.id))||null;
   const rc={'низкий':'#2e7d32','средний':'#ef9a1a','высокий':'#c62828'};
@@ -5105,7 +5136,7 @@ function repHydroApp(o){
       const v=Math.round(mm*hst.catch_near_km2*1000);
       return `<tr><td style="text-align:center">${mm}</td><td style="text-align:center"><b>${v>=1000?(v/1000).toFixed(1)+' тыс.':v}</b></td><td>${mm>=30?'ОПАСНОЕ явление (≥ 30 мм/сут)':mm>=15?'предупреждение (≥ 15 мм/сут)':'умеренный сток'}</td></tr>`;
     }).join('');
-    h+=`<h4 style="font-size:12px; margin:6px 0 2px">1. Гидрологическая характеристика (модель поверхностного стока по ЦМР Copernicus GLO-30, этап C2)</h4>
+    h+=sec('Гидрологическая характеристика (модель поверхностного стока по ЦМР Copernicus GLO-30, этап C2)')+`
     <table>
       <tr><td>Площадь водосбора к объекту (радиус 500 м)</td><td><b>${hst.catch_near_km2} км²</b></td><td>Расстояние до расчётного русла</td><td>${hst.dist_stream_m} м</td></tr>
       <tr><td>Отметка точки объекта по ЦМР</td><td>${hst.elev!==null?hst.elev+' м':'—'}</td><td>Уклоны в буфере 300 м (средний / максимум)</td><td>${hst.slope_mean}° / ${hst.slope_max}°</td></tr>
@@ -5115,19 +5146,21 @@ function repHydroApp(o){
       <tr><th style="width:22%">Суточный сток, мм</th><th style="width:26%">Приток к объекту, м³/сут</th><th>Класс явления (критерии Росгидромета)</th></tr>${scen}
     </table>`;
   } else {
-    h+=`<h4 style="font-size:12px; margin:6px 0 2px">1. Гидрологическая характеристика</h4><p style="color:#666; font-size:11.5px">Данные модели стока (stok_data.js) не загружены — водосбор и сценарии притока не вычислялись.</p>`;
+    h+=sec('Гидрологическая характеристика')+`<p style="color:#666; font-size:11.5px">Данные модели стока (stok_data.js) не загружены — водосбор и сценарии притока не вычислялись.</p>`;
   }
-  /* 2. оперативное состояние автоконтроля притока (журнал gs_inflow_v1) */
+  /* 2. вероятностная оценка опасных явлений (модуль критичных погодных условий) */
+  h+=sec('Вероятностная оценка опасных явлений — наледеобразование / подтопление / снежные заносы / переходы через 0 °C')+repProcApp(o);
+  /* 3. оперативное состояние автоконтроля притока (журнал gs_inflow_v1) */
   const infl=gsLoad('gs_inflow_v1',{})[o.id];
   if(infl&&infl.ts){
     const vs=(infl.v>=1000?(infl.v/1000).toFixed(1)+' тыс.':infl.v)+' м³/сут';
-    h+=`<h4 style="font-size:12px; margin:8px 0 2px">2. Оперативный автоконтроль притока (дежурный метеоконтроль)</h4>
+    h+=sec('Оперативный автоконтроль притока (дежурный метеоконтроль)')+`
     <p style="font-size:11.5px; margin:2px 0">По последнему прогнозу (срез ${new Date(infl.ts).toLocaleString('ru-RU')}): <b style="color:${infl.lvl?'#c62828':'#2e7d32'}">${infl.lvl?'ПРИТОК ≥ 5 тыс. м³/сут':'сток в норме'}</b> — пик ≈ ${vs} в сутки ${String(infl.date).split('-').reverse().join('.')}. Оперативный прогноз на 10 суток — окно дежурного метеоконтроля (полоса над картой).</p>`;
   }
-  /* 3. зарегистрированные ливневые события по объекту из журнала Центра контроля */
+  /* 4. зарегистрированные ливневые события по объекту из журнала Центра контроля */
   const KW=/приток|ливн|сток|дожд|павод|снеготаян|метел|снегопад/i;
   const evs=(gsJournal||[]).filter(e=>e.obj===o.id&&KW.test((e.from||'')+' '+(e.to||'')+' '+(e.reasons||[]).join(' ')));
-  h+=`<h4 style="font-size:12px; margin:8px 0 2px">${infl&&infl.ts?'3':'2'}. Зарегистрированные ливневые события (журнал Центра контроля ГТМ)</h4>`;
+  h+=sec('Зарегистрированные ливневые события (журнал Центра контроля ГТМ)');
   if(evs.length){
     h+=`<table><tr><th style="width:15%">Дата и время</th><th style="width:22%">Событие</th><th>Основание и предписанные меры</th></tr>`+
       evs.slice().reverse().map(e=>`<tr><td>${new Date(e.ts).toLocaleString('ru-RU')}</td><td>${esc(e.from||'—')} → <b>${esc(e.to||'—')}</b></td><td style="font-size:11px">${(e.reasons||[]).map(esc).join('<br>')}</td></tr>`).join('')+`</table>`;
