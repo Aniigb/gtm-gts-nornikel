@@ -814,14 +814,14 @@
   </div>
 </div>
 
-<script src="db_p1.js?v=800cdb1b"></script>
-<script src="db_p2.js?v=800cdb1b"></script>
-<script src="db_p3.js?v=800cdb1b"></script>
-<script src="db_p4.js?v=800cdb1b"></script>
-<script src="db_p5.js?v=800cdb1b"></script>
-<script src="db_p6.js?v=800cdb1b"></script>
-<script src="db_p7.js?v=800cdb1b"></script>
-<script src="db_p8.js?v=800cdb1b"></script>
+<script src="db_p1.js?v=cbb003d7"></script>
+<script src="db_p2.js?v=cbb003d7"></script>
+<script src="db_p3.js?v=cbb003d7"></script>
+<script src="db_p4.js?v=cbb003d7"></script>
+<script src="db_p5.js?v=cbb003d7"></script>
+<script src="db_p6.js?v=cbb003d7"></script>
+<script src="db_p7.js?v=cbb003d7"></script>
+<script src="db_p8.js?v=cbb003d7"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=99a7fb2711"></script>
 <script src="stok_data.js?v=20260914a"></script>
@@ -1365,9 +1365,9 @@ window.addEventListener('orientationchange', ()=>{ map.invalidateSize(); if(curO
 const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'});
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
-const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup},{position:'topright'}).addTo(map);
-map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); });
+const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup();
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup,'📍 Скважины мониторинга (геодезия WGS · KML 09.2026)':kmlWellsGroup},{position:'topright'}).addTo(map);
+map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); });
 
 /* ---------- фокус-режим карты: панели плавно скрываются при работе с картой и возвращаются по простою ---------- */
@@ -1412,6 +1412,28 @@ function igiWellsLayer(notify){
   if(notify){
     if(n) map.fitBounds(igiWellsGroup.getBounds().pad(0.15));
     else alert('Слой «Термоскважины ИГИ»: параметры перехода местных СК в WGS-84 не заданы — скважины не позиционируются ('+need+' шт. в ожидании). Параметры вводятся в карточке объекта: «Инженерно-геологические изыскания» → «Геокриология» → «⚙ Параметры перехода СК» (роль «оператор»).');
+  }
+}
+
+/* ---------- слой скважин мониторинга: прямые геодезические WGS-84 из KML-выгрузок геодезслужбы (09.2026) ---------- */
+function kmlWellsLayer(notify){
+  kmlWellsGroup.clearLayers();
+  let n=0;
+  (DB.objects||[]).forEach(o=>{
+    (o.kmlWells||[]).forEach(w=>{
+      if(w.lat==null||w.lon==null) return;
+      n++;
+      L.circleMarker([w.lat,w.lon],{radius:4, color:'#b25f06', weight:1.4, fillColor:'#f2a65a', fillOpacity:.8})
+        .bindPopup('<b>Скважина '+esc(w.w)+'</b> · '+esc(o.a)+
+          '<br>WGS-84: '+w.lat.toFixed(6)+', '+w.lon.toFixed(6)+' <span style="color:#888">(прямые геодезические координаты — KML-выгрузка геодезслужбы 09.2026)</span>'+
+          '<br>Система источника: «'+esc(w.sys||'—')+'» · привязка: '+esc(w.rule||'—')+(w.m?'<br>Соответствует точке мониторинга: '+esc(w.m):'')+
+          '<br><span style="color:#888">Слой справочный: скважина в реестре мониторинга объекта не числится; замеры в базе ГТМ по ней отсутствуют.</span>')
+        .addTo(kmlWellsGroup);
+    });
+  });
+  if(notify){
+    if(n) map.fitBounds(kmlWellsGroup.getBounds().pad(0.15));
+    else alert('Слой «Скважины мониторинга (KML WGS)»: данные отсутствуют.');
   }
 }
 
@@ -8821,8 +8843,8 @@ setTimeout(()=>{ try{
 })();
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"Pr+tCql7gDz8/0JD"};
-const BUILD="800cdb1b";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"LyTd2UPplRblbqho"};
+const BUILD="cbb003d7";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
