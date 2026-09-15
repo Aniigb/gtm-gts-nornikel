@@ -9,8 +9,6 @@
 <link rel="shortcut icon" href="favicon.ico">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
 <style>
   :root{
     /* Фирменная палитра ПАО «ГМК «Норильский никель» — Стандарт фирменного стиля, стр. 35 (палитра) и стр. 40 (ЗФ) */
@@ -4080,6 +4078,7 @@ async function handleUpload(file){
       rows=txt.replace(/^﻿/,'').split(/\r?\n/).filter(l=>l.trim()).map(l=>l.split(sep).map(x=>x.trim().replace(/^"|"$/g,'')));
     } else {
       const ab=await file.arrayBuffer();
+      await libXlsx();
       const wb=XLSX.read(ab);
       const ws=wb.Sheets[wb.SheetNames[0]];
       rows=XLSX.utils.sheet_to_json(ws,{header:1, raw:true, defval:''});
@@ -4402,7 +4401,7 @@ async function handleObjUpload(file){
   const L=[];
   L.push('Файл: '+file.name);
   let wb;
-  try{ wb=XLSX.read(await file.arrayBuffer(), {cellDates:true}); }
+  try{ await libXlsx(); wb=XLSX.read(await file.arrayBuffer(), {cellDates:true}); }
   catch(e){ log.textContent=L.join('\n')+'\nОшибка чтения файла: '+e; return; }
   // адрес: сначала из имени файла; если не совпал — из содержимого (строка «…объекта: р-н Норильск, ул. …»)
   let fa=file.name.replace(/\.(xlsx|xls)$/i,'').replace(/^(геотермика|geotermika)\s*/i,'').trim();
@@ -4518,6 +4517,8 @@ function upLog(m){ const l=document.getElementById('uplLog'); l.style.display='b
 function loadLib(src,gname){ return new Promise((res,rej)=>{ if(window[gname]) return res(); const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('CDN недоступен (нужен интернет)')); document.head.appendChild(s); }); }
 const libMammoth=()=>loadLib('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js','mammoth');
 const libPdf=()=>loadLib('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','pdfjsLib').then(()=>{ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; });
+const libXlsx=()=>loadLib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js','XLSX');
+const libDocx=()=>loadLib('https://unpkg.com/docx@8.5.0/build/index.umd.js','docx');
 
 /* --- память шаблонов по организациям --- */
 let TPLMEM=JSON.parse(localStorage.getItem('gtm_tplmem')||'{}');
@@ -4713,7 +4714,7 @@ async function handleGeod(f){
     else{
       if(/\.csv$/i.test(f.name)){ text=await f.text(); const sep=(text.split('\n')[0].match(/;/g)||[]).length>=2?';':',';
         rows=geodFromRows(text.split(/\r?\n/).map(l=>l.split(sep))); }
-      else{ const wb=XLSX.read(await f.arrayBuffer()); rows=geodFromRows(wb.SheetNames.flatMap(sn=>XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''}))); text=JSON.stringify(rows).slice(0,4000); }
+      else{ await libXlsx(); const wb=XLSX.read(await f.arrayBuffer()); rows=geodFromRows(wb.SheetNames.flatMap(sn=>XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''}))); text=JSON.stringify(rows).slice(0,4000); }
     }
   }catch(e){ upLog('✕ '+e.message); return; }
   if(!rows.length){ upLog('✕ строк «дата · марка · осадка» не распознано'); return; }
@@ -4818,7 +4819,7 @@ async function handlePiezo(f){
   if(!document.body.classList.contains('role-edit')){ alert('Загрузка доступна уровню «оператор».'); return; }
   upLog('Пьезометрия: '+f.name+' — распознавание…');
   let wb;
-  try{ wb=XLSX.read(await f.arrayBuffer()); }catch(e){ upLog('✕ '+e.message); return; }
+  try{ await libXlsx(); wb=XLSX.read(await f.arrayBuffer()); }catch(e){ upLog('✕ '+e.message); return; }
   let allSeries=[]; let headTxt=f.name;
   wb.SheetNames.forEach(sn=>{
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, raw:true, defval:''});
@@ -4919,7 +4920,7 @@ async function handleUni(f){
   if(!document.body.classList.contains('role-edit')){ alert('Загрузка доступна уровню «оператор».'); return; }
   upLog('Универсальный распознаватель: '+f.name);
   let wb;
-  try{ wb=XLSX.read(await f.arrayBuffer()); }catch(e){ upLog('✕ '+e.message); return; }
+  try{ await libXlsx(); wb=XLSX.read(await f.arrayBuffer()); }catch(e){ upLog('✕ '+e.message); return; }
   const org=detectOrg(JSON.stringify(wb.SheetNames))||null;
   // память шаблона организации: (пока по структуре листов)
   const memKey=(org||'_file:'+f.name.replace(/[^а-яa-z0-9]/gi,'').slice(0,24));
@@ -6899,10 +6900,11 @@ document.getElementById('niokrClose').onclick=()=>niokrModal.style.display='none
 niokrModal.addEventListener('click',e=>{ if(e.target===niokrModal) niokrModal.style.display='none'; });
 document.getElementById('niokrGo').onclick=()=>niokrUnlock(document.getElementById('niokrPw').value);
 document.getElementById('niokrPw').addEventListener('keydown',e=>{ if(e.key==='Enter') niokrUnlock(e.target.value); });
-document.getElementById('regExport').onclick=()=>{
+document.getElementById('regExport').onclick=async()=>{
   const rows=registryRows();
   if(!rows.length){ alert('По текущим фильтрам объектов нет — выгружать нечего.'); return; }
   const fd=document.getElementById('regD').value;
+  try{ await libXlsx(); }catch(e){ alert('Не удалось загрузить библиотеку Excel ('+e.message+'). Попробуйте ещё раз.'); return; }
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, regSheet(rows), 'Реестр РИСК-КРИТИЧНО');
   const suffix=fd?('_'+fd.replace(/[«»\s]/g,'_')):'';
@@ -8348,6 +8350,7 @@ function inspForm(o, cur, RO){
 /* --- акт осмотра в Word --- */
 function durlToU8(d){ const b=atob(d.split(',')[1]); const a=new Uint8Array(b.length); for(let i=0;i<b.length;i++) a[i]=b.charCodeAt(i); return a; }
 async function exportInspWord(o, cur){
+  try{ await libDocx(); }catch(e){ alert('Не удалось загрузить библиотеку Word ('+e.message+'). Попробуйте ещё раз.'); return; }
   if(!window.docx){ alert('Библиотека Word не загрузилась (нужен интернет). Попробуйте ещё раз.'); return; }
   const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,AlignmentType,ImageRun,PageBreak}=window.docx;
   const T=(t,opts)=>new Paragraph({children:[new TextRun(Object.assign({text:String(t??'—'),font:'Times New Roman',size:22},opts||{}))],spacing:{after:80}});
