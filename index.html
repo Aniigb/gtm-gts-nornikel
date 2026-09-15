@@ -644,6 +644,7 @@
         <label class="task"><input type="checkbox" class="repTask" value="strength" checked> Деформации сооружений (геодезические наблюдения)</label>
         <label class="task"><input type="checkbox" class="repTask" value="defects" checked> Дефекты и повреждения сооружений</label>
         <label class="task"><input type="checkbox" class="repTask" value="concl" checked> Выводы и рекомендуемые мероприятия</label>
+        <label class="task"><input type="checkbox" class="repTask" value="hydro" checked> Приложение. Ливневые события и поверхностный приток</label>
       </div>
       <div>
         <b style="font-size:12.5px">Охват:</b>
@@ -5090,6 +5091,50 @@ function repAssessTable(o, tasks){
     h+=`<h3 style="font-size:12.5px">Приложение. Расчёты</h3>`+
        calcApp.map((x,i)=>`<p style="margin:4px 0"><b>Расчёт ${i+1}.</b> ${esc(x.calc)} <span style="color:#666">(${x.ts})</span><br><span style="white-space:pre-wrap; font-size:11.5px">${esc(x.text)}</span></p>`).join('');
   }
+  if(tasks.has('hydro')) h+=repHydroApp(o);
+  return h;
+}
+/* ---------- приложение к отчёту: ливневые события журнала Центра контроля + гидроблок притока (этап C2) ---------- */
+function repHydroApp(o){
+  let h=`<h3 style="font-size:12.5px">Приложение. Ливневые события и поверхностный приток к объекту</h3>`;
+  /* 1. гидрологическая характеристика по модели ЦМР (те же данные, что блок 7 вкладки «Расчёты» карточки) */
+  const hst=(window.STOK&&STOK.objects.find(s=>s.id===o.id))||null;
+  const rc={'низкий':'#2e7d32','средний':'#ef9a1a','высокий':'#c62828'};
+  if(hst){
+    const scen=[5,15,30,50].map(mm=>{
+      const v=Math.round(mm*hst.catch_near_km2*1000);
+      return `<tr><td style="text-align:center">${mm}</td><td style="text-align:center"><b>${v>=1000?(v/1000).toFixed(1)+' тыс.':v}</b></td><td>${mm>=30?'ОПАСНОЕ явление (≥ 30 мм/сут)':mm>=15?'предупреждение (≥ 15 мм/сут)':'умеренный сток'}</td></tr>`;
+    }).join('');
+    h+=`<h4 style="font-size:12px; margin:6px 0 2px">1. Гидрологическая характеристика (модель поверхностного стока по ЦМР Copernicus GLO-30, этап C2)</h4>
+    <table>
+      <tr><td>Площадь водосбора к объекту (радиус 500 м)</td><td><b>${hst.catch_near_km2} км²</b></td><td>Расстояние до расчётного русла</td><td>${hst.dist_stream_m} м</td></tr>
+      <tr><td>Отметка точки объекта по ЦМР</td><td>${hst.elev!==null?hst.elev+' м':'—'}</td><td>Уклоны в буфере 300 м (средний / максимум)</td><td>${hst.slope_mean}° / ${hst.slope_max}°</td></tr>
+      <tr><td>Замкнутые понижения (застой талых вод)</td><td>${hst.depr_pct}% буфера</td><td>Скрининговый риск поверхностного стока</td><td><b style="color:${rc[hst.risk]||'#555'}">${String(hst.risk).toUpperCase()}</b></td></tr>
+    </table>
+    <table>
+      <tr><th style="width:22%">Суточный сток, мм</th><th style="width:26%">Приток к объекту, м³/сут</th><th>Класс явления (критерии Росгидромета)</th></tr>${scen}
+    </table>`;
+  } else {
+    h+=`<h4 style="font-size:12px; margin:6px 0 2px">1. Гидрологическая характеристика</h4><p style="color:#666; font-size:11.5px">Данные модели стока (stok_data.js) не загружены — водосбор и сценарии притока не вычислялись.</p>`;
+  }
+  /* 2. оперативное состояние автоконтроля притока (журнал gs_inflow_v1) */
+  const infl=gsLoad('gs_inflow_v1',{})[o.id];
+  if(infl&&infl.ts){
+    const vs=(infl.v>=1000?(infl.v/1000).toFixed(1)+' тыс.':infl.v)+' м³/сут';
+    h+=`<h4 style="font-size:12px; margin:8px 0 2px">2. Оперативный автоконтроль притока (дежурный метеоконтроль)</h4>
+    <p style="font-size:11.5px; margin:2px 0">По последнему прогнозу (срез ${new Date(infl.ts).toLocaleString('ru-RU')}): <b style="color:${infl.lvl?'#c62828':'#2e7d32'}">${infl.lvl?'ПРИТОК ≥ 5 тыс. м³/сут':'сток в норме'}</b> — пик ≈ ${vs} в сутки ${String(infl.date).split('-').reverse().join('.')}. Оперативный прогноз на 10 суток — окно дежурного метеоконтроля (полоса над картой).</p>`;
+  }
+  /* 3. зарегистрированные ливневые события по объекту из журнала Центра контроля */
+  const KW=/приток|ливн|сток|дожд|павод|снеготаян|метел|снегопад/i;
+  const evs=(gsJournal||[]).filter(e=>e.obj===o.id&&KW.test((e.from||'')+' '+(e.to||'')+' '+(e.reasons||[]).join(' ')));
+  h+=`<h4 style="font-size:12px; margin:8px 0 2px">${infl&&infl.ts?'3':'2'}. Зарегистрированные ливневые события (журнал Центра контроля ГТМ)</h4>`;
+  if(evs.length){
+    h+=`<table><tr><th style="width:15%">Дата и время</th><th style="width:22%">Событие</th><th>Основание и предписанные меры</th></tr>`+
+      evs.slice().reverse().map(e=>`<tr><td>${new Date(e.ts).toLocaleString('ru-RU')}</td><td>${esc(e.from||'—')} → <b>${esc(e.to||'—')}</b></td><td style="font-size:11px">${(e.reasons||[]).map(esc).join('<br>')}</td></tr>`).join('')+`</table>`;
+  } else {
+    h+=`<p style="font-size:11.5px; margin:2px 0; color:#666">Ливневых событий по объекту не зарегистрировано. Запись в журнал производится автоматически при прогнозном притоке ≥ 5 тыс. м³/сут (пиковые сутки) и при выходе показателей мониторинга за превентивные пороги.</p>`;
+  }
+  h+=`<p style="font-size:11px; color:#666; margin-top:4px">Приток (м³/сут) = сток (мм) × водосбор (км²) × 1 000. Суточный сток: дождь + степень-часовое снеготаяние с коэффициентом стока k = 0,9 / 0,6 / 0,4 (мёрзлый / переходный / протаявший грунт 0–7 см), ×1,15 при дожде по снежному покрову. Источник рельефа: Copernicus DEM GLO-30 (скрининговый уровень) — не заменяет расчёт максимального стока по СП 33.101-2003 и проектные гидрологические обоснования (ФЗ-117, ФНП приказа Ростехнадзора № 151).</p>`;
   return h;
 }
 function conclText(a,sd){
