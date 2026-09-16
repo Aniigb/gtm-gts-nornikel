@@ -621,6 +621,8 @@ document.addEventListener('DOMContentLoaded',()=>{
         <button data-gs="road" title="Этапы А/Б/В развития системы: доказательность данных → непрерывность → прогноз и интеграция">🗺 Дорожная карта<i class="bdg" id="gsBdgR" style="display:none"></i></button>
         <button data-gs="stok" title="Модель поверхностного стока по ЦМР (Copernicus GLO-30): водотоки и водосборы у каждого ГТС, зоны подтопления, скрининг риска ливневых паводков и наледей (этап C2)">🌊 Модель стока</button>
         <button data-gs="pav" title="Готовность к паводку: чек-лист предпаводковых осмотров ГТС (ВСН 01-89, ФЗ-117 ст. 9), осмотры приоритетных объектов (по модели стока и эрозионному скринингу), акт предпаводкового осмотра PDF">🛡 Паводок<i class="bdg" id="gsBdgP" style="display:none"></i></button>
+        <button data-gs="ams" title="АМС в районе объектов: реестр станций, приём замеров, валидация метеомодели Open-Meteo по местным рядам, калибровка метеотриггеров дежурного контроля (этап C4)">🌡 АМС и метеовалидация</button>
+        <button data-gs="integ" title="Интеграция с мерзлотным надзором ЗФ и ПМЛА: регламент обмена, интеграционный пакет статусов и тревог, ПМЛА-связка событий К2, API-контур (этап C3)">⇄ Интеграция ЗФ · ПМЛА</button>
       </div>
     </div>
   </div>
@@ -5602,7 +5604,7 @@ document.getElementById('ntdClose').onclick=()=>ntdModal.style.display='none';
 ntdModal.addEventListener('click',e=>{ if(e.target===ntdModal) ntdModal.style.display='none'; });
 
 /* ================= ЦЕНТР КОНТРОЛЯ ГТМ — контур развития и раннего предупреждения (по «Предложениям…», разд. 1–6) ================= */
-const GS_STORE={j:'gs_journal_v1', snap:'gs_snap_v1', road:'gs_road_v1', sens:'gs_sensors_v1', out:'gs_outbox_v1', ntf:'gs_notify_v1', duty:'gs_duty_v1', aud:'gs_audit_v1', audOut:'gs_audit_out_v1', audV:'gs_audit_ver_v1', pav:'gs_pav_v1'};
+const GS_STORE={j:'gs_journal_v1', snap:'gs_snap_v1', road:'gs_road_v1', sens:'gs_sensors_v1', out:'gs_outbox_v1', ntf:'gs_notify_v1', duty:'gs_duty_v1', aud:'gs_audit_v1', audOut:'gs_audit_out_v1', audV:'gs_audit_ver_v1', pav:'gs_pav_v1', trig:'gs_trig_v1', ams:'gs_ams_v1', amsd:'gs_amsdata_v1', pmla:'gs_pmla_v1'};
 function gsLoad(k,dflt){ try{ const v=JSON.parse(localStorage.getItem(k)); return v==null?dflt:v; }catch(e){ return dflt; } }
 function gsSave(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
 let gsJournal=gsLoad(GS_STORE.j,[]), gsRoad=gsLoad(GS_STORE.road,{}), gsSens=gsLoad(GS_STORE.sens,{}), gsCur=null, gsRemote=false;
@@ -5626,8 +5628,8 @@ const GS_ROAD=[
  {g:'Этап В · 9–24 мес — прогноз и интеграция', items:[
    {k:'C1', t:'Теплотехническая модель t(x,t) оснований по объектам (СП 25.13330.2020 + сценарии МГИК)', d0:'готово'},
    {k:'C2', t:'Модель поверхностного стока по ЦМР: подтопление и эрозия в границах объектов (реализовано: D8-сток + LS-фактор RUSLE и индекс мощности потока SPI по ЦМР GLO-30, очаги размыва, классы опасности — Центр контроля → «Модель стока»)', d0:'готово'},
-   {k:'C3', t:'Интеграция с мерзлотным надзором ЗФ и ПМЛА — автоматические входные события', d0:'план'},
-   {k:'C4', t:'АМС в районе объектов и валидация метеомодели по местным замерам', d0:'план'},
+   {k:'C3', t:'Интеграция с мерзлотным надзором ЗФ и ПМЛА — регламент обмена, интеграционный пакет статусов/тревог/триггеров, ПМЛА-связка событий К2 (Центр контроля → «Интеграция ЗФ · ПМЛА»; API-контур — по согласованию с Заказчиком)', d0:'готово'},
+   {k:'C4', t:'АМС в районе объектов и валидация метеомодели — реестр 4 планируемых АМС по площадкам, приём суточных замеров, сверка Open-Meteo (смещение/MAE/RMSE), калибровка метеотриггеров по ряду 2000–2025 (Центр контроля → «АМС и метеовалидация»)', d0:'готово'},
    {k:'C5', t:'Ежегодный БПЛА-мониторинг откосов и уступов с ЦМР (ортофото + цифровая модель рельефа)', d0:'план'}]}
 ];
 const GS_SENSORS=[
@@ -6260,6 +6262,150 @@ function pavActPdf(){
     a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   });
 }
+/* ==================== C4: АМС + валидация метеомодели + калибровка метеотриггеров ==================== */
+const GS_TRIG_DEF={rainW:15,rainC:30,snowW:8,snowC:20,blizSnow:5,blizGust:15,gustW:17,gustC:22};
+const GS_TRIG_META=[
+ ['rainW','Ливневый дождь — предупреждение','мм/сут'],['rainC','Ливневый дождь — опасно','мм/сут'],
+ ['snowW','Интенсивный снегопад — предупреждение','см/сут'],['snowC','Интенсивный снегопад — опасно','см/сут'],
+ ['blizSnow','Метель: снегопад от','см/сут'],['blizGust','Метель: порывы ветра от','м/с'],
+ ['gustW','Сильный ветер — предупреждение','м/с'],['gustC','Сильный ветер — опасно','м/с']];
+function gsTrig(){ return Object.assign({},GS_TRIG_DEF,gsLoad(GS_STORE.trig,null)||{}); }
+const GS_AMS_DEF=[
+ {id:'ams1', nm:'АМС-1 · площадка ТОФ (хвостохранилище, пруд-накопитель, ГТ)', lat:69.33, lon:88.13, st:'планируется', sens:'t воздуха, осадки, ветер, снеговысота, t грунта 5 см'},
+ {id:'ams2', nm:'АМС-2 · площадка НМЗ (хвостохранилище, ГПХ)', lat:69.36, lon:88.05, st:'планируется', sens:'t воздуха, осадки, ветер, снеговысота, t грунта 5 см'},
+ {id:'ams3', nm:'АМС-3 · площадка НОФ («Лебяжье», хвостохранилище № 1, Никелевые отстойники)', lat:69.30, lon:88.15, st:'планируется', sens:'t воздуха, осадки, ветер, снеговысота'},
+ {id:'ams4', nm:'АМС-4 · плотина системы 3-х озёр (Дудинский участок)', lat:69.406, lon:86.178, st:'планируется', sens:'t воздуха, осадки, ветер, снеговысота'}];
+let gsAms=gsLoad(GS_STORE.ams,null)||JSON.parse(JSON.stringify(GS_AMS_DEF));
+let gsAmsData=gsLoad(GS_STORE.amsd,{});
+let gsAmsValCache=null;
+function gsViewAms(){
+  const TR=gsTrig();
+  const stRows=gsAms.map((s,i)=>{
+    const nd=(gsAmsData[s.id]||[]).length;
+    return `<tr><td style="text-align:left">${esc(s.nm)}</td><td>${s.lat}°N, ${s.lon}°E</td><td style="text-align:left">${esc(s.sens)}</td>
+      <td><select class="gsSt" data-ams="${i}">${['планируется','закупка','установлена','действует'].map(v=>`<option${v===s.st?' selected':''}>${v}</option>`).join('')}</select></td>
+      <td>${nd||'—'}</td></tr>`;
+  }).join('');
+  const trigRows=GS_TRIG_META.map(([k,nm,u])=>`<tr><td style="text-align:left">${nm}</td><td><input id="trg_${k}" type="number" step="0.5" min="0" value="${TR[k]}" style="width:70px;padding:2px 4px"> ${u}</td><td id="trgS_${k}" class="mut">—</td></tr>`).join('');
+  const amsOpts=gsAms.map((s,i)=>`<option value="${s.id}">${esc(s.nm)}</option>`).join('');
+  return `<h2>🌡 АМС · метеовалидация · калибровка триггеров <span class="mut" style="font-size:12px;font-weight:400">дорожная карта, пункт C4</span></h2>
+  <div class="gsCard"><h3>Назначение контура</h3><div class="mut" style="line-height:1.55">
+    Собственные автоматические метеостанции (АМС) в районе объектов дают местные замеры вместо интерполяции районного прогноза;
+    ряды АМС используются для валидации метеомодели Open-Meteo (смещение, MAE, RMSE) и для калибровки метеотриггеров
+    дежурного контроля и индексов Стефана под микроклимат площадок (дорожная карта C4, предложения § 3.1 и § 4.3).</div></div>
+  <div class="gsCard"><h3>1. Реестр АМС (план/факт)</h3>
+    <table class="gsTbl"><tr><th>Станция и охват объектов</th><th>Координаты</th><th>Измерительный состав</th><th>Статус</th><th>Замеров в базе</th></tr>${stRows}</table>
+    <div class="mut">Размещение — по площадкам предприятий (ТОФ, НМЗ, НОФ, Дудинка) с охватом всех 10 объектов ГТС; статусы обновляются по мере развёртывания. Статус сохраняется автоматически при выборе.</div></div>
+  <div class="gsCard"><h3>2. Приём замеров АМС</h3>
+    <div class="mut">Формат CSV (точка с запятой, одна строка на сутки): <b>дата ГГГГ-ММ-ДД;t воздуха °C;осадки мм;ветер м/с;снег см</b> — минимально обязательны дата и температура. <button class="wbtn" id="amsTpl" style="padding:2px 8px">⬇ Шаблон CSV</button></div>
+    <div style="display:flex;gap:8px;margin:6px 0;align-items:center"><select id="amsSel" style="max-width:420px">${amsOpts}</select><button class="wbtn" id="amsCsvSave">✔ Записать замеры в базу</button></div>
+    <textarea id="amsCsv" style="width:100%;height:90px;font-family:Consolas,monospace;font-size:11.5px" placeholder="2026-09-01;4.2;0.6;6.1;0&#10;2026-09-02;3.8;2.4;8.3;0"></textarea></div>
+  <div class="gsCard"><h3>3. Валидация метеомодели (Open-Meteo ↔ АМС)</h3>
+    <div class="mut">Сопоставление суточных рядов АМС с архивом Open-Meteo (ERA5/IFS) в точке станции за те же даты: систематическое смещение, средняя абсолютная и среднеквадратичная ошибки. Итог — заключение о пригодности районной модели для триггеров и теплотехники.</div>
+    <div style="margin:6px 0"><button class="wbtn" id="amsValGo">⚖ Сверить с метеомоделью</button> <span class="mut" id="amsValMsg"></span></div>
+    <div id="amsValOut"></div></div>
+  <div class="gsCard"><h3>4. Калибровка метеотриггеров дежурного контроля</h3>
+    <div class="mut">Действующие пороги (по умолчанию — критерии опасных явлений Росгидромета) используются анализатором предупреждений полосы дежурного метеоконтроля и окна «Дежурный». Калибровка — по длинному суточному метеоряду Open-Meteo (2000–2025) и, при наличии, по рядам АМС: предлагаются значения P95 (предупреждение) и P99 (опасно) по сезонным выборкам.</div>
+    <table class="gsTbl"><tr><th>Явление / уровень</th><th>Действующий порог</th><th>Предложение по ряду</th></tr>${trigRows}</table>
+    <div style="display:flex;gap:8px;margin-top:6px"><button class="wbtn" id="trigCalc">🧮 Рассчитать по метеоряду (2000–2025)</button><button class="wbtn" id="trigSave">💾 Сохранить пороги (ручные правки)</button><button class="wbtn" id="trigApply">✅ Применить предложенные</button><button class="wbtn" id="trigReset">↺ Сбросить к Росгидромету</button></div>
+    <div class="mut" id="trigMsg" style="margin-top:4px"></div></div>`;
+}
+async function gsAmsValidate(){
+  const out=document.getElementById('amsValOut'), msg=document.getElementById('amsValMsg');
+  const rows=[];
+  for(const s of gsAms){
+    const arr=gsAmsData[s.id]||[];
+    if(arr.length<7) continue;
+    const d0=arr[0].d, d1=arr[arr.length-1].d;
+    const url=`https://archive-api.open-meteo.com/v1/archive?latitude=${s.lat}&longitude=${s.lon}&start_date=${d0}&end_date=${d1}&daily=temperature_2m_mean,precipitation_sum,wind_speed_10m_max&wind_speed_unit=ms&timezone=auto`;
+    try{
+      const r=await fetch(url).then(x=>x.json());
+      const T=r.daily||{}; const idx={}; (T.time||[]).forEach((t,i)=>idx[t]=i);
+      const st={t:[],p:[],w:[]};
+      arr.forEach(a=>{ const i=idx[a.d]; if(i===undefined) return;
+        if(a.t!=null&&T.temperature_2m_mean&&T.temperature_2m_mean[i]!=null) st.t.push([a.t,T.temperature_2m_mean[i]]);
+        if(a.p!=null&&T.precipitation_sum&&T.precipitation_sum[i]!=null) st.p.push([a.p,T.precipitation_sum[i]]);
+        if(a.w!=null&&T.wind_speed_10m_max&&T.wind_speed_10m_max[i]!=null) st.w.push([a.w,T.wind_speed_10m_max[i]]); });
+      rows.push({s,st});
+    }catch(e){}
+  }
+  if(!rows.length){ out.innerHTML='<div class="mut">Недостаточно замеров АМС (нужно ≥ 7 суток на станцию) — загрузите ряды в карточке 2. До получения местных рядов валидация выполняется по многолетнему метеоряду Open-Meteo (карточка 4).</div>'; return; }
+  const stat=(pairs)=>{ const n=pairs.length; if(!n) return null;
+    let sb=0, sae=0, sse=0; pairs.forEach(([f,m])=>{ const d=f-m; sb+=d; sae+=Math.abs(d); sse+=d*d; });
+    return {n, bias:sb/n, mae:sae/n, rmse:Math.sqrt(sse/n)}; };
+  let h='<table class="gsTbl"><tr><th>Станция</th><th>Параметр</th><th>N суток</th><th>Смещение (АМС − модель)</th><th>MAE</th><th>RMSE</th><th>Оценка</th></tr>';
+  rows.forEach(({s,st})=>{
+    const line=(nm,pairs,unit,lim)=>{ const v=stat(pairs); if(!v) return '';
+      const ok=Math.abs(v.bias)<=lim&&v.mae<=lim*1.5;
+      return `<tr><td style="text-align:left">${esc(s.nm.split('·')[0])}</td><td>${nm}</td><td>${v.n}</td><td>${v.bias>=0?'+':''}${v.bias.toFixed(2)} ${unit}</td><td>${v.mae.toFixed(2)}</td><td>${v.rmse.toFixed(2)}</td><td>${ok?'✔ пригодно':'⚠ систематическое '+((v.bias>0)?'занижение модели':'завышение модели')+' — учесть поправку в триггерах'}</td></tr>`; };
+    h+=line('t воздуха, °C',st.t,'°C',1.5)+line('осадки, мм/сут',st.p,'мм',2.0)+line('ветер макс., м/с',st.w,'м/с',3.0);
+  });
+  h+='</table><div class="mut">Критерии пригодности (инженерные): |смещение| ≤ 1,5 °C по температуре, ≤ 2 мм по суточным осадкам, ≤ 3 м/с по максимальному ветру. При систематическом смещении — пороги триггеров корректируются на величину смещения (карточка 4).</div>';
+  out.innerHTML=h; msg.textContent='сверка выполнена: '+new Date().toLocaleString('ru-RU');
+}
+async function gsTrigCalc(){
+  const msg=document.getElementById('trigMsg'); msg.textContent='загружаю суточный метеоряд 2000–2025 (Open-Meteo)…';
+  try{
+    const u='https://archive-api.open-meteo.com/v1/archive?latitude=69.355&longitude=88.20&start_date=2000-01-01&end_date=2025-12-31&daily=precipitation_sum,rain_sum,snowfall_sum,wind_gusts_10m_max&wind_speed_unit=ms&timezone=auto';
+    const r=await fetch(u).then(x=>x.json()); const D=r.daily;
+    const prc=(arr,p)=>{ const a=arr.filter(v=>v!=null).sort((x,y)=>x-y); if(!a.length) return null; const i=Math.min(a.length-1,Math.floor(p/100*(a.length-1))); return a[i]; };
+    const nz=v=>v!=null&&v>0.1;
+    const rain=D.rain_sum.filter(nz), snow=D.snowfall_sum.filter(nz), gust=D.wind_gusts_10m_max.filter(nz), precip=D.precipitation_sum.filter(nz);
+    const S={rainW:prc(rain,95), rainC:prc(rain,99), snowW:prc(snow,95), snowC:prc(snow,99),
+             blizSnow:prc(snow,90), blizGust:prc(gust,95), gustW:prc(gust,95), gustC:prc(gust,99)};
+    Object.keys(S).forEach(k=>{ const el=document.getElementById('trgS_'+k);
+      if(el) el.textContent=S[k]==null?'—':('≈ '+Math.round(S[k]*10)/10+' (ряд 2000–2025, N='+( {rainW:rain.length,rainC:rain.length,snowW:snow.length,snowC:snow.length,blizSnow:snow.length,blizGust:gust.length,gustW:gust.length,gustC:gust.length}[k] )+')'); });
+    window._trigSugg=S;
+    msg.textContent='расчёт выполнен — предложенные значения в колонке «Предложение по ряду»; применить — кнопкой ниже';
+  }catch(e){ msg.textContent='метеоряд недоступен (нет связи с Open-Meteo) — пороги можно отредактировать вручную'; }
+}
+
+/* ==================== C3: интеграция с мерзлотным надзором ЗФ и ПМЛА ==================== */
+let gsPmla=gsLoad(GS_STORE.pmla,{});
+const GTS_SHORT={gts01:'хх ТОФ',gts02:'пруд-нак. ТОФ',gts03:'ГТ ТОФ–НМЗ',gts04:'ГТ ТОФ–УПЗК',gts05:'хх НМЗ',gts06:'ГПХ',gts07:'«Лебяжье»',gts08:'хх № 1 НОФ',gts09:'Ник. отстойники',gts10:'3-х озёр'};
+const GS_PMLA_TYPES=[
+ ['t2','Превышение К2: температурный режим грунтов','Немедленно: внеочередная термометрия контрольных скважин; оценка скорости потепления; доклад руководителю мерзлотного надзора. Далее: теплотехнический анализ основания, решение о термостабилизации, усиление режима наблюдений до суточного.'],
+ ['p2','Превышение К2: уровень/напор (пьезометрия)','Немедленно: повторный замер вручную, проверка водоотводов и дренажей, осмотр низового откоса на суффозию/наледи; ограничение подпора по регламенту; доклад дежурному и в мерзлотный надзор.'],
+ ['g2','Превышение К2: деформации (геодезия)','Немедленно: внеочередной геодезический цикл, визуальный осмотр гребня и откосов (трещины, оползневые призмы); при подтверждении — ограничение эксплуатационных нагрузок, подготовка решения об уположении/отсыпке.'],
+ ['flood','Ливневое подтопление / паводковая ситуация','По метеопредупреждению: проверка водоотводных каналов и лотков до события, готовность водопропуска; во время события — контроль уровня пляжа и отметок гребня; после — осмотр откосов на размыв, акт.'],
+ ['ice','Наледеобразование на сооружении','Осмотр с фиксацией локации и площади наледей; поиск источника (фильтрация тела/основания, протечка стыков); учёт наледевой нагрузки; при интенсивном нарастании — расчётный анализ.'],
+ ['drift','Снежный занос сооружений и КИА','Организация расчистки подъездов и точек наблюдений; контроль снегопереноса к откосам; после метели — осмотр и восстановление доступа к маркам и скважинам.']];
+function gsViewInteg(){
+  const dty=gsDuty||{};
+  const objs=DB.objects.map(o=>{ const sd=statusDetail(o); return {id:o.id,nm:o.a,ent:o.d,st:sd.status||'нет данных'}; });
+  const cnt={}; objs.forEach(o=>cnt[o.st]=(cnt[o.st]||0)+1);
+  const pmlaRows=GS_PMLA_TYPES.map(([k,nm,chk])=>{
+    const refs=DB.objects.map(o=>{ const key=o.id+':'+k; const v=(gsPmla[key]&&gsPmla[key].ref)||'';
+      return `<div style="white-space:nowrap;font-size:11px;margin:1px 0" title="${esc(o.a)}">${esc(GTS_SHORT[o.id]||o.d||o.id)}: <input data-pmla="${key}" value="${esc(v)}" placeholder="разд. ПМЛА" style="width:86px;padding:1px 4px;font-size:11px"></div>`; }).join('');
+    return `<tr><td style="text-align:left"><b>${esc(nm)}</b><div class="mut" style="font-size:11px;margin-top:2px">Чек-лист первых действий: ${esc(chk)}</div></td><td style="min-width:150px">${refs}</td></tr>`;
+  }).join('');
+  return `<h2>⇄ Интеграция ЗФ · ПМЛА <span class="mut" style="font-size:12px;font-weight:400">контур обмена с мерзлотным надзором Заполярного филиала · дорожная карта, пункт C3</span></h2>
+  <div class="gsCard"><h3>1. Контур обмена (регламент)</h3><div class="mut" style="line-height:1.6">
+    <b>Мерзлотный надзор ЗФ</b> — передаются: статусы объектов и динамика (журнал тревог К1/К2), действующие контрольные критерии деклараций, активные метеопредупреждения; периодичность — событийно (при переходе критерия) и еженедельный дайджест.<br>
+    <b>ПМЛА объектов</b> (ст. 10 ФЗ-117) — каждому событию К2 присваивается ссылка на раздел ПМЛА объекта и чек-лист первых действий (карточка 3); события журнала — входные для активации ПМЛА.<br>
+    <b>АСУ ТП / корпоративный контур</b> — приёмный API на стороне ЗФ согласуется с Заказчиком; до его появления обмен выполняется интеграционным пакетом (карточка 2) через защищённый канал.<br>
+    <b>Дежурный контур:</b> ${dty.name?('дежурный: <b>'+esc(dty.name)+'</b>'+(dty.phone?', '+esc(dty.phone):'')+(dty.tg?', @'+esc(dty.tg):'')+(dty.mail?', '+esc(dty.mail):'')):'<i>не назначен — задаётся в разделе «Тревоги и эскалация»</i>'}.</div></div>
+  <div class="gsCard"><h3>2. Интеграционный пакет (выгрузка для мерзлотного надзора ЗФ)</h3>
+    <div class="mut">Снимок состояния системы одним файлом: статусы всех объектов (${objs.length}; НОРМА: ${cnt['НОРМА']||0}, РИСК: ${cnt['РИСК']||0}, КРИТИЧНО: ${cnt['КРИТИЧНО']||0}, нет данных: ${cnt['нет данных']||0}), журнал тревог К1/К2 (${gsJournal.length} событий), действующие метеотриггеры, активные метеопредупреждения.</div>
+    <div style="display:flex;gap:8px;margin-top:6px"><button class="wbtn" id="zfPackJson">⬇ Пакет JSON (полный)</button><button class="wbtn" id="zfPackCsv">⬇ Сводка статусов CSV</button><button class="wbtn" id="zfPackJournal">⬇ Журнал тревог CSV</button></div>
+    <div class="mut" style="margin-top:4px">Файл передаётся в подразделение мерзлотного надзора ЗФ; состав и периодичность — по согласованию с Заказчиком. Журнал тревог дополнительно доступен в центральной БД (Supabase, таблица gs_journal) для машинного чтения.</div></div>
+  <div class="gsCard"><h3>3. ПМЛА-связка событий К2 (чек-листы первых действий и ссылки на разделы ПМЛА)</h3>
+    <table class="gsTbl"><tr><th>Тип события и чек-лист первых действий</th><th>Разделы ПМЛА по объектам (редактируемо)</th></tr>${pmlaRows}</table>
+    <div class="mut">Ссылки сохраняются автоматически при изменении поля. При событии К2 в журнале тревог дежурный открывает этот раздел и действует по чек-листу типа события с учётом раздела ПМЛА конкретного объекта.</div></div>
+  <div class="gsCard"><h3>4. Машинный интерфейс (API)</h3><div class="mut" style="line-height:1.55">
+    Текущее состояние: журнал тревог и аудит действий реплицируются в центральную БД (Supabase REST, таблицы gs_journal / gs_audit) — корпоративный контур ЗФ может читать их по API-ключу, выдаваемому администратором БД.
+    Целевое состояние (после согласования с Заказчиком): выделенный read-only endpoint со статусами объектов, активными тревогами К1/К2 и метеопредупреждениями; импорт актуализированных контрольных критериев при перерегистрации деклараций.</div></div>`;
+}
+function gsZfPackage(){
+  const d=wCache(); const ws=d?warnAnalyze(d):[];
+  return {meta:{system:'ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель»', version:1, ts:new Date().toISOString(), basis:'дорожная карта C3; ФЗ-117 (ст. 9, 10); ФНП № 151'},
+    objects:DB.objects.map(o=>{ const sd=statusDetail(o); return {id:o.id, name:o.a, enterprise:o.d, status:sd.status||'нет данных', reasons:sd.reasons||[]}; }),
+    journal:gsJournal.slice(0,200),
+    meteo_triggers:gsTrig(),
+    meteo_warnings:ws,
+    duty:gsDuty};
+}
+
 /* --- лаунчер Центра контроля: навигатор по системе + плитки разделов --- */
 const GS_SECTS=[
  ['alerts','⚠','Тревоги и эскалация К1/К2','журнал тревог, квитирование, уведомления дежурному','gsBdgA'],
@@ -6269,7 +6415,9 @@ const GS_SECTS=[
  ['data','🗄','Данные · аудит · интеграции','хранение, резервные копии, аудит действий, выгрузки',null],
  ['road','🗺','Дорожная карта','этапы А/Б/В: доказательность → непрерывность → прогноз','gsBdgR'],
  ['stok','🌊','Модель стока','водотоки и водосборы у ГТС, подтопление, эрозионный скрининг (C2)',null],
- ['pav','🛡','Паводок','готовность к паводку: чек-лист ВСН 01-89, приоритетные ГТС, PDF-акт','gsBdgP']
+ ['pav','🛡','Паводок','готовность к паводку: чек-лист ВСН 01-89, приоритетные ГТС, PDF-акт','gsBdgP'],
+ ['ams','🌡','АМС и метеовалидация','реестр АМС, приём замеров, валидация Open-Meteo, калибровка триггеров (C4)',null],
+ ['integ','⇄','Интеграция ЗФ · ПМЛА','пакет для мерзлотного надзора, ПМЛА-связка событий К2, API (C3)',null]
 ];
 function gsViewHome(){
   const tiles=GS_SECTS.map(([k,ic,nm,ds,bg])=>{
@@ -6286,7 +6434,7 @@ function gsViewHome(){
   <div class="gsGrid">${tiles}</div>`;
 }
 /* --- диспетчер --- */
-const GS_VIEWS={home:gsViewHome, alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad, stok:gsViewStok, pav:gsViewPav};
+const GS_VIEWS={home:gsViewHome, alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad, stok:gsViewStok, pav:gsViewPav, ams:gsViewAms, integ:gsViewInteg};
 function gsBindCommon(){
   const d=document.getElementById('gsModalBody');
   d.querySelectorAll('[data-gsobj]').forEach(el=>el.addEventListener('click',ev=>{ ev.preventDefault(); select(+el.dataset.gsobj); }));
@@ -6311,6 +6459,34 @@ function gsBindCommon(){
   ['pavKomNo','pavKomDt','pavKomPr','pavKomM1','pavKomM2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('change',pKomSave); });
   const bAv=document.getElementById('pavActBtn'); if(bAv) bAv.onclick=()=>{ pKomSave(); pavActPdf(); };
   d.querySelectorAll('[data-gsack]').forEach(el=>el.addEventListener('click',()=>gsAckNtf(el.dataset.gsack)));
+  /* --- C4: АМС, валидация, калибровка триггеров --- */
+  d.querySelectorAll('select.gsSt[data-ams]').forEach(el=>el.addEventListener('change',()=>{ gsAms[+el.dataset.ams].st=el.value; gsSave(GS_STORE.ams,gsAms); }));
+  const aT=document.getElementById('amsTpl'); if(aT) aT.onclick=()=>gsDownload('gtm_ams_template.csv','дата;t_воздуха_C;осадки_мм;ветер_мс;снег_см\r\n2026-09-01;4.2;0.6;6.1;0','text/csv;charset=utf-8');
+  const aS=document.getElementById('amsCsvSave'); if(aS) aS.onclick=()=>{
+    const sid=(document.getElementById('amsSel')||{}).value; if(!sid) return;
+    const txt=(document.getElementById('amsCsv')||{}).value||'';
+    const rows=txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>l.split(/[;\t]/))
+      .filter(c=>/^\d{4}-\d{2}-\d{2}/.test(c[0]||''))
+      .map(c=>({d:c[0].slice(0,10), t:c[1]!==undefined&&c[1]!==''?+String(c[1]).replace(',','.'):null, p:c[2]!==undefined&&c[2]!==''?+String(c[2]).replace(',','.'):null, w:c[3]!==undefined&&c[3]!==''?+String(c[3]).replace(',','.'):null, s:c[4]!==undefined&&c[4]!==''?+String(c[4]).replace(',','.'):null}))
+      .filter(r=>r.t!==null||r.p!==null);
+    if(!rows.length){ alert('Не распознано ни одной строки замеров (формат: ГГГГ-ММ-ДД;t;осадки;ветер;снег).'); return; }
+    const cur=gsAmsData[sid]||[]; const map={}; cur.forEach(r=>map[r.d]=r); rows.forEach(r=>map[r.d]=r);
+    gsAmsData[sid]=Object.values(map).sort((a,b)=>a.d<b.d?-1:1);
+    gsSave(GS_STORE.amsd,gsAmsData); gsOpen('ams',true);
+  };
+  const aV=document.getElementById('amsValGo'); if(aV) aV.onclick=()=>{ document.getElementById('amsValMsg').textContent='выполняется сверка…'; gsAmsValidate(); };
+  const tC=document.getElementById('trigCalc'); if(tC) tC.onclick=gsTrigCalc;
+  const trigCollect=()=>{ const v={}; GS_TRIG_META.forEach(([k])=>{ const el=document.getElementById('trg_'+k); if(el&&el.value!=='') v[k]=+el.value; }); return v; };
+  const tS=document.getElementById('trigSave'); if(tS) tS.onclick=()=>{ gsSave(GS_STORE.trig,trigCollect()); document.getElementById('trigMsg').textContent='пороги сохранены и действуют в дежурном метеоконтроле с этого момента'; };
+  const tA=document.getElementById('trigApply'); if(tA) tA.onclick=()=>{ const S=window._trigSugg; if(!S){ document.getElementById('trigMsg').textContent='сначала выполните «Рассчитать по метеоряду»'; return; }
+    GS_TRIG_META.forEach(([k])=>{ const el=document.getElementById('trg_'+k); if(el&&S[k]!=null) el.value=Math.round(S[k]*10)/10; });
+    gsSave(GS_STORE.trig,trigCollect()); document.getElementById('trigMsg').textContent='применены калиброванные по метеоряду 2000–2025 пороги'; };
+  const tR=document.getElementById('trigReset'); if(tR) tR.onclick=()=>{ try{ localStorage.removeItem(GS_STORE.trig); }catch(e){} gsOpen('ams',true); };
+  /* --- C3: интеграция ЗФ · ПМЛА --- */
+  const zJ=document.getElementById('zfPackJson'); if(zJ) zJ.onclick=()=>gsDownload('gtm_zf_package_'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(gsZfPackage(),null,1));
+  const zC=document.getElementById('zfPackCsv'); if(zC) zC.onclick=()=>{ const rows=[['object_id','object','enterprise','status','reasons']].concat(DB.objects.map(o=>{ const sd=statusDetail(o); return [o.id,o.a,o.d,sd.status||'нет данных',(sd.reasons||[]).join(' | ')]; })); gsDownload('gtm_zf_status_'+new Date().toISOString().slice(0,10)+'.csv', rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(';')).join('\r\n'),'text/csv;charset=utf-8'); };
+  const zL=document.getElementById('zfPackJournal'); if(zL) zL.onclick=gsExpJournalCsv;
+  d.querySelectorAll('input[data-pmla]').forEach(el=>el.addEventListener('change',()=>{ gsPmla[el.dataset.pmla]={ref:el.value.trim(),ts:new Date().toISOString()}; gsSave(GS_STORE.pmla,gsPmla); }));
 }
 function gsOpen(key, silent){
   const m=document.getElementById('gsModal');
@@ -6471,7 +6647,7 @@ async function warnFetch(){
   return d;
 }
 function warnAnalyze(d){
-  const out=[];
+  const out=[], TR=gsTrig();
   (d.pts||[]).forEach((pt,pi)=>{
     const meta=W_PTS[pi]; if(!meta||!pt||!pt.hourly) return;
     const H=pt.hourly, T=H.time||[], days={};
@@ -6488,13 +6664,13 @@ function warnAnalyze(d){
     Object.keys(days).sort().forEach(key=>{
       const a=days[key];
       const push=(haz,lvl,val)=>out.push({date:key,haz,lvl,val,pt:meta.nm,groups:meta.groups});
-      if(a.rain>=30) push('rain','crit','дождь '+a.rain.toFixed(0)+' мм/сут');
-      else if(a.rain>=15) push('rain','warn','дождь '+a.rain.toFixed(0)+' мм/сут');
-      if(a.snow>=20) push('snow','crit','снегопад '+a.snow.toFixed(0)+' см/сут');
-      else if(a.snow>=8) push('snow','warn','снегопад '+a.snow.toFixed(0)+' см/сут');
-      if(a.snow>=5&&a.gust>=15) push('bliz','warn','снег '+a.snow.toFixed(0)+' см + порывы '+a.gust.toFixed(0)+' м/с');
-      if(a.gust>=22) push('wind','crit','порывы ветра до '+a.gust.toFixed(0)+' м/с');
-      else if(a.gust>=17) push('wind','warn','порывы ветра до '+a.gust.toFixed(0)+' м/с');
+      if(a.rain>=TR.rainC) push('rain','crit','дождь '+a.rain.toFixed(0)+' мм/сут');
+      else if(a.rain>=TR.rainW) push('rain','warn','дождь '+a.rain.toFixed(0)+' мм/сут');
+      if(a.snow>=TR.snowC) push('snow','crit','снегопад '+a.snow.toFixed(0)+' см/сут');
+      else if(a.snow>=TR.snowW) push('snow','warn','снегопад '+a.snow.toFixed(0)+' см/сут');
+      if(a.snow>=TR.blizSnow&&a.gust>=TR.blizGust) push('bliz','warn','снег '+a.snow.toFixed(0)+' см + порывы '+a.gust.toFixed(0)+' м/с');
+      if(a.gust>=TR.gustC) push('wind','crit','порывы ветра до '+a.gust.toFixed(0)+' м/с');
+      else if(a.gust>=TR.gustW) push('wind','warn','порывы ветра до '+a.gust.toFixed(0)+' м/с');
       if(a.thunder>0) push('thunder','warn','гроза, '+a.thunder+' ч');
       if(a.frz>0) push('frz','warn','гололёдный дождь, '+a.frz+' ч');
     });
