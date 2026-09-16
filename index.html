@@ -184,6 +184,30 @@ document.addEventListener('DOMContentLoaded',()=>{
   #gsMenu button.on{background:var(--zf); color:#fff; border-color:var(--zf)}
   #gsMenu .bdg{position:absolute; top:3px; right:4px; min-width:15px; padding:0 3px; border-radius:8px; background:#8a7ab0; color:#fff; font-size:9.5px; font-weight:700; text-align:center}
   #gsMenu .bdg.alarm{animation:gsBlink 1.2s infinite}
+  /* ---------- навигация: группы шапки, хлебные крошки, бейджи вкладок, лаунчер Центра контроля ---------- */
+  header .hgrp{display:inline-flex; align-items:center; gap:6px; padding-left:10px; border-left:1px solid rgba(120,150,175,.35)}
+  header .hgrp:first-of-type{border-left:none; padding-left:0}
+  .crumbs{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--mut); margin:0 0 6px; flex-wrap:wrap}
+  .crumbs a{color:var(--zf); cursor:pointer; text-decoration:none; font-weight:600}
+  .crumbs a:hover{text-decoration:underline}
+  .crumbs .csep{color:#9db0bf}
+  .crumbs .cobj{color:var(--ink); font-weight:600}
+  .crumbs .ctab{background:#eef3f8; border:1px solid var(--line); border-radius:9px; padding:0 8px; font-size:11px}
+  .crumbs .crnav{margin-left:auto; display:inline-flex; gap:4px}
+  .crumbs .crnav button{width:24px; height:22px; border:1px solid var(--line); background:var(--bg); border-radius:5px; cursor:pointer; font-size:12px; line-height:1; color:var(--zf)}
+  .crumbs .crnav button:hover:not(:disabled){border-color:var(--zf)}
+  .crumbs .crnav button:disabled{opacity:.35; cursor:default}
+  .tabs button .tn{font-style:normal; background:var(--zf); color:#fff; border-radius:8px; padding:0 5px; font-size:9.5px; margin-left:4px; font-weight:700}
+  .tabs button.on .tn{background:rgba(255,255,255,.28)}
+  .tabs button.empty{opacity:.5}
+  .tabs button.empty.on{opacity:1}
+  .gsGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:8px}
+  .gsTile{display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; background:var(--bg); border:1px solid var(--line); border-radius:9px; padding:10px 12px; cursor:pointer; font-family:inherit}
+  .gsTile:hover{border-color:var(--zf); box-shadow:0 2px 8px rgba(0,76,151,.16)}
+  .gsTile .gt-i{font-size:19px}
+  .gsTile .gt-n{font-weight:700; font-size:12.5px; color:var(--nn-deep)}
+  .gsTile .gt-d{font-size:11px; color:var(--mut); line-height:1.4}
+  .gsTile .gt-b{font-style:normal; background:#c8372d; color:#fff; border-radius:8px; padding:0 5px; font-size:10px; font-weight:700}
   .gsCard{border:1px solid var(--line); border-left:3px solid var(--zf); border-radius:6px; background:#fff; padding:10px 12px; margin-bottom:10px}
   .gsCard h3{margin:0 0 6px; font-size:13px; color:#3d2f5e}
   .gsCard .mut{color:var(--mut); font-size:11.5px}
@@ -573,16 +597,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
     <div class="stats" id="hstats"></div>
     <span id="roleBadge" style="font-size:11px; color:#9fb0bf; border:1px solid #3a4c5c; border-radius:10px; padding:2px 10px"></span>
-    <button id="regBtn" title="Сводный реестр объектов РИСК/КРИТИЧНО" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">▤ Реестр</button><span id="warnBadge" title="Активные предупреждения о критичных погодных условиях (прогноз 10 суток)"></span>
-    <button id="ntdBtn" title="Нормативная документация по ГТС: действующие редакции, статусы, применимость к объектам на многолетнемерзлых грунтах (по результатам анализа НТД НИР)" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">§ Нормативка</button>
-    <button id="meteoBtn" title="Метеоданные г. Норильска: история с 1950 г., автопополнение из открытых метеоархивов, аномалии, тренды, прогноз, параметры для теплотехнических расчётов (СП 25.13330.2020, прил. Г)" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">🌦 Метеоданные</button>
-    <button id="repBtn" title="Формирование сводного отчёта" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">📄 Отчёт</button>
-    <button id="uploadBtn" title="Загрузка данных по шаблону">⬆ Загрузка данных</button>
-    <a id="presBtn" href="Презентация_ГТМ_ГТС_Норникель.pdf" download title="Презентация проекта (PDF, 14 слайдов) — скачать" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px; text-decoration:none; display:inline-block">🖵 Презентация</a>
-    <button id="niokrBtn" title="НИОКР 2026 · ООО «НПО «Фундамент» — скрытый раздел с материалами НИР (отдельный парольный доступ)" style="background:none; border:1px solid #5a4a6c; color:#cbb8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">⚗ НИОКР 2026</button>
-    <button id="gear" title="Пороги статусов и контрольные критерии безопасности К1/К2 деклараций">⚙ Пороги и КК</button>
-    <button id="pwaBtn" title="Установить приложение: на рабочий стол ПК или на экран «Домой» смартфона (отдельное окно без интерфейса браузера)" style="display:none; background:none; border:1px solid #3a6a4c; color:#b8e2c8; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">⤓ Установить</button>
-    <button id="logoutBtn" title="Выйти / сменить пользователя">⎋ Выход</button>
+    <span class="hgrp"><button id="gsHomeBtn" title="Центр контроля ГТМ — навигатор и разделы: тревоги и эскалация К1/К2, матрица рисков, прогноз ММГ, измерительная база, данные и аудит, дорожная карта, модель стока, паводок" style="background:none; border:1px solid #4a7ca8; color:#cfe4f6; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px; font-weight:600">◉ Центр</button><button id="regBtn" title="Сводный реестр объектов РИСК/КРИТИЧНО" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">▤ Реестр</button><span id="warnBadge" title="Активные предупреждения о критичных погодных условиях (прогноз 10 суток)"></span><button id="meteoBtn" title="Метеоданные г. Норильска: история с 1950 г., автопополнение из открытых метеоархивов, аномалии, тренды, прогноз, параметры для теплотехнических расчётов (СП 25.13330.2020, прил. Г)" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">🌦 Метеоданные</button></span>
+    <span class="hgrp"><button id="ntdBtn" title="Нормативная документация по ГТС: действующие редакции, статусы, применимость к объектам на многолетнемерзлых грунтах (по результатам анализа НТД НИР)" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">§ Нормативка</button><button id="repBtn" title="Формирование сводного отчёта" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">📄 Отчёт</button><a id="presBtn" href="Презентация_ГТМ_ГТС_Норникель.pdf" download title="Презентация проекта (PDF, 14 слайдов) — скачать" style="background:none; border:1px solid #3a4c5c; color:#cdd8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px; text-decoration:none; display:inline-block">🖵 Презентация</a><button id="niokrBtn" title="НИОКР 2026 · ООО «НПО «Фундамент» — скрытый раздел с материалами НИР (отдельный парольный доступ)" style="background:none; border:1px solid #5a4a6c; color:#cbb8e2; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">⚗ НИОКР 2026</button></span>
+    <span class="hgrp"><button id="uploadBtn" title="Загрузка данных по шаблону">⬆ Загрузка данных</button><button id="gear" title="Пороги статусов и контрольные критерии безопасности К1/К2 деклараций">⚙ Пороги и КК</button><button id="pwaBtn" title="Установить приложение: на рабочий стол ПК или на экран «Домой» смартфона (отдельное окно без интерфейса браузера)" style="display:none; background:none; border:1px solid #3a6a4c; color:#b8e2c8; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px">⤓ Установить</button><button id="logoutBtn" title="Выйти / сменить пользователя">⎋ Выход</button></span>
   </header>
   <div id="warnStrip" class="ok" title="Дежурный метеоконтроль: критичные погодные явления по группам объектов ГТС, прогноз 10 суток, сверка каждый час. Клик — окно дежурного метеоконтроля: статус дежурства, предупреждения и рекомендуемые меры."><span>…сверка прогноза метеоданных</span></div>
   <div id="side">
@@ -2473,6 +2490,17 @@ function normText(s){
 function escT(s){ return esc(normText(s)); }
 let curObj=null, curWell=null, curDepths=new Set(), curTab='passport', fcDepth=5;
 const TABS=[['passport','Паспорт ГТС'],['gtm','Паспорт ГТМ'],['igi','Инженерно-геологические изыскания'],['fac','Сооружения'],['kk','Контрольные критерии'],['geoterm','Термометрия'],['piezo','Пьезометрия'],['geod','Деформации'],['calc','Расчёты'],['climate','Климат до 2050'],['expl','Осмотры и эксплуатация'],['repairs','Ремонты и работы'],['docs','Документация'],['photo','Фотоматериалы'],['misc','Иное']];
+/* наполненность вкладок карточки: число единиц данных (бейдж на вкладке); 0 — вкладка приглушается */
+const TAB_DATA={
+  gtm:o=>Object.values(o.points||{}).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0),
+  fac:o=>facOf(o.id).length,
+  geoterm:o=>Object.keys(o.prof||{}).length,
+  piezo:o=>(((o.points||{}).piezo)||[]).length+Object.keys(o.ugv||{}).length,
+  geod:o=>Object.keys(o.geod||{}).length,
+  docs:o=>(o.isx?(o.isx.cats||[]).reduce((s,c)=>s+(+c.n||0),0):0),
+  photo:o=>(o.photos||[]).length,
+  repairs:o=>(o.repairs||[]).length
+};
 let curFac=null;
 
 function select(i,fromList){
@@ -2495,10 +2523,15 @@ function renderDetail(o){
   if(typeof gsCloseModal==='function') gsCloseModal(); // закрыть окно Центра контроля при открытии карточки объекта
   if(typeof mapFullToggle==='function') mapFullToggle(false); // свернуть карту из полноэкранного режима
   const sd=statusDetail(o); const st=sd.status;
+  const sibs=DB.objects.map((x,xi)=>({x,xi})).filter(r=>r.x.d===o.d);
+  const sPos=sibs.findIndex(r=>r.x===o);
+  const prevI=sPos>0?sibs[sPos-1].xi:-1, nextI=(sPos>=0&&sPos<sibs.length-1)?sibs[sPos+1].xi:-1;
+  const tabLabel=((TABS.find(t=>t[0]===curTab)||[])[1])||'';
   const reasonsHtml = sd.reasons.length
     ? `<div class="reasons">${sd.reasons.map(r=>`<div class="rsn r-${r.level}">${r.level==='crit'?'⛔':'⚠️'} ${esc(r.text)}</div>`).join('')}</div>`
     : (st?'<div class="reasons"><div class="rsn r-ok">✔ все показатели в пределах превентивных порогов</div></div>':'');
   d.innerHTML=`
+    <div class="crumbs"><a id="crHome" title="Снять выбор и вернуться к общей карте всех объектов">⌂ Карта</a><span class="csep">›</span><a id="crDist" title="Показать все объекты предприятия в списке и на карте">${esc(o.d||'—')}</a><span class="csep">›</span><span class="cobj">${esc(o.a)}</span><span class="csep">›</span><span class="ctab">${esc(tabLabel)}</span><span class="crnav"><button id="crPrev" ${prevI<0?'disabled':''} title="Предыдущий объект предприятия">←</button><button id="crNext" ${nextI<0?'disabled':''} title="Следующий объект предприятия">→</button></span></div>
     <h2>${esc(o.a)}<span class="badge ${st?('b-'+{НОРМА:'ok',РИСК:'risk',КРИТИЧНО:'crit'}[st]):'b-card'}">${st||'карточка'}</span><button class="tglock" id="tgLock" title="Замечания и предписания (доступ для эксплуатирующей и надзорной организаций)">🔒</button><button class="tglock" id="inspLock" title="Текущий осмотр — чек-лист (доступ для надзорной организации)">📋</button></h2>
     <div class="rayon">Предприятие: <b style="color:${DCOL[o.d]||'#666'}">${esc(o.d||'—')}</b> · Тип: <b>${esc(o.gts?o.gts.type:'—')}</b> · Класс ГТС: <b>${esc(o.gts&&o.gts.klass?o.gts.klass:'—')}</b></div>
     ${osmLine(o)}
@@ -2510,6 +2543,11 @@ function renderDetail(o){
     const b=document.createElement('button');
     if(k===curTab) b.className='on';
     b.textContent=label;
+    const fn=TAB_DATA[k];
+    if(fn){ const n=fn(o);
+      if(n>0){ const s=document.createElement('i'); s.className='tn'; s.textContent=n; b.appendChild(s); b.title='Единиц данных: '+n; }
+      else{ b.classList.add('empty'); b.title='Данных пока нет — раздел зарезервирован в структуре БД'; }
+    }
     b.onclick=()=>{curTab=k; renderDetail(o);};
     tb.appendChild(b);
   });
@@ -2519,6 +2557,10 @@ function renderDetail(o){
   const tgL=document.getElementById('tgLock');
   if(tgL) tgL.onclick=()=>openTg(o);
   document.getElementById('inspLock').onclick=()=>openTg(o,'insp');
+  document.getElementById('crHome').onclick=()=>{ curObj=null; document.querySelectorAll('.item,.fitem').forEach(e=>e.classList.remove('sel')); d.innerHTML='<div class="empty">Выберите объект на карте или в списке слева</div>'; const pts=DB.objects.filter(x=>x.lat!=null).map(x=>[x.lat,x.lon]); if(pts.length>1) map.flyToBounds(L.latLngBounds(pts).pad(0.12)); };
+  document.getElementById('crDist').onclick=()=>{ curD=o.d; renderChips(); renderList(); const pts=DB.objects.filter(x=>x.d===o.d&&x.lat!=null).map(x=>[x.lat,x.lon]); if(pts.length>1) map.flyToBounds(L.latLngBounds(pts),{padding:[30,30]}); };
+  if(prevI>=0) document.getElementById('crPrev').onclick=()=>select(prevI,true);
+  if(nextI>=0) document.getElementById('crNext').onclick=()=>select(nextI,true);
   renderTab(o);
 }
 function renderTab(o){
@@ -6208,11 +6250,37 @@ function pavActPdf(){
     a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   });
 }
+/* --- лаунчер Центра контроля: навигатор по системе + плитки разделов --- */
+const GS_SECTS=[
+ ['alerts','⚠','Тревоги и эскалация К1/К2','журнал тревог, квитирование, уведомления дежурному','gsBdgA'],
+ ['risk','🎯','Матрица рисков и скоринг','матрица 5×5 по классам ГТС, скоринг объектов 0–100',null],
+ ['prog','📈','Прогноз состояния ММГ','тренды t на НГК, прогноз выхода на К2, индексы Ωf/Ωt',null],
+ ['sensors','📡','Измерительная база','телеметрия, InSAR, БПЛА-ЦМР, ЭРТ, АМС — действующая и развитие',null],
+ ['data','🗄','Данные · аудит · интеграции','хранение, резервные копии, аудит действий, выгрузки',null],
+ ['road','🗺','Дорожная карта','этапы А/Б/В: доказательность → непрерывность → прогноз','gsBdgR'],
+ ['stok','🌊','Модель стока','водотоки и водосборы у ГТС, подтопление, эрозионный скрининг (C2)',null],
+ ['pav','🛡','Паводок','готовность к паводку: чек-лист ВСН 01-89, приоритетные ГТС, PDF-акт','gsBdgP']
+];
+function gsViewHome(){
+  const tiles=GS_SECTS.map(([k,ic,nm,ds,bg])=>{
+    const b=bg?document.getElementById(bg):null; const bt=(b&&b.style.display!=='none')?b.textContent:'';
+    return `<button class="gsTile" data-gsgo="${k}"><span class="gt-i">${ic}</span><span class="gt-n">${nm}${bt?` <i class="gt-b">${bt}</i>`:''}</span><span class="gt-d">${ds}</span></button>`;
+  }).join('');
+  return `<h2>◉ ЦЕНТР КОНТРОЛЯ ГТМ <span class="mut" style="font-size:12px;font-weight:400">контур развития и раннего предупреждения</span></h2>
+  <div class="gsCard"><h3>Навигатор по системе</h3>
+    <div style="font-size:12.5px;line-height:1.7">
+      <b>Слева</b> — фильтры по предприятиям, поиск и список из 10 объектов ГТС (аккордеон по предприятиям); ниже — разделы Центра контроля.<br>
+      <b>В центре</b> — карта: слои (тепловая карта, сток и эрозия, кадастр, скважины ИГИ и мониторинга), живая легенда состояний (клик — подсветка категории), диаграмма охвата ГТМ, кнопка ⛶ — на весь экран.<br>
+      <b>Справа</b> — карточка объекта: паспорта ГТС/ГТМ, изыскания, мониторинг (термометрия · пьезометрия · деформации), расчёты, климат до 2050, эксплуатация, документы. Вкладки с числовыми бейджами — где есть данные; хлебные крошки сверху — путь и переход между объектами (← →).<br>
+      <b>Сверху</b> — полоса дежурного метеоконтроля (клик — окно дежурного), реестр рисков, метеоданные, нормативка, отчёты, презентация.</div></div>
+  <div class="gsGrid">${tiles}</div>`;
+}
 /* --- диспетчер --- */
-const GS_VIEWS={alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad, stok:gsViewStok, pav:gsViewPav};
+const GS_VIEWS={home:gsViewHome, alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad, stok:gsViewStok, pav:gsViewPav};
 function gsBindCommon(){
   const d=document.getElementById('gsModalBody');
   d.querySelectorAll('[data-gsobj]').forEach(el=>el.addEventListener('click',ev=>{ ev.preventDefault(); select(+el.dataset.gsobj); }));
+  d.querySelectorAll('[data-gsgo]').forEach(el=>el.addEventListener('click',()=>gsOpen(el.dataset.gsgo)));
   d.querySelectorAll('select.gsSt[data-gsk]').forEach(el=>el.addEventListener('change',()=>{ gsSens[el.dataset.gsk]=el.value; gsSave(GS_STORE.sens,gsSens); }));
   d.querySelectorAll('select.gsSt[data-grk]').forEach(el=>el.addEventListener('change',()=>{ gsRoad[el.dataset.grk]=el.value; gsSave(GS_STORE.road,gsRoad); gsBadges(0); gsOpen('road',true); }));
   const bB=document.getElementById('gsBackup'); if(bB) bB.onclick=()=>gsDownload('gtm_backup_'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify({ts:new Date().toISOString(), DB:window.DB, gsJournal},null,1));
@@ -9082,6 +9150,7 @@ function mtChartFc(cv,ag,lin,sigma,k){
   ctx.fillText((k==='pr'?'Σ осадков, мм':'Среднее за год')+': факт (синяя) и прогноз (красный пунктир) с полосой ±1,96σ', L+4, T+12);
 }
 document.getElementById('meteoBtn').onclick=meteoOpen;
+document.getElementById('gsHomeBtn').onclick=()=>gsOpen('home');
 document.getElementById('meteoClose').onclick=()=>{ document.getElementById('meteoModal').style.display='none'; };
 setTimeout(()=>{ try{
   const st=mtStore();
