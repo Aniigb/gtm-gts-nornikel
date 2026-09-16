@@ -476,6 +476,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   #loginModal input:focus{border-color:var(--nn-blue); outline:none}
   #loginModal button[type=submit]{width:100%; padding:9px; background:var(--nn-blue); color:#fff; border:none; border-radius:6px; font-size:14px; cursor:pointer}
   #loginModal button[type=submit]:hover{background:var(--nn-deep)}
+  #loginModal .lbrand{display:flex; align-items:center; gap:12px; margin-bottom:16px}
+  #loginModal .lbrand img{width:46px; height:46px; border-radius:50%; box-shadow:0 2px 8px rgba(0,0,0,.18)}
+  #loginModal .lbrand b{display:block; font-size:14px; letter-spacing:.05em; color:var(--bg)}
+  #loginModal .lbrand span{font-size:10px; letter-spacing:.18em; color:var(--zf); font-weight:700}
   #loginModal .lerr{color:var(--crit); font-size:12.5px; min-height:17px; margin-top:8px}
   #loginModal .lnote{font-size:11.3px; color:var(--mut); margin-top:10px; border-top:1px solid var(--line); padding-top:10px}
   #loginModal .rbtn{display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:8px; background:#f6f8f9; border:1px solid var(--line); border-radius:8px; cursor:pointer; font-size:13px; font-family:inherit}
@@ -873,6 +877,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
+    <div class="lbrand"><img src="icon-nn-round.png" alt="Эмблема ПАО «ГМК «Норильский никель»"><div><b>НОРНИКЕЛЬ</b><span>ЗАПОЛЯРНЫЙ ФИЛИАЛ</span></div></div>
     <h2>ГТМ с учётом климатических изменений ГТС</h2>
     <div class="sub2">ЗФ ПАО «ГМК «Норильский никель»</div>
     <div id="rolePick">
@@ -5285,6 +5290,11 @@ function conclText(a,sd){
 }
 
 /* ---------- автовыгрузка паспорта объекта мониторинга по ГОСТ 31937-2024 — одним документом из карточки объекта ---------- */
+function brandHeadHTML(inner){
+  return `<div style="display:flex;align-items:center;gap:14px;border-bottom:2.5px solid #004c97;padding-bottom:9px;margin-bottom:10px">`+
+    `<img src="icon-nn-round.png" alt="Эмблема ПАО «ГМК «Норильский никель»" style="width:54px;height:54px;border-radius:50%">`+
+    `<div style="flex:1"><div style="font-size:10.5px;letter-spacing:.16em;color:#654ea3;font-weight:700;margin-bottom:3px">ПАО «ГМК «НОРИЛЬСКИЙ НИКЕЛЬ» · ЗАПОЛЯРНЫЙ ФИЛИАЛ</div>${inner}</div></div>`;
+}
 function gost31937Passport(o){
   const g=o.gts||{}, kia=g.kia||{}, pts=o.points||{};
   const prec={'точный':'точное положение (OSM)','nominatim':'Nominatim/OSM','уточнено вручную':'уточнено по спутниковому снимку','оценка (OSM)':'оценка по данным OSM — требует уточнения','требует уточнения':'оценка — требует уточнения по материалам заказчика'}[o.p]||esc(o.p||'—');
@@ -5348,7 +5358,7 @@ function gost31937Passport(o){
   };
   const notesUl=(arr)=>`<ul style="margin:2px 0 6px 18px">${arr.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>`;
   return `
-  <h1>ПАСПОРТ ОБЪЕКТА МОНИТОРИНГА</h1>
+  ${brandHeadHTML('<h1 style="text-align:left;margin:0">ПАСПОРТ ОБЪЕКТА МОНИТОРИНГА</h1>')}
   <p style="text-align:center">по ГОСТ 31937-2024 «Здания и сооружения. Правила обследования и мониторинга технического состояния»</p>
   <p style="text-align:center; font-size:14px"><b>${esc(o.a)}</b><br>${esc(o.d||'')}</p>
   <p style="text-align:center">ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель» · дата формирования: ${today}</p>
@@ -5444,7 +5454,7 @@ document.getElementById('repGen').onclick=()=>{
   const tasks=new Set([...document.querySelectorAll('.repTask:checked')].map(c=>c.value));
   const scope=document.querySelector('input[name=repScope]:checked').value;
   const out=document.getElementById('repOut');
-  let h=`<h1>Сводный отчёт по результатам геотехнического мониторинга</h1>
+  let h=brandHeadHTML('<h1 style="text-align:left;margin:0">Сводный отчёт по результатам геотехнического мониторинга</h1>')+`
   <p style="text-align:center">ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель» · сформирован ${new Date().toLocaleDateString('ru-RU')}</p>
   <p style="font-size:11.5px">Методика: балльная оценка (100 − штрафные баллы) по направлениям «грунты основания», «прочность (деформации)», «дефекты и повреждения»; итог — минимальный балл направлений. Категории технического состояния: ≥85 — исправное; 65–84 — работоспособное; 40–64 — ограниченно работоспособное; <40 — недопустимое (ГОСТ 31937-2024). Пороги — действующие настройки «⚙ Пороги и КК». Требования к эксплуатации на ММГ — СП 497.1325800.2020, СП 25.13330.2020.</p>`;
   if(scope==='obj'){
