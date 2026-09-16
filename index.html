@@ -399,16 +399,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   .twrap.mb{margin-bottom:8px}
   .twrap>table.rows{margin-bottom:0}
 
-  /* ---------- фокус-режим карты: при работе с картой панели плавно скрываются, по простою возвращаются ---------- */
-  #app{transition:grid-template-columns .45s ease, grid-template-rows .45s ease}
-  header, #warnStrip, #side, #detail, #appFooter{transition:opacity .35s ease}
-  body.map-focus #app{grid-template-columns:0px 1fr 0px; grid-template-rows:0px 0px 1fr 0px}
-  body.map-focus header, body.map-focus #warnStrip, body.map-focus #side, body.map-focus #detail, body.map-focus #appFooter{opacity:0; pointer-events:none; overflow:hidden; min-width:0; min-height:0}
-  body.map-focus #map{cursor:grab}
-  @media (max-width:900px){
-    #map{transition:height .45s ease}
-    body.map-focus #map{height:84vh}
-  }
+  /* ---------- полноэкранный режим карты: включается вручную кнопкой ⛶ (Esc — выход); остальные панели не затрагиваются ---------- */
+  body.map-full{overflow:hidden}
+  body.map-full #map{position:fixed; inset:0; z-index:950; height:auto !important; border-radius:0}
 
   /* ---------- мобильная адаптация ---------- */
   @media (max-width:900px){
@@ -1402,25 +1395,27 @@ L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},
 map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); });
 
-/* ---------- фокус-режим карты: панели плавно скрываются при работе с картой и возвращаются по простою ---------- */
-let mapFocusT=null, mapFocusMoveT=0, mapFocusArm=false; // mapFocusArm: фокус-режим включается только после явного жеста пользователя на карте — программные fitBounds при загрузке панели не скрывают
-function mapFocus(on){
-  document.body.classList.toggle('map-focus',!!on);
-  clearTimeout(mapFocusT); mapFocusT=null;
-  setTimeout(()=>map.invalidateSize(),480); // пересчёт размера тайлов после анимации
+/* ---------- полноэкранный режим карты: ручное развёртывание кнопкой ⛶ (Esc — выход); остальные панели при работе с картой не скрываются ---------- */
+function mapFullToggle(on){
+  const turnOn=(typeof on==='boolean')?on:!document.body.classList.contains('map-full');
+  document.body.classList.toggle('map-full',turnOn);
+  const a=document.getElementById('mapFullA');
+  if(a){ a.textContent=turnOn?'✕':'⛶'; a.title=turnOn?'Свернуть карту (Esc)':'Карта на весь экран'; a.setAttribute('aria-label',a.title); }
+  setTimeout(()=>map.invalidateSize(),80);
+  setTimeout(()=>map.invalidateSize(),420); // пересчёт размера тайлов после применения раскладки
 }
-function mapFocusPing(){
-  if(!mapFocusArm) return; // до первого жеста пользователя (мышь/колесо/тач по карте) фокус-режим не активируется
-  mapFocus(true);
-  clearTimeout(mapFocusT);
-  mapFocusT=setTimeout(()=>mapFocus(false),3600); // возврат панелей после 3,6 с простоя
-}
-(function mapFocusInit(){
-  const el=document.getElementById('map');
-  ['mousedown','wheel','touchstart'].forEach(ev=>el.addEventListener(ev,()=>{ mapFocusArm=true; mapFocusPing(); },{passive:true}));
-  el.addEventListener('mousemove',()=>{ const t=Date.now(); if(t-mapFocusMoveT>500){ mapFocusMoveT=t; if(document.body.classList.contains('map-focus')) mapFocusPing(); } },{passive:true});
-  map.on('movestart',mapFocusPing); // сработает только при mapFocusArm=true (жест уже был)
-  document.addEventListener('mousedown',ev=>{ if(document.body.classList.contains('map-focus') && !(ev.target&&ev.target.closest&&ev.target.closest('#map'))) mapFocus(false); },true); // клик вне карты — немедленный возврат панелей
+(function mapFullInit(){
+  const ctl=L.control({position:'topright'});
+  ctl.onAdd=function(){
+    const box=L.DomUtil.create('div','leaflet-bar leaflet-control');
+    box.innerHTML='<a id="mapFullA" href="#" title="Карта на весь экран" role="button" aria-label="Карта на весь экран" style="display:block;width:34px;height:34px;line-height:32px;text-align:center;font-size:17px;color:#22303c;text-decoration:none">⛶</a>';
+    L.DomEvent.disableClickPropagation(box);
+    L.DomEvent.disableScrollPropagation(box);
+    box.querySelector('a').addEventListener('click',ev=>{ ev.preventDefault(); mapFullToggle(); });
+    return box;
+  };
+  ctl.addTo(map);
+  document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&document.body.classList.contains('map-full')) mapFullToggle(false); });
 })();
 
 /* ---------- ленивая подгрузка реестров скважин: публичная сборка держит их в отдельном зашифрованном чанке db_wells.js (ускорение первого экрана); в dev-режиме данные уже внутри db.js ---------- */
@@ -1602,7 +1597,7 @@ function runoffNote(on){
       runoffNoteEl=document.createElement('div');
       runoffNoteEl.id='runoffNote';
       runoffNoteEl.style.cssText='position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:650; background:rgba(24,28,32,.92); color:#f2e9d8; border:1px solid #8a7d5a; border-radius:8px; padding:9px 16px; font-size:12.5px; line-height:1.45; max-width:80%; text-align:center; pointer-events:none; box-shadow:0 2px 12px rgba(0,0,0,.45)';
-      runoffNoteEl.innerHTML='🌊 <b>Поверхностный сток по ЦМР — слой в разработке.</b><br>Стоки будут построены по цифровой модели рельефа (модель направления стока D8) в границах каждого объекта ГТС — по результатам этапа моделирования НИР.';
+      runoffNoteEl.innerHTML='🌊 <b>Поверхностный сток и эрозионный скрининг по ЦМР (Copernicus GLO-30, скрининговый уровень).</b><br>Расчётные водотоки от водосбора ~1 км² и очаги размыва (SPI) в буферах объектов. Карты, классы риска и режимные меры: Центр контроля ГТМ → «🌊 Модель стока».';
       document.getElementById('map').appendChild(runoffNoteEl);
     }
     runoffNoteEl.style.display='block';
@@ -2495,7 +2490,7 @@ function select(i,fromList){
 function renderDetail(o){
   const d=document.getElementById('detail');
   if(typeof gsCloseModal==='function') gsCloseModal(); // закрыть окно Центра контроля при открытии карточки объекта
-  if(typeof mapFocus==='function') mapFocus(false);    // вернуть панели из фокус-режима карты
+  if(typeof mapFullToggle==='function') mapFullToggle(false); // свернуть карту из полноэкранного режима
   const sd=statusDetail(o); const st=sd.status;
   const reasonsHtml = sd.reasons.length
     ? `<div class="reasons">${sd.reasons.map(r=>`<div class="rsn r-${r.level}">${r.level==='crit'?'⛔':'⚠️'} ${esc(r.text)}</div>`).join('')}</div>`
