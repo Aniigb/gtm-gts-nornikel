@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 </script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
 <style>
   :root{
     /* Фирменная палитра ПАО «ГМК «Норильский никель» — Стандарт фирменного стиля, стр. 35 (палитра) и стр. 40 (ЗФ) */
@@ -597,6 +599,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         <button data-gs="data" title="Режим хранения, объёмы данных, резервное копирование, аудит и интеграции">🗄 Данные·аудит·интеграции</button>
         <button data-gs="road" title="Этапы А/Б/В развития системы: доказательность данных → непрерывность → прогноз и интеграция">🗺 Дорожная карта<i class="bdg" id="gsBdgR" style="display:none"></i></button>
         <button data-gs="stok" title="Модель поверхностного стока по ЦМР (Copernicus GLO-30): водотоки и водосборы у каждого ГТС, зоны подтопления, скрининг риска ливневых паводков и наледей (этап C2)">🌊 Модель стока</button>
+        <button data-gs="pav" title="Готовность к паводку: чек-лист предпаводковых осмотров ГТС (ВСН 01-89, ФЗ-117 ст. 9), осмотры приоритетных объектов (по модели стока и эрозионному скринингу), акт предпаводкового осмотра PDF">🛡 Паводок<i class="bdg" id="gsBdgP" style="display:none"></i></button>
       </div>
     </div>
   </div>
@@ -5547,11 +5550,12 @@ document.getElementById('ntdClose').onclick=()=>ntdModal.style.display='none';
 ntdModal.addEventListener('click',e=>{ if(e.target===ntdModal) ntdModal.style.display='none'; });
 
 /* ================= ЦЕНТР КОНТРОЛЯ ГТМ — контур развития и раннего предупреждения (по «Предложениям…», разд. 1–6) ================= */
-const GS_STORE={j:'gs_journal_v1', snap:'gs_snap_v1', road:'gs_road_v1', sens:'gs_sensors_v1', out:'gs_outbox_v1', ntf:'gs_notify_v1', duty:'gs_duty_v1', aud:'gs_audit_v1', audOut:'gs_audit_out_v1', audV:'gs_audit_ver_v1'};
+const GS_STORE={j:'gs_journal_v1', snap:'gs_snap_v1', road:'gs_road_v1', sens:'gs_sensors_v1', out:'gs_outbox_v1', ntf:'gs_notify_v1', duty:'gs_duty_v1', aud:'gs_audit_v1', audOut:'gs_audit_out_v1', audV:'gs_audit_ver_v1', pav:'gs_pav_v1'};
 function gsLoad(k,dflt){ try{ const v=JSON.parse(localStorage.getItem(k)); return v==null?dflt:v; }catch(e){ return dflt; } }
 function gsSave(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
 let gsJournal=gsLoad(GS_STORE.j,[]), gsRoad=gsLoad(GS_STORE.road,{}), gsSens=gsLoad(GS_STORE.sens,{}), gsCur=null, gsRemote=false;
 let gsNotify=gsLoad(GS_STORE.ntf,[]), gsDuty=gsLoad(GS_STORE.duty,{name:'',phone:'',tg:'',mail:''});
+let gsPav=gsLoad(GS_STORE.pav,{});
 const GS_ROAD=[
  {g:'Этап А · 0–3 мес — доказательность данных', items:[
    {k:'A1', t:'Журнал тревог и эскалации переходов К1/К2 (локальный + серверный журнал Supabase — Центр контроля ГТМ)', d0:'готово'},
@@ -5592,6 +5596,13 @@ function gsBadges(added){
   if(bA){ bA.style.display=actN?'':'none'; bA.textContent=actN; bA.classList.toggle('alarm',critN>0); }
   const bR=document.getElementById('gsBdgR'); const pc=gsRoadPct();
   if(bR){ bR.style.display=pc?'':'none'; bR.textContent=pc+'%'; }
+  const bP=document.getElementById('gsBdgP'); // прогресс готовности к паводку
+  if(bP){ let pp=0;
+    if(window.STOK&&typeof PAV_CHK!=='undefined'){ const hi=STOK.objects.filter(s=>s.risk==='высокий'||s.eros==='высокий');
+      const tot=PAV_CHK.length+hi.length;
+      const dn=PAV_CHK.filter(it=>pavState(it.k)==='готово').length+hi.filter(s=>pavState('o_'+s.id)==='готово').length;
+      pp=tot?Math.round(100*dn/tot):0; }
+    bP.style.display=pp?'':'none'; bP.textContent=pp+'%'; }
   if(gsCur==='alerts'&&added>0) gsOpen('alerts',true);
 }
 function gsJournalSync(){
@@ -6088,8 +6099,117 @@ function gsViewStok(){
     </div>
   </div>`;
 }
+/* --- готовность к паводку: чек-лист предпаводковых осмотров ГТС (ВСН 01-89 · ФЗ-117 ст. 9) --- */
+const PAV_CHK=[
+ {k:'c1', t:'Осмотр и очистка водосбросных, водовыпускных и водоспускных сооружений накопителей от льда, наледи и наносов; исправность затворов и регулирующих устройств'},
+ {k:'c2', t:'Контроль свободного борта дамб и отметок уровня воды/пульпы против контрольных критериев К1/К2 (ГОСТ Р 59873-2021); при необходимости — сработка уровня до отметок пропуска паводка'},
+ {k:'c3', t:'Осмотр гребней, откосов и берм дамб: заделка промоин, трещин, нор; состояние крепления откосов и противофильтрационных устройств'},
+ {k:'c4', t:'Осмотр и восстановление проектных сечений нагорных и водоотводных канав, лотков (приоритет — ХХ НМЗ и ГПХ: расчётное русло в 83–118 м от объектов)'},
+ {k:'c5', t:'Проверка дренажных устройств, понуров и дренажных колодцев; расчистка выходов дренажа от льда и наносов'},
+ {k:'c6', t:'Замер уровней по всей пьезометрической сети, сверка телеметрии и ручных замеров; исправность КИА на контрольных сечениях'},
+ {k:'c7', t:'Наледный контроль точек пересечения линейных ГТС с расчётной гидросетью; очистка подопорных пространств эстакад и подпорных стен (ГТС-03, ГТС-04)'},
+ {k:'c8', t:'Осмотр очагов эрозионного размыва (SPI-скрининг модели стока): состояние откосов и водоотвода в выявленных очагах (ГТС-03, ГТС-09)'},
+ {k:'c9', t:'Исправность насосных и водоотливных установок и систем возврата воды; проверка резервного электроснабжения'},
+ {k:'c10',t:'Готовность аварийного запаса материалов (грунт, мешки, геотекстиль), водоотливной и землеройной техники, ГСМ'},
+ {k:'c11',t:'Актуализация ПМЛА и плана паводковых мероприятий: дежурства назначены, персонал проинструктирован, канал связи с дежурным метеоконтролем проверен'}
+];
+function pavState(k){ const r=gsPav[k]; return (r&&r.v)||'план'; }
+function pavHiObjs(){
+  const S=window.STOK; if(!S) return [];
+  return S.objects.filter(s=>s.risk==='высокий'||s.eros==='высокий').sort((a,b)=>b.catch_near_km2-a.catch_near_km2);
+}
+function gsViewPav(){
+  const opts=v=>['план','в работе','готово'].map(s=>`<option ${s===v?'selected':''}>${s}</option>`).join('');
+  const col={'план':'#8a8a8a','в работе':'#e08a00','готово':'#2e7d32'};
+  const hi=pavHiObjs();
+  const doneC=PAV_CHK.filter(it=>pavState(it.k)==='готово').length;
+  const doneO=hi.filter(s=>pavState('o_'+s.id)==='готово').length;
+  const total=PAV_CHK.length+hi.length, done=doneC+doneO;
+  const pct=total?Math.round(100*done/total):0;
+  const rowsC=PAV_CHK.map(it=>{
+    const v=pavState(it.k), r=gsPav[it.k];
+    return `<div style="border-top:1px dashed var(--line); padding:6px 0; display:flex; gap:8px; align-items:flex-start">
+      <span class="gsPill" style="background:${col[v]}; min-width:34px; text-align:center">${it.k.toUpperCase()}</span>
+      <div style="flex:1; font-size:12px">${it.t}${r&&r.ts?` <span class="mut">— отмечено ${new Date(r.ts).toLocaleDateString('ru-RU')}</span>`:''}</div>
+      <select class="gsSt" data-pvk="${it.k}">${opts(v)}</select></div>`;
+  }).join('');
+  const rowsO=hi.map(st=>{
+    const v=pavState('o_'+st.id), r=gsPav['o_'+st.id];
+    const i=DB.objects.findIndex(o=>o.id===st.id);
+    const why=[];
+    if(st.risk==='высокий') why.push('сток: русло '+st.dist_stream_m+' м · водосбор '+String(st.catch_near_km2).replace('.',',')+' км²');
+    if(st.eros==='высокий') why.push('эрозия: SPI p95 '+String(st.spi_p95).replace('.',',')+' м²');
+    return `<div style="border-top:1px dashed var(--line); padding:6px 0; display:flex; gap:8px; align-items:flex-start">
+      <span class="gsPill" style="background:${col[v]}; min-width:34px; text-align:center">${st.id.replace('gts','Г')}</span>
+      <div style="flex:1; font-size:12px"><b>${i>=0?`<a href="#" data-gsobj="${i}" style="color:var(--zf)">${esc(st.name)}</a>`:esc(st.name)}</b><br><span class="mut">${esc(st.d)} · основание приоритета: ${why.join(' + ')}</span>${r&&r.ts?` <span class="mut">— отмечено ${new Date(r.ts).toLocaleDateString('ru-RU')}</span>`:''}</div>
+      <select class="gsSt" data-pvo="${st.id}">${opts(v)}</select></div>`;
+  }).join('');
+  const kom=gsPav._kom||{};
+  const komDt=kom.dt||new Date().toISOString().slice(0,10);
+  const inSt='border:1px solid var(--line); border-radius:4px; padding:3px 7px; font-size:12px; background:var(--bg); color:var(--txt)';
+  return `<h2>🛡 Готовность к паводку <span class="mut" style="font-size:12px;font-weight:400">(предпаводковые осмотры ГТС · ВСН 01-89, ФЗ-117 ст. 9)</span></h2>
+  <div class="gsCard"><h3>Готовность сезона: ${pct}%</h3><div class="gsBar"><i style="width:${pct}%"></i></div>
+    <div class="mut">Чек-лист мероприятий: ${doneC} из ${PAV_CHK.length} · осмотры приоритетных ГТС: ${doneO} из ${hi.length}. Статусы сохраняются локально в этом браузере. Перед новым паводковым сезоном — сброс отметок: <button class="wbtn" data-pvreset style="font-size:12px">↺ Новый сезон (сброс)</button></div>
+    <div class="mut" style="margin-top:4px">Период возможного паводка определяется метеоданными, а не календарём: переходы температуры через 0 °C весной (снеготаяние), дожди и ливни тёплого сезона, осень — до начала устойчивых морозов. При устойчивом морозе талая вода физически отсутствует — гидрологические тревоги метеоконтроля отключены (правило закреплено в методологии прогноза). Оперативный прогноз ливневого притока к каждому объекту — полоса дежурного метеоконтроля над картой.</div></div>
+  <div class="gsCard"><h3>Чек-лист предпаводковых мероприятий (ВСН 01-89, с учётом специфики ГТС на ММГ)</h3>${rowsC}</div>
+  <div class="gsCard"><h3>Приоритетные объекты ГТС для предпаводковых осмотров (${hi.length})</h3>
+    ${rowsO||'<div class="mut">Данные модели стока не загружены.</div>'}
+    <div class="mut" style="margin-top:4px">Состав приоритетных объектов — по скрининговой модели поверхностного стока и эрозионному скринингу (ЦМР Copernicus GLO-30): высокий риск стока либо высокий класс эрозии. Перечень уточняется после полевой верификации. Методическая база: ВСН 01-89 (предпаводковые осмотры), ФЗ-117 «О безопасности ГТС» (ст. 9), ФНП ГТС (приказ Ростехнадзора от 08.05.2024 № 151), ГОСТ Р 59873-2021 (контрольные критерии К1/К2), СП 116.13330 (производственный контроль), декларации безопасности ГТС ЗФ.</div></div>
+  <div class="gsCard noprint"><h3>📄 Акт предпаводкового осмотра (по текущему состоянию чек-листа)</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;align-items:center">
+      № <input id="pavKomNo" style="${inSt};width:70px" value="${esc(kom.no||'')}">
+      дата <input id="pavKomDt" type="date" style="${inSt}" value="${esc(komDt)}">
+      Председатель <input id="pavKomPr" style="${inSt};width:230px" placeholder="должность, ФИО" value="${esc(kom.pr||'')}">
+      Члены комиссии <input id="pavKomM1" style="${inSt};width:190px" placeholder="ФИО 1" value="${esc(kom.m1||'')}">
+      <input id="pavKomM2" style="${inSt};width:190px" placeholder="ФИО 2" value="${esc(kom.m2||'')}">
+      <button class="wbtn" id="pavActBtn">⬇ Сформировать PDF-акт (готовность ${pct}%)</button>
+    </div>
+    <div class="mut" style="margin-top:4px">Состав акта: реквизиты и комиссия, чек-лист ВСН 01-89 с отметками и датами, осмотры приоритетных ГТС, вывод о готовности, подписи. Поля комиссии сохраняются локально. PDF-акт — разрешённое исключение политики скачивания (оперативный документ).</div></div>`;
+}
+/* --- PDF-акт предпаводкового осмотра ГТС (разрешённое исключение политики скачивания) --- */
+function pavActPdf(){
+  if(typeof pdfMake==='undefined'){ alert('Модуль PDF (pdfmake) не загружен — проверьте соединение с CDN.'); return; }
+  const kom=gsPav._kom||{};
+  const dtStr=kom.dt?kom.dt.split('-').reverse().join('.'):new Date().toLocaleDateString('ru-RU');
+  const rows1=PAV_CHK.map(it=>{ const r=gsPav[it.k]||{}; return [it.k.toUpperCase(), it.t, r.v||'план', r.ts?new Date(r.ts).toLocaleDateString('ru-RU'):'—']; });
+  const hi=pavHiObjs();
+  const rows2=hi.map(st=>{ const r=gsPav['o_'+st.id]||{}; const why=[];
+    if(st.risk==='высокий') why.push('сток: русло '+st.dist_stream_m+' м');
+    if(st.eros==='высокий') why.push('эрозия: SPI '+st.spi_p95+' м²');
+    return [st.name, why.join(' + '), String(st.catch_near_km2).replace('.',','), r.v||'план', r.ts?new Date(r.ts).toLocaleDateString('ru-RU'):'—']; });
+  const doneC=rows1.filter(r=>r[2]==='готово').length, doneO=rows2.filter(r=>r[3]==='готово').length;
+  const tot=PAV_CHK.length+hi.length, pct=tot?Math.round(100*(doneC+doneO)/tot):0;
+  const riskFill=v=>v==='готово'?'#DDEEDD':v==='в работе'?'#FBE8C8':'#EEEEEE';
+  const H=t=>({text:t,bold:true,fillColor:'#004c97',color:'#fff'});
+  const dd={
+    pageSize:'A4', pageMargins:[34,36,34,30], defaultStyle:{fontSize:9},
+    footer:(c,t)=>({text:'ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель» · лист '+c+' из '+t, fontSize:7, color:'#555F6E', margin:[34,0,0,0]}),
+    content:[
+      {text:'ПАО «ГМК «Норильский никель» · Заполярный филиал', bold:true, fontSize:10, color:'#004c97'},
+      {text:'АКТ № '+(kom.no||'____')+' предпаводкового осмотра ГТС', bold:true, fontSize:14, color:'#004c97', alignment:'center', margin:[0,8,0,2]},
+      {text:'дата осмотра: '+dtStr, alignment:'center', fontSize:9, color:'#555F6E', margin:[0,0,0,8]},
+      {text:'Комиссия: председатель — '+(kom.pr||'_____________________')+'; члены комиссии — '+(kom.m1||'_____________________')+', '+(kom.m2||'_____________________')+'.', margin:[0,0,0,4]},
+      {text:'Основание: ВСН 01-89 (предпаводковые осмотры), ФЗ-117 «О безопасности ГТС» (ст. 9), ФНП «Правила безопасности ГТС» (приказ Ростехнадзора от 08.05.2024 № 151), ГОСТ Р 59873-2021, программа ГТМ с учётом климатических изменений (НИР). Состав приоритетных объектов и категории — по системе ГТМ (модель поверхностного стока и эрозионный скрининг, ЦМР Copernicus GLO-30, скрининговый уровень). Отметки выполнения — из дашборда «Готовность к паводку» Центра контроля ГТМ.', fontSize:8, color:'#555F6E', margin:[0,0,0,8]},
+      {text:'1. Чек-лист предпаводковых мероприятий (ВСН 01-89)', bold:true, fontSize:10.5, color:'#004c97', margin:[0,0,0,3]},
+      {table:{headerRows:1, widths:[26,'*',52,52], body:[[H('Код'),H('Мероприятие'),H('Статус'),H('Дата отметки')]].concat(rows1.map(r=>[r[0],{text:r[1],fontSize:8},{text:r[2],fillColor:riskFill(r[2]),alignment:'center'},{text:r[3],alignment:'center'}]))}, layout:'lightHorizontalLines'},
+      {text:'2. Осмотры приоритетных объектов ГТС', bold:true, fontSize:10.5, color:'#004c97', margin:[0,10,0,3]},
+      {table:{headerRows:1, widths:['*',74,44,46,52], body:[[H('Объект ГТС'),H('Основание приоритета'),H('Водосбор, км²'),H('Статус'),H('Дата отметки')]].concat(rows2.map(r=>[{text:r[0],fontSize:8},{text:r[1],fontSize:7.5},{text:r[2],alignment:'center'},{text:r[3],fillColor:riskFill(r[3]),alignment:'center'},{text:r[4],alignment:'center'}]))}, layout:'lightHorizontalLines'},
+      {text:'Вывод: готовность к паводку на '+dtStr+' — '+pct+'% (мероприятия: '+doneC+' из '+PAV_CHK.length+'; приоритетные объекты: '+doneO+' из '+hi.length+'). '+(pct===100?'ГТС к пропуску паводка готовы.':'Требуется завершение мероприятий и повторный осмотр до начала активного снеготаяния.'), bold:true, margin:[0,10,0,16]},
+      {columns:[
+        {width:'*',text:'Председатель комиссии\n\n_____________________ / '+(kom.pr||'_____________________')+' /'},
+        {width:'*',text:'Члены комиссии:\n\n_____________________ / '+(kom.m1||'_____________________')+' /\n\n_____________________ / '+(kom.m2||'_____________________')+' /'}
+      ]}
+    ]
+  };
+  pdfMake.createPdf(dd).getBlob(blob=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='Акт_предпаводкового_осмотра_ГТС_ЗФ_'+(kom.dt||new Date().toISOString().slice(0,10))+'.pdf';
+    a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  });
+}
 /* --- диспетчер --- */
-const GS_VIEWS={alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad, stok:gsViewStok};
+const GS_VIEWS={alerts:gsViewAlerts, risk:gsViewRisk, prog:gsViewProg, sensors:gsViewSensors, data:gsViewData, road:gsViewRoad, stok:gsViewStok, pav:gsViewPav};
 function gsBindCommon(){
   const d=document.getElementById('gsModalBody');
   d.querySelectorAll('[data-gsobj]').forEach(el=>el.addEventListener('click',ev=>{ ev.preventDefault(); select(+el.dataset.gsobj); }));
@@ -6106,6 +6226,12 @@ function gsBindCommon(){
   const eC2=document.getElementById('gsExpCsv'); if(eC2) eC2.onclick=gsExpJournalCsv;
   const dE=document.getElementById('gsDutyEdit'); if(dE) dE.onclick=()=>{ const f=document.getElementById('gsDutyForm'); if(f) f.style.display=(f.style.display==='none'||!f.style.display)?'':'none'; };
   const dS=document.getElementById('gsDutySave'); if(dS) dS.onclick=()=>{ gsDuty={name:document.getElementById('gsDutyName').value.trim(), phone:document.getElementById('gsDutyPhone').value.trim(), tg:document.getElementById('gsDutyTg').value.trim().replace(/^@/,''), mail:document.getElementById('gsDutyMail').value.trim()}; gsSave(GS_STORE.duty,gsDuty); gsOpen('alerts',true); };
+  d.querySelectorAll('select.gsSt[data-pvk]').forEach(el=>el.addEventListener('change',()=>{ gsPav[el.dataset.pvk]={v:el.value,ts:new Date().toISOString()}; gsSave(GS_STORE.pav,gsPav); gsBadges(0); gsOpen('pav',true); }));
+  d.querySelectorAll('select.gsSt[data-pvo]').forEach(el=>el.addEventListener('change',()=>{ gsPav['o_'+el.dataset.pvo]={v:el.value,ts:new Date().toISOString()}; gsSave(GS_STORE.pav,gsPav); gsBadges(0); gsOpen('pav',true); }));
+  const pR=d.querySelector('[data-pvreset]'); if(pR) pR.addEventListener('click',()=>{ if(confirm('Сбросить все отметки готовности к паводку (начать новый сезон)?')){ gsPav={}; gsSave(GS_STORE.pav,gsPav); gsBadges(0); gsOpen('pav',true); } });
+  const pKomSave=()=>{ gsPav._kom={no:(document.getElementById('pavKomNo')||{}).value||'', dt:(document.getElementById('pavKomDt')||{}).value||'', pr:(document.getElementById('pavKomPr')||{}).value||'', m1:(document.getElementById('pavKomM1')||{}).value||'', m2:(document.getElementById('pavKomM2')||{}).value||''}; gsSave(GS_STORE.pav,gsPav); };
+  ['pavKomNo','pavKomDt','pavKomPr','pavKomM1','pavKomM2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('change',pKomSave); });
+  const bAv=document.getElementById('pavActBtn'); if(bAv) bAv.onclick=()=>{ pKomSave(); pavActPdf(); };
   d.querySelectorAll('[data-gsack]').forEach(el=>el.addEventListener('click',()=>gsAckNtf(el.dataset.gsack)));
 }
 function gsOpen(key, silent){
@@ -8970,7 +9096,7 @@ setTimeout(()=>{ try{
   function cpToast(){
     let t=document.getElementById('cpToast');
     if(!t){ t=document.createElement('div'); t.id='cpToast'; document.body.appendChild(t); }
-    t.textContent='Копирование, сохранение и снимки материалов отключены — сведения ограниченного доступа (ФЗ-117, ФЗ-98). Исключения: раздел «НИОКР 2026» и «Презентация».';
+    t.textContent='Копирование, сохранение и снимки материалов отключены — сведения ограниченного доступа (ФЗ-117, ФЗ-98). Исключения: раздел «НИОКР 2026», «Презентация» и акт предпаводкового осмотра (Центр контроля → «🛡 Паводок»).';
     t.classList.add('on'); clearTimeout(_cpT); _cpT=setTimeout(()=>t.classList.remove('on'), 2600);
   }
   document.addEventListener('contextmenu', e=>{ if(!ALLOW(e.target)){ e.preventDefault(); cpToast(); } }, true);
