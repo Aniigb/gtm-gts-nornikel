@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   header{grid-column:1/4; background:linear-gradient(100deg,#0a1a2b 0%,#0e2c49 42%,var(--nn-deep) 78%,#332c5c 115%); color:#eef2f6; display:flex; align-items:center; gap:18px; padding:0 18px; position:relative}
   header::before{content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--nn-blue) 0%,var(--nn-deep) 45%,var(--zf) 100%)}
   header h1{font-size:16px; font-weight:600; letter-spacing:.3px; white-space:nowrap}
+  #brandLogo{height:40px; width:40px; flex:none; filter:drop-shadow(0 1px 3px rgba(0,0,0,.45))}
   header .sub{font-size:12px; color:#9fb0bf}
   header .stats{margin-left:auto; display:flex; gap:14px; font-size:12px; align-items:center}
   header .stats b{font-size:15px}
@@ -414,6 +415,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     body{overflow:auto}
     #app{display:flex; flex-direction:column; height:auto; min-height:100vh}
     header{flex-wrap:wrap; gap:8px; padding:8px 10px; height:auto}
+    #brandLogo{height:30px; width:30px}
     header h1{font-size:13.5px; white-space:normal; line-height:1.3}
     header .sub{font-size:11px}
     header .stats{margin-left:0; flex-wrap:wrap; gap:8px; width:100%}
@@ -569,6 +571,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 <body>
 <div id="app">
   <header>
+    <img id="brandLogo" src="icon-nn-round.png" alt="Эмблема ПАО «ГМК «Норильский никель»" title="ПАО «ГМК «Норильский никель»">
     <div>
       <h1>ГТМ с учётом климатических изменений ГТС ЗФ ПАО «ГМК «Норильский никель»</h1>
       <div class="sub">Геотехнический мониторинг гидротехнических сооружений · Заполярный филиал</div>
