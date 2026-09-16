@@ -856,7 +856,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 <script src="db_wells.js?v=14191fd7"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=99a7fb2711"></script>
-<script src="stok_data.js?v=20260914a"></script>
+<script src="stok_data.js?v=20260916a"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -1398,7 +1398,7 @@ const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{max
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
 const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток по ЦМР (по объектам ГТС) · в разработке':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup,'📍 Скважины мониторинга (геодезия WGS · KML 09.2026)':kmlWellsGroup},{position:'topright'}).addTo(map);
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup,'📍 Скважины мониторинга (геодезия WGS · KML 09.2026)':kmlWellsGroup},{position:'topright'}).addTo(map);
 map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); });
 
@@ -3232,6 +3232,8 @@ function tabCalcGts(o, el){ // вкладка «Расчёты» карточк�
     <tr><td>Уклоны в буфере 300 м (средний / максимум)</td><td>${hst.slope_mean}° / ${hst.slope_max}°</td></tr>
     <tr><td>Замкнутые понижения (зоны застоя талых вод)</td><td>${hst.depr_pct}% площади буфера</td></tr>
     <tr><td>Скрининговый риск поверхностного стока</td><td><b style="color:${hydroRiskCol[hst.risk]||'#555'}">${hst.risk.toUpperCase()}</b></td></tr>
+    <tr><td>Эрозионный скрининг (LS·RUSLE + SPI, буфер 1 км)</td><td><b style="color:${hydroRiskCol[hst.eros]||'#555'}">${(hst.eros||'—').toUpperCase()}</b> · SPI p95 ${hst.spi_p95} м² · LS p95 ${hst.ls_p95} · потенциальный размыв на ${hst.eros_pct}% площади</td></tr>
+    <tr><td>Очаги концентрации стока (SPI)</td><td>${(hst.hotspots&&hst.hotspots.length)?hst.hotspots.map(h=>'SPI '+h.spi+' м² · в '+h.off_m+' м от объекта').join('; '):'не выявлены'}</td></tr>
   </table>
   <div class="sect" style="margin-top:8px">Сценарии притока к объекту (суточный сток × водосбор):</div>
   <table class="rows static"><thead><tr><th style="width:22%">Суточный сток, мм</th><th style="width:26%">Приток к объекту, м³/сут</th><th>Класс явления (критерии Росгидромета)</th></tr></thead><tbody>${scenRows}</tbody></table>
@@ -5204,6 +5206,8 @@ function repHydroApp(o){
       <tr><td>Площадь водосбора к объекту (радиус 500 м)</td><td><b>${hst.catch_near_km2} км²</b></td><td>Расстояние до расчётного русла</td><td>${hst.dist_stream_m} м</td></tr>
       <tr><td>Отметка точки объекта по ЦМР</td><td>${hst.elev!==null?hst.elev+' м':'—'}</td><td>Уклоны в буфере 300 м (средний / максимум)</td><td>${hst.slope_mean}° / ${hst.slope_max}°</td></tr>
       <tr><td>Замкнутые понижения (застой талых вод)</td><td>${hst.depr_pct}% буфера</td><td>Скрининговый риск поверхностного стока</td><td><b style="color:${rc[hst.risk]||'#555'}">${String(hst.risk).toUpperCase()}</b></td></tr>
+      <tr><td>Эрозионный скрининг (LS·RUSLE + SPI, буфер 1 км)</td><td><b style="color:${rc[hst.eros]||'#555'}">${String(hst.eros||'—').toUpperCase()}</b></td><td>SPI p95 / LS p95 / размыв</td><td>${hst.spi_p95} м² / ${hst.ls_p95} / ${hst.eros_pct}% площади</td></tr>
+      <tr><td>Очаги концентрации стока (SPI)</td><td colspan="3">${(hst.hotspots&&hst.hotspots.length)?hst.hotspots.map(h=>'SPI '+h.spi+' м² · в '+h.off_m+' м от объекта').join('; '):'не выявлены'}</td></tr>
     </table>
     <table>
       <tr><th style="width:22%">Суточный сток, мм</th><th style="width:26%">Приток к объекту, м³/сут</th><th>Класс явления (критерии Росгидромета)</th></tr>${scen}
@@ -5570,7 +5574,7 @@ const GS_ROAD=[
    {k:'B6', t:'InSAR-пилот по архивам Sentinel-1: деформации гребней и откосов между циклами геодезии', d0:'план'}]},
  {g:'Этап В · 9–24 мес — прогноз и интеграция', items:[
    {k:'C1', t:'Теплотехническая модель t(x,t) оснований по объектам (СП 25.13330.2020 + сценарии МГИК)', d0:'готово'},
-   {k:'C2', t:'Модель поверхностного стока по ЦМР: подтопление и эрозия в границах объектов', d0:'план'},
+   {k:'C2', t:'Модель поверхностного стока по ЦМР: подтопление и эрозия в границах объектов (реализовано: D8-сток + LS-фактор RUSLE и индекс мощности потока SPI по ЦМР GLO-30, очаги размыва, классы опасности — Центр контроля → «Модель стока»)', d0:'готово'},
    {k:'C3', t:'Интеграция с мерзлотным надзором ЗФ и ПМЛА — автоматические входные события', d0:'план'},
    {k:'C4', t:'АМС в районе объектов и валидация метеомодели по местным замерам', d0:'план'},
    {k:'C5', t:'Ежегодный БПЛА-мониторинг откосов и уступов с ЦМР (ортофото + цифровая модель рельефа)', d0:'план'}]}
@@ -6038,6 +6042,7 @@ function gsViewStok(){
   const S=window.STOK;
   if(!S) return `<h2>◉ ЦЕНТР КОНТРОЛЯ ГТМ · Модель поверхностного стока</h2><div class="gsCard"><div class="mut">Модуль данных модели (stok_data.js) не загружен.</div></div>`;
   const rc={'низкий':'#2e7d32','средний':'#ef9a1a','высокий':'#c62828'};
+  const erRec={'высокий':'внеочередные осмотры откосов и берм после ливней ≥ 20 мм/сут (триггер панели дежурного метеоконтроля), обследование водоотводных канав и лотков, контроль суффозии и оползневых процессов у сооружений','средний':'плановый контроль откосов в период снеготаяния и после ливней; полевая верификация очагов концентрации стока при маршрутных обследованиях','низкий':'фоновый режим — контроль в рамках плановых осмотров'};
   const rows=S.objects.map(st=>{
     const i=DB.objects.findIndex(o=>o.id===st.id);
     return `<tr>
@@ -6047,20 +6052,24 @@ function gsViewStok(){
       <td style="text-align:center">${st.dist_stream_m} м</td>
       <td style="text-align:center">${st.slope_mean}° / ${st.slope_max}°</td>
       <td style="text-align:center">${st.depr_pct}%</td>
-      <td><span class="gsPill" style="background:${rc[st.risk]||'#8a8a8a'}">${st.risk.toUpperCase()}</span></td></tr>`;
+      <td><span class="gsPill" style="background:${rc[st.risk]||'#8a8a8a'}">${st.risk.toUpperCase()}</span></td>
+      <td style="text-align:center"><span class="gsPill" style="background:${rc[st.eros]||'#8a8a8a'}">${(st.eros||'—').toUpperCase()}</span><br><span class="mut" style="font-size:10px">SPI p95 ${st.spi_p95} м² · размыв ${st.eros_pct}%</span></td></tr>`;
   }).join('');
   const cards=S.objects.map(st=>{
-    return `<details class="dreg-cat" style="margin:6px 0"><summary style="cursor:pointer;font-size:12.5px"><span class="gsPill" style="background:${rc[st.risk]||'#8a8a8a'};margin-right:6px">${st.risk.toUpperCase()}</span> <b>${esc(st.name)}</b> — водосбор ${st.catch_near_km2} км², водоток ${st.dist_stream_m} м</summary>
+    const hsTxt=(st.hotspots&&st.hotspots.length)?('очаги концентрации стока: '+st.hotspots.map(h=>'SPI '+h.spi+' м² в '+h.off_m+' м от объекта').join('; ')):'выраженных очагов концентрации стока в буфере не выявлено';
+    return `<details class="dreg-cat" style="margin:6px 0"><summary style="cursor:pointer;font-size:12.5px"><span class="gsPill" style="background:${rc[st.risk]||'#8a8a8a'};margin-right:6px">${st.risk.toUpperCase()}</span> <b>${esc(st.name)}</b> — водосбор ${st.catch_near_km2} км², водоток ${st.dist_stream_m} м · эрозия: <span style="color:${rc[st.eros]||'#8a8a8a'};font-weight:700">${(st.eros||'—').toUpperCase()}</span></summary>
       <div style="margin:8px 0 4px"><img src="stok/${st.id}.png" alt="Карта стока: ${esc(st.name)}" style="max-width:100%;border-radius:6px;border:1px solid #3a4c5c"></div>
       <div class="mut" style="font-size:11.5px">Отметка точки: ${st.elev!==null?st.elev+' м':'—'} · водосбор в радиусе 500 м: ${st.catch_near_km2} км² (ближайший расчётный водоток — ${st.near_off_m} м от точки) · расстояние до русла: ${st.dist_stream_m} м · уклоны в радиусе 300 м: средний ${st.slope_mean}°, максимум ${st.slope_max}° · замкнутые понижения (застойные зоны): ${st.depr_pct}% площади буфера.</div>
+      <div class="mut" style="font-size:11.5px;margin-top:4px;border-top:1px dashed #3a4c5c;padding-top:5px">Эрозионный скрининг (буфер 1 км): класс <b style="color:${rc[st.eros]||'#8a8a8a'}">${(st.eros||'—').toUpperCase()}</b> · SPI p95 = ${st.spi_p95} м² · LS p95 = ${st.ls_p95} · потенциальный размыв на ${st.eros_pct}% площади; ${hsTxt}. <b>Режимные меры:</b> ${erRec[st.eros]||'—'}.</div>
     </details>`;
   }).join('');
   const nHigh=S.objects.filter(s=>s.risk==='высокий').length, nMid=S.objects.filter(s=>s.risk==='средний').length;
+  const eHigh=S.objects.filter(s=>s.eros==='высокий').length, eMid=S.objects.filter(s=>s.eros==='средний').length;
   return `<h2>◉ ЦЕНТР КОНТРОЛЯ ГТМ · Модель поверхностного стока <span class="mut" style="font-size:12px;font-weight:400">(этап C2 дорожной карты)</span></h2>
   <div class="gsCard"><h3>Назначение и метод</h3>
     <div style="font-size:12.5px;line-height:1.65">
       Модель отвечает на вопрос: <b>откуда и каким объёмом придёт поверхностная вода к каждому ГТС</b> — при ливнях, снеготаянии и наледных процессах. Это прямой вход для режимных мер: контроль свободного борта накопителей, готовность водоотвода, прогноз подтопления пойменных участков линейных ГТС.<br>
-      <b>Метод:</b> заполнение локальных понижений ЦМР (priority-flood) → направление стока D8 → аккумуляция стока; расчётные водотоки выделяются от водосбора ~1 км². <b>Исходные данные:</b> ${esc(S.src)}.<br>
+      <b>Метод:</b> заполнение локальных понижений ЦМР (priority-flood) → направление стока D8 → аккумуляция стока; расчётные водотоки выделяются от водосбора ~1 км². Эрозионный скрининг: LS-фактор RUSLE (Desmet–Govers) и индекс мощности потока SPI = A·tgβ (Moore et al.), экран инициации размыва SPI ≥ 50 м² при уклоне ≥ 5°; очаги размыва — локальные максимумы SPI в буфере объекта. <b>Исходные данные:</b> ${esc(S.src)}.<br>
       <span class="mut">⚠ Скрининговый уровень точности: ячейка ~31×22 м не разрешает дамбы и канавы (их высота/ширина меньше ячейки). Модель показывает природную организацию стока, а не гидравлику сооружений. При получении инженерной ЦМР (БПЛА-ЦМР, этап Б3) модуль пересчитывается без изменения кода — заменой исходного растра.</span>
     </div>
   </div>
@@ -6068,9 +6077,9 @@ function gsViewStok(){
     <img src="stok/overview.png" alt="Обзорная карта модели стока" style="max-width:100%;border-radius:6px;border:1px solid #3a4c5c">
     <div class="mut" style="margin-top:4px">Отмывка рельефа + высотная расцветка; голубые линии — расчётные водотоки (интенсивность ∝ lg площади водосбора); красные маркеры — объекты ГТС. Координатная сетка локальная, км.</div>
   </div>
-  <div class="gsCard"><h3>Сводная оценка по объектам <span class="gsPill" style="background:#c62828">высокий: ${nHigh}</span> <span class="gsPill" style="background:#ef9a1a">средний: ${nMid}</span> <span class="gsPill" style="background:#2e7d32">низкий: ${S.objects.length-nHigh-nMid}</span></h3>
-    <table class="gsTbl"><tr><th style="text-align:left">Объект</th><th>Отметка</th><th>Водосбор к объекту, км²</th><th>До водотока</th><th>Уклон сред./макс.</th><th>Замкн. понижения</th><th>Риск стока</th></tr>${rows}</table>
-    <div class="mut" style="margin-top:4px">Категории (скрининг): <b>высокий</b> — водосбор ≥ 5 км² у объекта, либо расчётное русло ≤ 150 м при водосборе ≥ 1 км²; <b>средний</b> — водосбор ≥ 1 км², русло ≤ 300 м либо застойные понижения ≥ 10% буфера; иначе — <b>низкий</b>. Пороги скорректируются по результатам полевой верификации.</div>
+  <div class="gsCard"><h3>Сводная оценка по объектам <span class="gsPill" style="background:#c62828">сток, высокий: ${nHigh}</span> <span class="gsPill" style="background:#ef9a1a">средний: ${nMid}</span> <span class="gsPill" style="background:#2e7d32">низкий: ${S.objects.length-nHigh-nMid}</span> · <span class="gsPill" style="background:#c62828">эрозия, высокая: ${eHigh}</span> <span class="gsPill" style="background:#ef9a1a">средняя: ${eMid}</span> <span class="gsPill" style="background:#2e7d32">низкая: ${S.objects.length-eHigh-eMid}</span></h3>
+    <table class="gsTbl"><tr><th style="text-align:left">Объект</th><th>Отметка</th><th>Водосбор к объекту, км²</th><th>До водотока</th><th>Уклон сред./макс.</th><th>Замкн. понижения</th><th>Риск стока</th><th>Эрозия (SPI)</th></tr>${rows}</table>
+    <div class="mut" style="margin-top:4px">Категории (скрининг): <b>высокий</b> — водосбор ≥ 5 км² у объекта, либо расчётное русло ≤ 150 м при водосборе ≥ 1 км²; <b>средний</b> — водосбор ≥ 1 км², русло ≤ 300 м либо застойные понижения ≥ 10% буфера; иначе — <b>низкий</b>. Пороги скорректируются по результатам полевой верификации.<br>Эрозионные классы (LS-фактор RUSLE + индекс мощности потока SPI = A·tgβ, экран инициации размыва SPI ≥ 50 м² при уклоне ≥ 5°): <b>высокая</b> — SPI p95 ≥ 200 м² либо размыв ≥ 8% площади буфера 1 км; <b>средняя</b> — SPI p95 ≥ 60 м² либо размыв ≥ 3%; иначе — <b>низкая</b>.</div>
   </div>
   <div class="gsCard"><h3>Карты по объектам (4×4 км)</h3>${cards}</div>
   <div class="gsCard"><h3>Интерпретация и связь с режимным контролем</h3>
@@ -6079,6 +6088,7 @@ function gsViewStok(){
       • <b>ГТС системы трёх озёр (ГТС-10, Дудинка)</b> — наибольший водосбор (~5,5 км²): объект сам является плотиной водотока; стоковый приток — прямой вход в баланс заполнения, учитывать при контроле свободного борта и К2 декларации по уровню.<br>
       • <b>Линейные объекты (ГТС-03, ГТС-04)</b> — водотоки в 225–960 м: наледный контроль в точках пересечения трасс с расчётной гидросетью (T ≤ −5 °C при незамёрзших источниках), особенно в долинах, пересекаемых эстакадами.<br>
       • <b>Замкнутые понижения</b> (доля в буфере 300 м) — зоны потенциального застоя талых вод и переувлажнения основания; учитывать при интерпретации пьезометрии.<br>
+      • <b>Эрозионный скрининг (LS·RUSLE + SPI):</b> высокий класс — <b>${S.objects.filter(s=>s.eros==='высокий').map(s=>s.name).join(', ')||'не выявлен'}</b> — концентрация потока на склонах у сооружений: приоритет для водоотводных мер и внеочередных осмотров откосов после ливней (риск размыва тел дамб, суффозии и оползней на ММГ); средний класс — ${S.objects.filter(s=>s.eros==='средний').map(s=>s.name).join(', ')||'не выявлен'} — плановая верификация очагов при маршрутных обследованиях.<br>
       <span class="mut">Методическая база: СП 116.13330 (производственный контроль), СП 446.13330 (инженерно-гидрометеорологические изыскания), ВСН 01-89 (предпаводковые осмотры); мировой опыт арктических ГТС — база знаний проекта. Модуль не заменяет гидрологические расчёты максимального стока по СП 33.101 — он показывает пространственную организацию стока для планирования наблюдений и осмотров.</span>
     </div>
   </div>`;
