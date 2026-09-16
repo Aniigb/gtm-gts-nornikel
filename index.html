@@ -37,9 +37,11 @@ document.addEventListener('DOMContentLoaded',()=>{
     --nn-deep:#004c97;   /* тёмно-синий · Pantone 2945 · RGB 0/76/151 */
     --zf:#654ea3;        /* фиолетовый Заполярного филиала · Pantone 2096 · RGB 101/78/163 */
     --nn-gray:#63666a;   /* фирменный серый · Pantone Cool Gray 10 */
-    --bg:#0b1c2e; --panel:#eee9dc; --ink:#1a232e; --mut:#63666a;
+    --bg:#0b1c2e; --panel:#edf3f9; --ink:#1a232e; --mut:#63666a;
     --c-centr:#0077c8; --c-talnakh:#c05a2e; --c-kayerkan:#3d8a5a;
-    --ok:#2e7d32; --risk:#e08a00; --crit:#c8372d; --line:#cdc6b4;
+    --ok:#2e7d32; --risk:#e08a00; --crit:#c8372d; --line:#c5d9ea;
+    /* Градации корпоративных цветов для окон и панелей (синий/тёмно-синий/ЗФ/серый) */
+    --g0:#f8fbfe; --g1:#eef4fa; --g2:#dbe7f2; --g3:#c5d9ea; --g4:#8fbadd; --gz1:#f3eef8; --gz2:#ddd2f0;
   }
   *{box-sizing:border-box; margin:0; padding:0}
   html,body{height:100%; font:14px/1.45 "Segoe UI","PT Sans",-apple-system,"Helvetica Neue",Arial,sans-serif; color:var(--ink)}
@@ -69,19 +71,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   .chip.on .n{color:#b9c6d2}
   #search{margin:4px 12px 10px; padding:7px 10px; border:1px solid var(--line); border-radius:6px; font-size:13px; width:calc(100% - 24px)}
   #list{overflow-y:auto; flex:1; border-top:1px solid var(--line)}
-  .item{padding:8px 14px; border-bottom:1px solid #e7e1d6; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:baseline}
-  .item:hover{background:#ece7dd}
+  .item{padding:8px 14px; border-bottom:1px solid #dbe7f2; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:baseline}
+  .item:hover{background:#e4eef7}
   .item.sel{background:#e6f1fa; border-left:3px solid var(--c-centr); padding-left:11px}
   .item .a{font-size:13px}
   .item .a .sdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
   .item .t{font-size:11.5px; color:var(--mut); white-space:nowrap}
   .item .t.has{color:var(--crit); font-weight:600}
-  .fitem{padding:5px 14px 5px 26px; border-bottom:1px solid #efe9df; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:baseline; background:#faf8f3}
-  .fitem:hover{background:#ece7dd}
+  .fitem{padding:5px 14px 5px 26px; border-bottom:1px solid #e3edf6; cursor:pointer; display:flex; justify-content:space-between; gap:8px; align-items:baseline; background:#f8fbfd}
+  .fitem:hover{background:#e4eef7}
   .fitem.sel{background:#e6f1fa; border-left:3px solid var(--c-centr); padding-left:23px}
-  .fitem .a{font-size:12px; color:#4a4438}
+  .fitem .a{font-size:12px; color:#46648a}
   .fitem .t{font-size:11px; color:var(--mut); white-space:nowrap}
-  .fac-toggle{padding:3px 14px 3px 22px; font-size:11px; color:var(--mut); cursor:pointer; user-select:none; background:#f3efe7; border-bottom:1px solid #efe9df}
+  .fac-toggle{padding:3px 14px 3px 22px; font-size:11px; color:var(--mut); cursor:pointer; user-select:none; background:#edf3f9; border-bottom:1px solid #e3edf6}
   .fac-toggle:hover{color:#333}
   #map{background:#dfe6ea; position:relative}
   #map .leaflet-control-attribution{display:none} /* идентификация карты скрыта по требованию заказчика */
@@ -92,7 +94,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   #detail .rayon{font-size:12.5px; color:var(--mut); margin-bottom:10px}
   #detail .rayon b{font-weight:600}
   table.kv{width:100%; border-collapse:collapse; font-size:12.8px; margin-bottom:12px}
-  table.kv td{padding:4px 6px; border-bottom:1px solid #e7e1d6; vertical-align:top}
+  table.kv td{padding:4px 6px; border-bottom:1px solid #dbe7f2; vertical-align:top}
   table.kv td:first-child{color:var(--mut); width:46%}
   .sect{font-size:11.5px; text-transform:uppercase; letter-spacing:1px; color:var(--mut); margin:16px 0 6px}
   canvas.plot{width:100%; background:#fff; border:1px solid var(--line); border-radius:4px}
@@ -147,14 +149,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   table.kv input.ed:hover, table.kv select.ed:hover, table.kv textarea.ed:hover{border-color:var(--line); background:#fff}
   table.kv input.ed:focus, table.kv select.ed:focus, table.kv textarea.ed:focus{border-color:var(--c-centr); background:#fff; outline:none}
   table.rows{width:100%; border-collapse:collapse; font-size:12.3px; margin-bottom:8px}
-  table.rows th{background:#ece7dd; padding:4px 6px; text-align:left; font-weight:600; border:1px solid #ddd5c6; font-size:11.3px}
-  table.rows td{padding:3px 4px; border:1px solid #e7e1d6; vertical-align:top}
-  table.rows.kk tr.grp td{background:#d8d2c4; font-weight:700; font-size:11.8px; color:#3c3a34}
+  table.rows th{background:#e4eef7; padding:4px 6px; text-align:left; font-weight:600; border:1px solid #cbdff0; font-size:11.3px}
+  table.rows td{padding:3px 4px; border:1px solid #dbe7f2; vertical-align:top}
+  table.rows.kk tr.grp td{background:#d3e3f2; font-weight:700; font-size:11.8px; color:#16345c}
   table.rows.kk td.mut{color:var(--mut); font-size:11.5px}
   table.rows input, table.rows select{width:100%; border:1px solid transparent; background:transparent; padding:2px 4px; font-size:12.3px; font-family:inherit}
   table.rows input:focus, table.rows select:focus{border-color:var(--c-centr); background:#fff; outline:none}
-  .addrow{border:1px dashed #b9ae9c; background:none; border-radius:4px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--mut); width:100%; margin-bottom:10px}
-  .navback{border:1px dashed #b9ae9c; background:none; border-radius:4px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--mut); margin-bottom:10px}
+  .addrow{border:1px dashed #a8c4dc; background:none; border-radius:4px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--mut); width:100%; margin-bottom:10px}
+  .navback{border:1px dashed #a8c4dc; background:none; border-radius:4px; padding:4px 10px; font-size:12px; cursor:pointer; color:var(--mut); margin-bottom:10px}
   .addrow:hover{color:var(--ink); border-color:var(--c-centr)}
   .delrow{border:none; background:none; color:var(--crit); cursor:pointer; font-size:13px; padding:0 4px}
   .normref{font-size:11px; color:#8a94a0; margin:0 0 10px; font-style:normal}
@@ -166,11 +168,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   .photos figure{border:1px solid var(--line); border-radius:4px; overflow:hidden; background:#fff}
   .photos img{width:100%; height:90px; object-fit:cover; display:block; cursor:pointer}
   .photos figcaption{font-size:10.5px; padding:3px 6px; color:var(--mut); display:flex; justify-content:space-between; align-items:center}
-  .ukgroup{position:sticky; top:0; background:#e4ded2; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.4px; color:#5a5346; border-bottom:1px solid var(--line); z-index:5}
+  .ukgroup{position:sticky; top:0; background:#dde9f3; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.4px; color:#2c4a70; border-bottom:1px solid var(--line); z-index:5}
   .ukgroup .n{font-weight:400; color:var(--mut); margin-left:6px}
   /* --- ЦЕНТР КОНТРОЛЯ ГТМ: надстройка развития и раннего предупреждения --- */
   @keyframes gsBlink{0%,100%{background:#c8372d; color:#fff}50%{background:#7e1f18; color:#ffd9d4}}
-  #gsBox{margin:10px 10px 12px; border:1px solid #b9a8d8; border-top:3px solid var(--zf); border-radius:8px; background:linear-gradient(180deg,#efeaf6,#f6f2ea 60%); overflow:hidden}
+  #gsBox{margin:10px 10px 12px; border:1px solid #b9a8d8; border-top:3px solid var(--zf); border-radius:8px; background:linear-gradient(180deg,#efeaf6,#eef3fa 60%); overflow:hidden}
   #gsHead{padding:7px 10px 6px; font-size:12px; font-weight:700; color:#fff; letter-spacing:.3px; border-bottom:1px solid #d8cbf0; background:linear-gradient(90deg,var(--nn-deep) 0%,var(--nn-blue) 55%,var(--zf) 100%)}
   #gsHead small{display:block; font-weight:400; font-size:10px; color:#d8e6f5; letter-spacing:0; margin-top:2px}
   #gsMenu{display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:7px 8px 8px}
@@ -183,27 +185,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   .gsCard h3{margin:0 0 6px; font-size:13px; color:#3d2f5e}
   .gsCard .mut{color:var(--mut); font-size:11.5px}
   .gsTbl{width:100%; border-collapse:collapse; font-size:12px}
-  .gsTbl th{background:#efe9dc; padding:4px 6px; text-align:left; border:1px solid var(--line); font-size:11px; white-space:nowrap}
+  .gsTbl th{background:#e4eef7; padding:4px 6px; text-align:left; border:1px solid var(--line); font-size:11px; white-space:nowrap}
   .gsTbl td{padding:4px 6px; border:1px solid var(--line); vertical-align:top}
-  .gsTbl tr:hover td{background:#faf7f0}
+  .gsTbl tr:hover td{background:#f2f7fc}
   .gsObjChip{display:inline-block; margin:1px; padding:1px 6px; border-radius:8px; background:rgba(255,255,255,.22); border:1px solid rgba(255,255,255,.55); font-size:9.5px; cursor:pointer; color:#fff; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle}
   .gsObjChip:hover{background:rgba(255,255,255,.45)}
-  .gsBar{height:7px; border-radius:4px; background:#e5e0d5; overflow:hidden; margin:4px 0}
+  .gsBar{height:7px; border-radius:4px; background:#dce7f1; overflow:hidden; margin:4px 0}
   .gsBar i{display:block; height:100%; background:var(--zf)}
   .gsPill{display:inline-block; padding:1px 8px; border-radius:9px; font-size:10.5px; font-weight:700; color:#fff}
   select.gsSt{font-size:11px; padding:2px 4px}
   body.role-view select.gsSt, body.role-insp select.gsSt{pointer-events:none; opacity:.75}
   /* --- аккордеон по предприятиям (полный реестр ГТС) --- */
-  .acc-h{padding:7px 14px; font-size:12.5px; font-weight:700; color:#4a4234; background:#efe9dc; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center}
-  .acc-h:hover{background:#e7dfcd}
+  .acc-h{padding:7px 14px; font-size:12.5px; font-weight:700; color:#26456e; background:#e4eef7; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; display:flex; justify-content:space-between; align-items:center}
+  .acc-h:hover{background:#d5e5f2}
   .acc-h .n{font-weight:400; color:var(--mut); font-size:11px}
   .acc-h::before{content:'▸'; margin-right:6px; font-size:10px; color:var(--mut)}
   .acc.open>.acc-h::before{content:'▾'}
   .acc-b{display:none}
   .acc.open>.acc-b{display:block}
-  .item.stub{color:#8a8378}
+  .item.stub{color:#7a8ea3}
   .item.stub .a{font-weight:400}
-  .stubbadge{display:inline-block; font-size:9.5px; color:#9a8f7a; border:1px solid #d8d0bd; border-radius:3px; padding:0 4px; margin-left:6px}
+  .stubbadge{display:inline-block; font-size:9.5px; color:#8ba3bb; border:1px solid #ccdcea; border-radius:3px; padding:0 4px; margin-left:6px}
   /* ---------- загрузка данных ---------- */
   #uploadBtn{background:#2e7d32; border:1px solid #2e7d32; color:#fff; border-radius:6px; padding:4px 12px; cursor:pointer; font-size:13px}
   #uploadBtn:hover{background:#256a29}
@@ -236,9 +238,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   #regModal .close{float:right; border:none; background:none; font-size:20px; cursor:pointer; color:var(--mut)}
   #regWrap{overflow:auto; flex:1; margin-top:10px; border:1px solid var(--line); border-radius:6px; background:#fff}
   table.reg{width:100%; border-collapse:collapse; font-size:12.2px}
-  table.reg th{position:sticky; top:0; background:#e4ded2; padding:6px 8px; text-align:left; border-bottom:2px solid var(--line); font-size:11.5px; z-index:2}
-  table.reg td{padding:5px 8px; border-bottom:1px solid #eee7da; vertical-align:top}
-  table.reg tr:hover td{background:#f2ede3}
+  table.reg th{position:sticky; top:0; background:#dde9f3; padding:6px 8px; text-align:left; border-bottom:2px solid var(--line); font-size:11.5px; z-index:2}
+  table.reg td{padding:5px 8px; border-bottom:1px solid #e0ebf5; vertical-align:top}
+  table.reg tr:hover td{background:#e9f1f9}
   /* ---------- нормативная документация по ГТС ---------- */
   #ntdModal{display:none; position:fixed; inset:0; z-index:1000; background:rgba(15,28,38,.55)}
   #ntdModal .box{background:var(--panel); width:1180px; max-width:97vw; max-height:92vh; margin:3vh auto; border-radius:10px; padding:20px 24px; box-shadow:0 10px 40px rgba(0,0,0,.35); display:flex; flex-direction:column}
@@ -246,10 +248,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   #ntdModal .close{float:right; border:none; background:none; font-size:20px; cursor:pointer; color:var(--mut)}
   #ntdWrap{overflow:auto; flex:1; margin-top:10px; border:1px solid var(--line); border-radius:6px; background:#fff}
   table.ntd{width:100%; border-collapse:collapse; font-size:12.2px}
-  table.ntd th{position:sticky; top:0; background:#e4ded2; padding:6px 8px; text-align:left; border-bottom:2px solid var(--line); font-size:11.5px; z-index:2}
-  table.ntd td{padding:5px 8px; border-bottom:1px solid #eee7da; vertical-align:top}
-  table.ntd tr:hover td{background:#f2ede3}
-  table.ntd tr.grp td{background:#d8d2c4; font-weight:700; font-size:12.5px; color:#3c3a34}
+  table.ntd th{position:sticky; top:0; background:#dde9f3; padding:6px 8px; text-align:left; border-bottom:2px solid var(--line); font-size:11.5px; z-index:2}
+  table.ntd td{padding:5px 8px; border-bottom:1px solid #e0ebf5; vertical-align:top}
+  table.ntd tr:hover td{background:#e9f1f9}
+  table.ntd tr.grp td{background:#d3e3f2; font-weight:700; font-size:12.5px; color:#16345c}
   .bst{display:inline-block; padding:1px 9px; border-radius:9px; font-size:11px; font-weight:700; white-space:nowrap}
   .bst.ok{background:#e3efe0; color:#2e6b34; border:1px solid #9ec79a}
   .bst.part{background:#f7f0d8; color:#8a6d1d; border:1px solid #d9c47a}
@@ -266,7 +268,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   #txtBar select, #txtBar input{border:1px solid var(--line); border-radius:5px; padding:4px 7px; font-size:12.5px; font-family:inherit}
   #txtBody{overflow:auto; flex:1; background:#fff; border:1px solid var(--line); border-radius:6px; padding:14px 18px; font-size:12.6px; line-height:1.55; white-space:pre-wrap; word-break:break-word; font-family:'Segoe UI',Arial,sans-serif; margin:0; min-height:200px}
   #txtBody mark{background:#ffe58a; padding:0 1px}
-  table.rows tr.grp td{background:#d8d2c4; font-weight:700; font-size:11.8px; color:#3c3a34}
+  table.rows tr.grp td{background:#d3e3f2; font-weight:700; font-size:11.8px; color:#16345c}
   table.rows td.mut{color:var(--mut); font-size:11.5px}
   .vbtn{border:1px solid #b9c4d0; background:#fff; border-radius:5px; padding:1px 8px; font-size:11.5px; cursor:pointer; white-space:nowrap; color:#2f5f8f}
   .vbtn:hover{border-color:var(--c-centr); color:var(--c-centr)}
@@ -276,7 +278,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   .warn-card.crit{border-color:#d99a8d; background:#fbeeea}
   .warn-card h3{font-size:13px; margin:0 0 3px}
   .warn-card .wg{font-size:12px; margin:4px 0; line-height:1.45}
-  .warn-card .wg b{color:#4a4234}
+  .warn-card .wg b{color:#26456e}
   .warn-none{border:1px solid #9ec79a; background:#eef6ec; border-radius:8px; padding:7px 12px; font-size:12.5px; margin-bottom:8px}
   .warn-meta{font-size:11px; color:var(--mut); margin-bottom:6px}
   #warnBadge{display:none; background:#c62828; color:#fff; border-radius:9px; font-size:10.5px; padding:0 6px; margin-left:4px; font-weight:700; vertical-align:middle}
@@ -292,25 +294,25 @@ document.addEventListener('DOMContentLoaded',()=>{
   .crline{font-size:10.5px; color:var(--mut); text-align:center; margin-top:10px; border-top:1px solid var(--line); padding-top:7px; line-height:1.45}
   #repOut .cr{margin-top:16px; border-top:1px solid #999; padding-top:7px; font-size:10.5px; color:#555; text-align:center; line-height:1.45}
   /* ---------- термометрия: таблицы измерений и блок этапов изысканий ---------- */
-  details.wt, details.igt{border:1px solid #cfc9bb; border-radius:8px; margin:0 0 6px; background:#fffdf8}
+  details.wt, details.igt{border:1px solid #c5d9ea; border-radius:8px; margin:0 0 6px; background:#fcfeff}
   details.wt>summary, details.igt>summary{cursor:pointer; padding:6px 10px; font-size:12.5px; user-select:none}
-  details.wt>summary:hover, details.igt>summary:hover{background:#f3eee2}
-  details.wt[open]>summary, details.igt[open]>summary{border-bottom:1px solid #e2dccc}
+  details.wt>summary:hover, details.igt>summary:hover{background:#e9f1f9}
+  details.wt[open]>summary, details.igt[open]>summary{border-bottom:1px solid #d2e2f0}
   /* Реестр документов архива исходных данных (вкладка «Документация») */
   .dreg-stats{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 8px}
-  .dreg-stat{border:1px solid var(--line); background:#fffdf8; border-radius:14px; padding:3px 11px; font-size:12px; color:var(--mut)}
+  .dreg-stat{border:1px solid var(--line); background:#fcfeff; border-radius:14px; padding:3px 11px; font-size:12px; color:var(--mut)}
   .dreg-stat b{color:var(--ink)}
   .dreg-qrow{display:flex; align-items:center; gap:10px; margin:0 0 8px}
   .dreg-q{flex:1; max-width:460px; padding:6px 10px; border:1px solid var(--line); border-radius:6px; font-size:12.5px; background:#fff}
   .dreg-q:focus{outline:none; border-color:var(--nn-blue); box-shadow:0 0 0 2px rgba(0,119,200,.15)}
   .dreg-found{font-size:11.5px; color:var(--nn-deep); font-weight:600; white-space:nowrap}
-  details.dreg-cat{border:1px solid #cfc9bb; border-radius:8px; margin:0 0 6px; background:#fffdf8}
+  details.dreg-cat{border:1px solid #c5d9ea; border-radius:8px; margin:0 0 6px; background:#fcfeff}
   details.dreg-cat>summary{cursor:pointer; padding:7px 10px; font-size:12.5px; user-select:none; display:flex; align-items:baseline; gap:8px; list-style:none}
   details.dreg-cat>summary::-webkit-details-marker{display:none}
   details.dreg-cat>summary::before{content:"▸"; color:var(--nn-deep); font-size:11px; transition:transform .15s}
   details.dreg-cat[open]>summary::before{transform:rotate(90deg)}
-  details.dreg-cat>summary:hover{background:#f3eee2}
-  details.dreg-cat[open]>summary{border-bottom:1px solid #e2dccc; background:linear-gradient(90deg,rgba(0,119,200,.06),transparent 60%)}
+  details.dreg-cat>summary:hover{background:#e9f1f9}
+  details.dreg-cat[open]>summary{border-bottom:1px solid #d2e2f0; background:linear-gradient(90deg,rgba(0,119,200,.06),transparent 60%)}
   .dreg-name{font-weight:600; color:#2a3240; flex:0 1 auto}
   .dreg-meta{margin-left:auto; font-size:11.5px; color:var(--mut); white-space:nowrap}
   .dreg-meta b{color:var(--nn-deep)}
@@ -336,8 +338,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   details.tsec .tsec-body{padding:10px 12px 12px}
   .wt-scroll{overflow-x:auto; padding:6px 10px 10px}
   table.wtab{border-collapse:collapse; font-size:11px; white-space:nowrap}
-  table.wtab th, table.wtab td{border:1px solid #d9d3c6; padding:1px 6px; text-align:right}
-  table.wtab th{background:#efe9db; font-weight:700; text-align:center}
+  table.wtab th, table.wtab td{border:1px solid #cfdfed; padding:1px 6px; text-align:right}
+  table.wtab th{background:#e7f0f8; font-weight:700; text-align:center}
   table.wtab td.pos{color:#b3261e; font-weight:700}
   .igt-body{padding:6px 12px 10px; font-size:12.5px}
   .igt-body .igf{margin:3px 0; line-height:1.5}
@@ -428,7 +430,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     table.kv{font-size:12px}
     table.kv td{display:block; width:100% !important; border-bottom:none; padding:2px 4px}
     table.kv td:first-child{color:var(--mut); padding-top:6px}
-    table.kv tr{border-bottom:1px solid #e7e1d6; display:block}
+    table.kv tr{border-bottom:1px solid #dbe7f2; display:block}
     table.rows{font-size:11.5px}
     .twrap>table.rows{min-width:560px}
     .twrap>table.rows.narrowT{min-width:0}
@@ -512,7 +514,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   .tg-вработе{background:#fbe8c8; color:#a86400}
   .tg-устранено{background:#d8ecd9; color:var(--ok)}
   .tg-просрочено{background:#f7dcd7; color:var(--crit)}
-  .tg-reply{border-left:3px solid var(--line); margin:6px 0 0 10px; padding:4px 10px; font-size:12.3px; background:#faf8f3}
+  .tg-reply{border-left:3px solid var(--line); margin:6px 0 0 10px; padding:4px 10px; font-size:12.3px; background:#f8fbfd}
   /* ---------- текущий осмотр (интерактивный чек-лист) ---------- */
   .insp-sec{border:1px solid var(--line); border-radius:8px; background:#fff; margin:8px 0}
   .insp-sec>summary{cursor:pointer; padding:9px 12px; font-weight:600; font-size:13px; list-style:none; display:flex; justify-content:space-between; gap:8px}
@@ -533,7 +535,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   .insp-ph{width:112px; font-size:10px; color:var(--mut); text-align:center; position:relative}
   .insp-ph img{width:112px; height:84px; object-fit:cover; border-radius:6px; border:1px solid var(--line); cursor:pointer}
   .insp-ph .del{position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; border:none; background:var(--crit); color:#fff; font-size:11px; cursor:pointer; line-height:1}
-  .insp-prog{height:8px; background:#e8e4da; border-radius:4px; overflow:hidden; margin:8px 0}
+  .insp-prog{height:8px; background:#e2ebf4; border-radius:4px; overflow:hidden; margin:8px 0}
   .insp-prog>div{height:100%; background:var(--ok); width:0; transition:width .3s}
   .insp-hist{border:1px solid var(--line); border-radius:8px; background:#fff; padding:8px 12px; margin:8px 0; font-size:12.8px}
   /* ---------- единый стиль кнопок закрытия модальных окон: цветная, с контуром, правый верхний угол ---------- */
@@ -557,6 +559,11 @@ document.addEventListener('DOMContentLoaded',()=>{
     #gsModalBody .gsCard .gsTbl{min-width:540px}
   }
   @media print{ body.printing #repModal .close{display:none} }
+  /* ---------- фирменная окантовка всех модальных окон: градации корпоративных цветов ---------- */
+  #uplModal .box, #repModal .box, #regModal .box, #ntdModal .box, #txtModal .box, #niokrModal .box, #wxDutyModal .box, #tgModal .box, #meteoModal .box, #skModal .box, #gsModal .box{
+    background:linear-gradient(180deg,#fafdff 0%,var(--panel) 100%);
+    border-top:4px solid; border-image:linear-gradient(90deg,var(--nn-blue) 0%,var(--nn-deep) 45%,var(--zf) 100%) 1}
+  #uplModal .box>h2, #repModal .box>h2, #regModal .box>h2, #ntdModal .box>h2, #txtModal .box>h2, #niokrModal .box>h2, #wxDutyModal .box>h2, #tgModal .box>h2, #meteoModal .box>h2, #skModal .box>h2, #gsModal .box>h2{color:var(--nn-deep)}
 </style>
 </head>
 <body>
@@ -1946,8 +1953,8 @@ function gtmCovDraw(){
   const barX=118, barW=W-barX-44, rowH=26;
   rows.forEach(([key,label,v,color],i)=>{
     const y=20+i*rowH;
-    if(covFilter===key){ ctx.fillStyle='#f2ecd9'; ctx.fillRect(0,y-2,W,rowH-3); }
-    ctx.font='10px Segoe UI, sans-serif'; ctx.fillStyle='#4a4234';
+    if(covFilter===key){ ctx.fillStyle='#e2effa'; ctx.fillRect(0,y-2,W,rowH-3); }
+    ctx.font='10px Segoe UI, sans-serif'; ctx.fillStyle='#26456e';
     ctx.fillText((covFilter===key?'▣ ':'▢ ')+label, 2, y+12);
     ctx.fillStyle='#e8e2d4'; ctx.fillRect(barX,y+2,barW,13);
     const w=Math.max(v?3:0, barW*v/n);
