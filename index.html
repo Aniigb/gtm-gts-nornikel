@@ -1916,9 +1916,9 @@ map.on('click', e=>{
 // кнопка режима (только оператор — скрывается CSS по роли)
 geoCtl=document.createElement('button');
 geoCtl.id='geoPosBtn';
-geoCtl.textContent='📍 Позиционирование';
-geoCtl.style.cssText='position:absolute; top:84px; left:10px; z-index:700; background:#fff; border:2px solid rgba(0,0,0,.25); border-radius:5px; padding:4px 9px; font-size:12px; cursor:pointer';
-geoCtl.title='Режим уточнения координат: клик по сооружению на снимке → ближайший объект → перенос точки';
+geoCtl.textContent='📍';
+geoCtl.style.cssText='position:absolute; top:84px; left:10px; z-index:700; background:#fff; border:2px solid rgba(0,0,0,.25); border-radius:5px; width:30px; height:30px; padding:0; font-size:14px; line-height:1; cursor:pointer';
+geoCtl.title='Позиционирование — режим уточнения координат: клик по сооружению на снимке → ближайший объект → перенос точки';
 geoCtl.onclick=toggleGeoMode;
 document.getElementById('map').appendChild(geoCtl);
 drawMarkers();
