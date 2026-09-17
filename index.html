@@ -7256,7 +7256,7 @@ async function nkUploadDoc(file, forcedStage){
     const pack=new Uint8Array(28+ct.byteLength); pack.set(salt); pack.set(iv,16); pack.set(new Uint8Array(ct),28);
     const id='u'+Date.now().toString(36);
     await nkIDBput({id, stage, kind:c.kind, title:file.name.replace(/\.[^.]+$/,''), orig:file.name, date:new Date().toISOString().slice(0,10), size:file.size, pack});
-    try{ await nkPost('change', stage, 'АНИИГБ', {by:'', text:'Загружен документ: '+file.name+' ('+nkMB(file.size)+'), вид: '+(NK_KIND[c.kind]||c.kind)+' — локальная копия до включения в пакет'}); }catch(e){}
+    try{ await nkPost('change', stage, 'НПО Фундамент', {by:'', text:'Загружен документ: '+file.name+' ('+nkMB(file.size)+'), вид: '+(NK_KIND[c.kind]||c.kind)+' — локальная копия до включения в пакет'}); }catch(e){}
     renderNiokrBody(NK);
     const st2=document.getElementById('nkUpStat'); if(st2) st2.textContent='✔ «'+file.name+'» → Этап '+stage+' · '+(NK_KIND[c.kind]||c.kind);
   }catch(e){ if(st) st.textContent='✕ ошибка: '+e; }
@@ -7284,7 +7284,7 @@ async function nkLocalHtml(){
 async function nkSetStatus(n, st){
   const note=prompt('Комментарий к смене статуса этапа '+n+' → «'+NK_ST[st].t+'» (необязательно):','')||'';
   const by=prompt('Ваши фамилия и инициалы (кто зафиксировал):','')||'';
-  try{ await nkPost('status', n, 'АНИИГБ', {st, note, by}); renderNiokrBody(NK); }
+  try{ await nkPost('status', n, 'НПО Фундамент', {st, note, by}); renderNiokrBody(NK); }
   catch(e){ alert('Журнал недоступен: '+e.message); }
 }
 async function nkAddLog(){
@@ -7310,7 +7310,7 @@ async function nkMsgTo(name){
   const text=(inp&&inp.value||'').trim(); if(!text){ alert('Введите текст сообщения.'); return; }
   const c=nkContacts().find(x=>x.name===name)||{};
   const ph=nkPhone(c.phone);
-  try{ await nkPost('message', null, 'АНИИГБ', {to:name, channel:ph?'WhatsApp':'—', text}); }catch(e){}
+  try{ await nkPost('message', null, 'НПО Фундамент', {to:name, channel:ph?'WhatsApp':'—', text}); }catch(e){}
   if(ph) window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(text),'_blank');
   else alert('Номер телефона контакта не задан — сообщение записано только в журнал.');
   renderNiokrBody(NK);
@@ -7406,7 +7406,7 @@ function renderNiokrBody(N){
     <div class="nkForm">
       <select id="nkKind"><option value="remark">⚠ Замечание</option><option value="change">✎ Изменение</option><option value="message">✉ Сообщение</option></select>
       <select id="nkStage"><option value="">— вне этапов —</option>${N.stages.map(s=>`<option value="${s.n}">Этап ${s.n}</option>`).join('')}</select>
-      <select id="nkOrg"><option>АНИИГБ</option><option>Заказчик</option><option>Исполнитель</option></select>
+      <select id="nkOrg"><option>НПО Фундамент</option><option>Заказчик</option></select>
       <input id="nkBy" placeholder="Автор (фамилия)" style="width:150px">
       <input id="nkText" placeholder="Текст записи…" style="flex:1; min-width:220px">
       <button id="nkAdd">＋ Добавить</button>
@@ -7462,9 +7462,10 @@ function nkLogHtml(){
   const rows=NK_LOG.filter(r=>r.kind!=='status'&&r.kind!=='contact').slice(0,100);
   if(!rows.length) return '<div class="note">Записей пока нет. Добавьте первую — замечание, изменение или сообщение исполнителю.</div>';
   return `<table class="rows static" style="font-size:11.8px"><thead><tr><th style="width:88px">Дата</th><th style="width:120px">Вид</th><th style="width:70px">Этап</th><th style="width:150px">Автор / орг.</th><th>Текст</th></tr></thead><tbody>
-    ${rows.map(r=>`<tr><td>${nkDate(r.ts)}</td><td>${NK_LKIND[r.kind]||esc(r.kind)}</td><td>${r.stage?'Этап '+r.stage:'—'}</td><td>${r.p?esc(r.p.by||''):'?'} · ${esc(r.org||'')}</td><td>${r.p?esc(r.p.text||(r.p.to?('→ '+r.p.to+' ['+(r.p.channel||'')+']: '+(r.p.text||'')):'')):'<i>(нет ключа)</i>'}</td></tr>`).join('')}
+    ${rows.map(r=>`<tr><td>${nkDate(r.ts)}</td><td>${NK_LKIND[r.kind]||esc(r.kind)}</td><td>${r.stage?'Этап '+r.stage:'—'}</td><td>${r.p?esc(r.p.by||''):'?'} · ${esc(nkOrgShow(r.org||''))}</td><td>${r.p?esc(r.p.text||(r.p.to?('→ '+r.p.to+' ['+(r.p.channel||'')+']: '+(r.p.text||'')):'')):'<i>(нет ключа)</i>'}</td></tr>`).join('')}
   </tbody></table>`;
 }
+function nkOrgShow(o){ return o==='АНИИГБ'?'НПО Фундамент':o; } // исторические записи журнала отображаются как НПО Фундамент
 async function niokrUnlock(pwd){
   const errEl=document.getElementById('niokrErr'); errEl.textContent='';
   try{
