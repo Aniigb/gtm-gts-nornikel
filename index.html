@@ -539,6 +539,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   .cl-mx tr[data-clvid]{cursor:pointer}
   .cl-mx tr[data-clvid]:hover td.rl{background:#eaf3fb}
   .cl-mx tr.on td.rl{background:#dbe7f2}
+  .cl-tbl tr.sg td{color:#63666a; background:#f4f6f8; font-size:10.5px}
   #skModal{display:none; position:fixed; inset:0; z-index:1150; background:rgba(15,28,38,.6)}
   #skModal .box{background:var(--panel); width:1100px; max-width:97vw; max-height:92vh; margin:3vh auto; border-radius:10px; padding:16px 22px; box-shadow:0 10px 40px rgba(0,0,0,.4); overflow-y:auto; position:relative}
   #skModal .close{position:absolute; top:10px; right:12px; border:none; background:none; font-size:20px; cursor:pointer; color:var(--mut)}
@@ -9076,6 +9077,11 @@ new MutationObserver(()=>twrapAll(document.getElementById('detail'))).observe(do
    исторический срез 1985–2014, прогнозный срез 2036–2065 (к 2050 г.), сценарии SSP2-4.5 / SSP5-8.5. */
 const CLIM2050={"t_mean":{"name":"Средняя месячная температура воздуха","unit":"°C","rows":{"hist":[-29.0,-27.2,-21.3,-13.3,-4.2,5.4,12.2,9.6,2.1,-9.4,-20.7,-26.7],"ssp245":[-25.9,-24.6,-18.6,-10.5,-2.3,8.2,15.1,12.2,4.8,-5.6,-16.5,-22.5],"ssp585":[-24.4,-23.3,-17.3,-9.5,-1.5,9.3,16.1,12.3,5.7,-4.3,-14.7,-21.1],"d245":[3.1,2.6,2.7,2.9,2.0,2.7,2.9,2.5,2.6,3.8,4.2,4.2],"d585":[4.5,3.9,3.9,3.8,2.8,3.9,3.9,3.3,3.5,5.1,5.9,5.6]}},"t_max":{"name":"Максимальная суточная приземная температура воздуха","unit":"°C","rows":{"hist":[-25.6,-23.8,-17.0,-9.0,-1.8,8.9,16.2,13.2,4.6,-7.2,-18.1,-23.6],"ssp245":[-22.1,-20.8,-14.1,-6.4,0.2,12.1,19.5,16.3,8.0,-3.0,-13.3,-18.9],"ssp585":[-21.2,-19.9,-13.1,-5.6,1.0,13.7,20.4,17.2,9.0,-2.0,-12.3,-18.1],"d245":[3.5,3.1,2.9,2.9,2.1,3.3,3.2,3.1,3.3,4.2,4.8,4.7],"d585":[4.4,4.0,4.0,3.6,2.8,4.8,4.2,4.0,4.3,5.1,5.8,5.5]}},"t_min":{"name":"Минимальная суточная приземная температура воздуха","unit":"°C","rows":{"hist":[-33.0,-31.8,-27.0,-19.2,-8.5,2.8,8.8,5.9,-1.0,-13.6,-25.3,-31.1],"ssp245":[-29.8,-29.2,-24.3,-16.1,-6.1,5.1,11.2,8.2,1.9,-8.9,-20.3,-26.5],"ssp585":[-28.8,-28.0,-22.9,-14.9,-5.0,6.7,12.4,9.3,2.8,-7.5,-19.1,-25.5],"d245":[3.1,2.6,2.7,3.1,2.3,2.3,2.4,2.3,2.9,4.8,5.0,4.6],"d585":[4.1,3.8,4.0,4.3,3.5,3.9,3.5,3.4,3.8,6.1,6.2,5.2]}},"precip":{"name":"Средние месячные суммы осадков","unit":"мм/мес","rows":{"hist":[28.0,26.0,35.0,41.0,45.0,55.0,65.0,66.0,70.0,64.0,44.0,34.0],"ssp245":[34.0,30.0,41.0,49.0,51.0,65.0,73.0,76.0,83.0,81.0,57.0,43.0],"ssp585":[37.0,32.0,42.0,50.0,53.0,67.0,74.0,75.0,85.0,86.0,63.0,45.0],"d245":[6.0,4.0,6.0,7.0,6.0,10.0,8.0,10.0,13.0,17.0,13.0,7.0],"d585":[9.0,6.0,7.0,9.0,8.0,12.0,9.0,9.0,15.0,22.0,19.0,11.0]}},"snow":{"name":"Атмосферные осадки в виде снега","unit":"мм/мес","rows":{"hist":[27.0,24.0,34.0,39.0,34.0,10.0,1.0,3.0,23.0,55.0,42.0,32.0],"ssp245":[31.0,29.0,39.0,44.0,30.0,5.0,0.0,1.0,12.0,54.0,53.0,40.0],"ssp585":[34.0,30.0,39.0,43.0,29.0,4.0,0.0,1.0,9.0,54.0,57.0,42.0],"d245":[4.0,5.0,5.0,5.0,-4.0,-5.0,-1.0,-2.0,-11.0,-1.0,11.0,8.0],"d585":[7.0,6.0,5.0,4.0,-5.0,-6.0,-1.0,-2.0,-14.0,-1.0,15.0,10.0]}},"wind":{"name":"Скорость ветра","unit":"м/с","rows":{"hist":[4.7,4.6,4.6,4.4,4.0,3.9,3.8,3.7,4.0,4.3,4.5,4.5],"ssp245":[4.3,4.3,4.3,4.1,3.7,3.6,3.5,3.4,3.7,4.0,4.2,4.3],"ssp585":[4.3,4.2,4.2,4.1,3.8,3.7,3.6,3.4,3.6,4.0,4.2,4.3],"d245":[-0.4,-0.3,-0.3,-0.2,-0.3,-0.3,-0.3,-0.3,-0.3,-0.3,-0.3,-0.2],"d585":[-0.4,-0.4,-0.4,-0.2,-0.2,-0.2,-0.2,-0.3,-0.4,-0.3,-0.3,-0.2]}},"wind_max":{"name":"Максимальная скорость ветра","unit":"м/с","rows":{"hist":[6.7,6.5,6.5,6.3,5.5,5.2,4.9,4.8,5.3,5.9,6.4,6.6],"ssp245":[5.1,5.4,5.4,5.7,4.9,4.3,3.9,4.0,4.5,5.0,5.3,5.3],"ssp585":[5.0,5.3,5.4,5.4,4.7,4.2,3.9,4.0,4.4,5.0,5.2,5.3],"d245":[-1.6,-1.1,-1.1,-0.6,-0.6,-0.9,-1.0,-0.8,-0.8,-0.9,-1.1,-1.3],"d585":[-1.7,-1.2,-1.1,-0.9,-0.8,-1.0,-1.0,-0.8,-0.9,-0.9,-1.2,-1.3]}}};
 
+/* Статистическая значимость (приложение В отчёта этапа 3): sigma = межгодовое стандартное
+   отклонение по среднемодельному значению (табл. В1–В7); valid = валидация исторического
+   эксперимента по точечным данным метеостанции Норильск, 1985–2014 (табл. В11–В13). */
+const CLIM2050_SIG={"sigma":{"t_mean":{"hist":[0.79,0.68,0.66,0.67,0.32,0.47,0.66,0.61,0.57,0.87,1.05,0.91],"ssp245":[0.81,0.86,0.67,0.63,0.46,0.7,0.56,0.6,0.5,0.74,1.06,0.8],"ssp585":[1.21,1.03,1.02,0.84,0.74,1.07,0.9,0.79,0.74,1.17,1.42,1.41]},"t_max":{"hist":[0.86,0.81,0.68,0.57,0.36,0.69,0.75,0.75,0.65,0.92,1.03,0.78],"ssp245":[0.81,0.96,0.63,0.59,0.51,0.91,0.7,0.77,0.66,0.75,1.0,0.8],"ssp585":[1.12,0.95,0.91,0.65,0.8,1.33,0.85,0.85,0.82,1.09,1.28,1.22]},"t_min":{"hist":[0.88,0.9,0.88,0.75,0.49,0.55,0.6,0.63,0.65,1.08,1.03,0.81],"ssp245":[0.9,1.02,0.89,1.0,0.6,0.7,0.61,0.6,0.57,0.91,1.18,0.85],"ssp585":[1.2,1.13,1.09,1.03,0.9,1.03,0.83,0.8,0.77,1.5,1.48,1.41]},"precip":{"hist":[2.15,1.66,3.16,2.9,2.29,2.48,3.07,3.42,3.65,3.41,3.26,2.27],"ssp245":[2.74,2.71,3.06,4.1,3.91,4.71,4.69,5.16,5.48,6.58,4.29,3.72],"ssp585":[3.46,2.57,4.29,3.71,3.58,5.49,5.71,5.32,5.44,6.75,5.22,4.05]},"snow":{"hist":[2.7,2.23,3.2,3.59,2.15,1.55,0.43,1.01,3.31,3.0,3.57,2.4],"ssp245":[2.22,2.83,3.07,2.88,2.9,1.48,0.24,0.34,2.18,3.76,4.41,3.44],"ssp585":[3.19,2.62,3.75,2.57,3.28,1.39,0.21,0.36,2.45,4.61,4.13,4.19]},"wind":{"hist":[0.14,0.1,0.13,0.12,0.07,0.05,0.07,0.05,0.07,0.1,0.09,0.1],"ssp245":[0.12,0.16,0.14,0.14,0.08,0.09,0.07,0.08,0.08,0.12,0.13,0.13],"ssp585":[0.14,0.13,0.12,0.13,0.09,0.07,0.06,0.07,0.09,0.11,0.09,0.13]},"wind_max":{"hist":[0.36,0.45,0.46,0.3,0.26,0.19,0.21,0.21,0.27,0.32,0.34,0.4],"ssp245":[0.73,0.58,0.54,0.45,0.44,0.33,0.2,0.27,0.39,0.53,0.48,0.44],"ssp585":[0.38,0.58,0.56,0.55,0.35,0.27,0.26,0.26,0.34,0.5,0.51,0.65]}},"valid":{"t_mean":{"model":[-28.88,0.78,-27.01,0.67,-20.91,0.66,-12.97,0.66,-4.04,0.32,5.68,0.49],"station":[-27.16,4.95,-26.54,5.22,-19.95,4.45,-13.12,4.63,-3.31,2.09,7.62,2.9]},"precip":{"model":[30.25,2.32,27.44,1.74,37.72,3.37,43.78,3.1,47.31,2.5,57.04,2.64],"station":[29.6,18.65,26.93,15.76,28.58,14.32,30.02,15.75,38.58,17.05,44.46,22.32]},"wind":{"model":[4.55,0.14,4.49,0.09,4.46,0.13,4.31,0.12,3.94,0.07,3.75,0.06],"station":[5.43,1.32,5.08,1.34,5.31,1.0,5.3,0.96,4.79,0.73,4.4,0.7]}}};
+
 /* --- модуль «Климат 2050» (автономная надстройка) --- */
 const CL2050_SHIFTS=[
  'Средняя максимальная температура мая становится положительной: +0,2 °C (SSP2-4.5) / +1,0 °C (SSP5-8.5); средняя минимальная температура сентября переходит через ноль: +1,9 °C / +2,8 °C — период с положительными температурами существенно удлиняется.',
@@ -9108,7 +9114,7 @@ function climMatrix(){
   <div class="note" style="margin-top:4px">Интенсивность заливки — относительная величина изменения внутри строки (светлый — малые Δ, тёмно-синий — максимальные Δ). Клик по строке — переменная в виды «Таблица» и «График». Δ = сценарий ${CL_S.scen==='d245'?'SSP2-4.5':'SSP5-8.5'} − история (1985–2014); единицы — по столбцу «Ед.».</div>`;
 }
 function climTable(){
-  const k=CL_S.vid, v=CLIM2050[k], R=v.rows;
+  const k=CL_S.vid, v=CLIM2050[k], R=v.rows, SG=CLIM2050_SIG.sigma[k];
   const f2=x=>x===null?'—':String(x).replace('.',',');
   const fsg=x=>x===null?'—':(x>=0?'+':'')+String(x).replace('.',',');
   return `<table class="cl-tbl"><thead><tr><th style="text-align:left">${CL_VAR_ICON[k]||''} ${esc(v.name)}, ${esc(v.unit)}</th>${MT_MON.map(m=>`<th>${m}</th>`).join('')}</tr></thead>
@@ -9118,7 +9124,11 @@ function climTable(){
     <tr class="ssp5"><td class="rl">SSP5-8.5 · 2036–2065</td>${R.ssp585.map(x=>`<td>${f2(x)}</td>`).join('')}</tr>
     <tr class="d2"><td class="rl">Δ SSP2-4.5 − история</td>${R.d245.map(x=>`<td>${fsg(x)}</td>`).join('')}</tr>
     <tr class="d5"><td class="rl">Δ SSP5-8.5 − история</td>${R.d585.map(x=>`<td>${fsg(x)}</td>`).join('')}</tr>
+    <tr class="sg"><td class="rl">σ межгодовое · история</td>${SG.hist.map(x=>`<td>${f2(x)}</td>`).join('')}</tr>
+    <tr class="sg"><td class="rl">σ межгодовое · SSP2-4.5</td>${SG.ssp245.map(x=>`<td>${f2(x)}</td>`).join('')}</tr>
+    <tr class="sg"><td class="rl">σ межгодовое · SSP5-8.5</td>${SG.ssp585.map(x=>`<td>${f2(x)}</td>`).join('')}</tr>
   </tbody></table>
+  <div class="note" style="margin-top:3px">σ — стандартное межгодовое отклонение по среднемодельному значению (приложение В отчёта, табл. В1–В7).</div>
   <div style="margin-top:6px"><button class="wbtn" id="clCsv">⬇ Скачать таблицу CSV (все переменные)</button></div>`;
 }
 function climChart(){
@@ -9143,10 +9153,20 @@ function climChart(){
     return `<circle cx="${x(im)}" cy="${y(a[im])}" r="3.4" fill="${scn==='ssp585'?'#c8372d':'#0077c8'}"/>
       <text x="${Math.min(x(im)+6,W-150)}" y="${y(a[im])-6}" font-size="10" fill="#33475c">макс. Δ ${(a[im]-h[im]>=0?'+':'')+(a[im]-h[im]).toFixed(1).replace('.',',')} ${esc(v.unit)} (${MT_MON[im]})</text>`;
   })():'';
+  // σ-полоса межгодового разброса вокруг каждого ряда (приложение В, табл. В1–В7)
+  const SG=CLIM2050_SIG.sigma[k];
+  const bands=ser.map(([id,,c])=>{
+    const sg=SG[id]||[];
+    const top=R[id].map((vv,i)=>x(i).toFixed(1)+','+y(vv+(sg[i]||0)).toFixed(1)).join(' L');
+    const bot=R[id].map((vv,i)=>x(11-i).toFixed(1)+','+y(vv-(sg[11-i]||0)).toFixed(1)).join(' L');
+    const rgba=c==='#63666a'?'rgba(99,102,106,.10)':c==='#0077c8'?'rgba(0,119,200,.10)':'rgba(200,55,45,.09)';
+    return `<path d="M${top} L${bot} Z" fill="${rgba}" stroke="none"/>`;
+  }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; background:#fff; border:1px solid var(--line); border-radius:8px">
     ${ticks.map(t2=>`<line x1="${L}" x2="${W-RT}" y1="${y(t2)}" y2="${y(t2)}" stroke="#e3e9ef"/><text x="${L-6}" y="${y(t2)+3}" font-size="9" text-anchor="end" fill="#7a8896">${t2}</text>`).join('')}
     ${mn<0&&mx>0?`<line x1="${L}" x2="${W-RT}" y1="${y(0)}" y2="${y(0)}" stroke="#9fb2c2" stroke-width="1.2"/>`:''}
     ${MT_MON.map((m,i)=>`<text x="${x(i)}" y="${H-8}" font-size="9" text-anchor="middle" fill="#7a8896">${m}</text>`).join('')}
+    ${bands}
     ${area}
     ${ser.map(([id,,c])=>`<path d="${path(R[id])}" fill="none" stroke="${c}" stroke-width="2.4"/>`).join('')}
     ${ser.map(([id],si)=>R[id].map((vv,i)=>`<circle cx="${x(i)}" cy="${y(vv)}" r="2.2" fill="${[['hist','#63666a'],['ssp245','#0077c8'],['ssp585','#c8372d']].find(z=>z[0]===id)[2]}"/>`).join('')).join('')}
@@ -9155,22 +9175,39 @@ function climChart(){
   </svg>
   <div style="display:flex; gap:14px; margin-top:5px; font-size:12px">
     ${[['hist','история'],['ssp245','SSP2-4.5'],['ssp585','SSP5-8.5']].map(([id,nm])=>`<label style="cursor:pointer"><input type="checkbox" data-clser="${id}"${S[id]?' checked':''}> ${nm}</label>`).join('')}
-    <span class="note">заливка — область изменения относительно истории; точка — максимальное Δ по году</span>
+    <span class="note">заливка — область изменения относительно истории; полупрозрачная полоса вокруг рядов — σ межгодового разброса (приложение В); точка — максимальное Δ по году</span>
   </div>`;
+}
+function climValidCard(){
+  const NAMES={t_mean:'Температура воздуха, °C',precip:'Осадки, мм/мес',wind:'Скорость ветра, м/с'};
+  const rows=Object.keys(CLIM2050_SIG.valid).map(k=>{
+    const v=CLIM2050_SIG.valid[k];
+    const bias=v.model.reduce((s,x,i)=>s+(x-v.station[i]),0)/12;
+    return `<tr><td class="rl">${NAMES[k]}</td>
+      <td>${v.model.map(x=>String(x).replace('.',',')).join(' / ')}</td>
+      <td>${v.station.map(x=>String(x).replace('.',',')).join(' / ')}</td>
+      <td>${bias>=0?'+':''}${bias.toFixed(2).replace('.',',')}</td></tr>`;
+  }).join('');
+  return `<div class="cl-shift" style="border-left-color:var(--nn-blue)"><b>Валидация модели по метеостанции Норильск, 1985–2014 (приложение В, табл. В11–В13):</b>
+  <table class="cl-tbl" style="margin-top:5px"><thead><tr><th style="text-align:left">Параметр</th><th>Модель (исторический эксперимент), годовой ход</th><th>М/ст Норильск, годовой ход</th><th style="width:70px">Смещение</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div class="note" style="margin-top:3px">Годовой ход приведён янв → дек. Смещение — средняя разность «модель − станция» за год. Вывод отчёта: модель воспроизводит годовой ход удовлетворительно; различия «сценарий − история» статистически надёжнее абсолютных значений.</div></div>`;
 }
 function climRender(){
   document.querySelectorAll('#clViewTabs button').forEach(b=>b.classList.toggle('on',b.dataset.clview===CL_S.view));
   document.querySelectorAll('#clScenTabs button').forEach(b=>b.classList.toggle('on',b.dataset.clscen===CL_S.scen));
   const w=document.getElementById('clTabWrap');
-  w.innerHTML=(CL_S.view==='matrix'?climMatrix():CL_S.view==='table'?climTable():climChart());
+  w.innerHTML=(CL_S.view==='matrix'?climMatrix():CL_S.view==='table'?climTable():climChart()) + (CL_S.view==='table'?climValidCard():'');
   w.querySelectorAll('[data-clvid]').forEach(tr=>tr.onclick=()=>{ CL_S.vid=tr.dataset.clvid; CL_S.view='table'; climRender(); });
   w.querySelectorAll('[data-clser]').forEach(cb=>cb.onchange=()=>{ CL_S.series[cb.dataset.clser]=cb.checked; climRender(); });
   const csv=document.getElementById('clCsv');
   if(csv) csv.onclick=()=>{
     const head=['Переменная;Ряд;'+MT_MON.join(';')];
-    const rows=Object.keys(CLIM2050).flatMap(k=>{ const v=CLIM2050[k];
+    const rows=Object.keys(CLIM2050).flatMap(k=>{ const v=CLIM2050[k], SG=CLIM2050_SIG.sigma[k];
       return [['hist','История 1985–2014'],['ssp245','SSP2-4.5'],['ssp585','SSP5-8.5'],['d245','Δ SSP2-4.5 − история'],['d585','Δ SSP5-8.5 − история']]
-        .map(([r,nm])=>v.name+' ('+v.unit+');'+nm+';'+v.rows[r].join(';')); });
+        .map(([r,nm])=>v.name+' ('+v.unit+');'+nm+';'+v.rows[r].join(';'))
+        .concat([['hist','σ межгодовое · история'],['ssp245','σ межгодовое · SSP2-4.5'],['ssp585','σ межгодовое · SSP5-8.5']]
+          .map(([r,nm])=>v.name+' ('+v.unit+');'+nm+';'+SG[r].join(';'))); });
     gsDownload('gtm_climate2050_NPR.csv','\ufeff'+head.concat(rows).join('\r\n'),'text/csv;charset=utf-8');
   };
 }
