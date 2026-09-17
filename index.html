@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   .crumbs .cobj{color:var(--ink); font-weight:600}
   .crumbs .ctab{background:#eef3f8; border:1px solid var(--line); border-radius:9px; padding:0 8px; font-size:11px}
   .crumbs .crnav{margin-left:auto; display:inline-flex; gap:4px}
-  .crumbs .crnav button{width:24px; height:22px; border:1px solid var(--line); background:var(--bg); border-radius:5px; cursor:pointer; font-size:12px; line-height:1; color:var(--zf)}
+  .crumbs .crnav button{width:24px; height:22px; border:1px solid var(--line); background:#fff; border-radius:5px; cursor:pointer; font-size:12px; line-height:1; color:var(--zf)}
   .crumbs .crnav button:hover:not(:disabled){border-color:var(--zf)}
   .crumbs .crnav button:disabled{opacity:.35; cursor:default}
   .tabs button .tn{font-style:normal; background:var(--zf); color:#fff; border-radius:8px; padding:0 5px; font-size:9.5px; margin-left:4px; font-weight:700}
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   .tabs button.empty{opacity:.5}
   .tabs button.empty.on{opacity:1}
   .gsGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:8px}
-  .gsTile{display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; background:var(--bg); border:1px solid var(--line); border-radius:9px; padding:10px 12px; cursor:pointer; font-family:inherit}
+  .gsTile{display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; background:#fff; border:1px solid var(--line); border-radius:9px; padding:10px 12px; cursor:pointer; font-family:inherit}
   .gsTile:hover{border-color:var(--zf); box-shadow:0 2px 8px rgba(0,76,151,.16)}
   .gsTile .gt-i{font-size:19px}
   .gsTile .gt-n{font-weight:700; font-size:12.5px; color:var(--nn-deep)}
@@ -6335,7 +6335,7 @@ function gsViewPav(){
   }).join('');
   const kom=gsPav._kom||{};
   const komDt=kom.dt||new Date().toISOString().slice(0,10);
-  const inSt='border:1px solid var(--line); border-radius:4px; padding:3px 7px; font-size:12px; background:var(--bg); color:var(--txt)';
+  const inSt='border:1px solid var(--line); border-radius:4px; padding:3px 7px; font-size:12px; background:#fff; color:var(--ink)';
   return `<h2>🛡 Готовность к паводку <span class="mut" style="font-size:12px;font-weight:400">(предпаводковые осмотры ГТС · ВСН 01-89, ФЗ-117 ст. 9)</span></h2>
   <div class="gsCard"><h3>Готовность сезона: ${pct}%</h3><div class="gsBar"><i style="width:${pct}%"></i></div>
     <div class="mut">Чек-лист мероприятий: ${doneC} из ${PAV_CHK.length} · осмотры приоритетных ГТС: ${doneO} из ${hi.length}. Статусы сохраняются локально в этом браузере. Перед новым паводковым сезоном — сброс отметок: <button class="wbtn" data-pvreset style="font-size:12px">↺ Новый сезон (сброс)</button></div>
