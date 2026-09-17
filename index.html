@@ -530,6 +530,15 @@ document.addEventListener('DOMContentLoaded',()=>{
   .cl-tbl tr.ssp2 td{background:#eaf3fb} .cl-tbl tr.ssp5 td{background:#f7e9e9}
   .cl-tbl tr.d2 td{color:#1a5a9c} .cl-tbl tr.d5 td{color:#9c3a2a}
   .cl-shift{border:1px solid var(--line); border-left:3px solid var(--zf); border-radius:6px; background:#fff; padding:8px 12px; margin-bottom:8px; font-size:12px; line-height:1.55}
+  .cl-kpi .k i{display:block; font-style:normal; font-size:10px; color:var(--zf); margin-top:2px}
+  .clTabBtn{border:1px solid var(--nn-deep); background:#fff; color:var(--nn-deep); border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer}
+  .clTabBtn.sm{padding:3px 8px; font-size:11.5px}
+  .clTabBtn.on{background:var(--nn-deep); color:#fff}
+  .clTabBtn:hover:not(.on){background:#eaf3fb}
+  .cl-mx td{font-size:10.5px; padding:2px 3px}
+  .cl-mx tr[data-clvid]{cursor:pointer}
+  .cl-mx tr[data-clvid]:hover td.rl{background:#eaf3fb}
+  .cl-mx tr.on td.rl{background:#dbe7f2}
   #skModal{display:none; position:fixed; inset:0; z-index:1150; background:rgba(15,28,38,.6)}
   #skModal .box{background:var(--panel); width:1100px; max-width:97vw; max-height:92vh; margin:3vh auto; border-radius:10px; padding:16px 22px; box-shadow:0 10px 40px rgba(0,0,0,.4); overflow-y:auto; position:relative}
   #skModal .close{position:absolute; top:10px; right:12px; border:none; background:none; font-size:20px; cursor:pointer; color:var(--mut)}
@@ -9078,34 +9087,30 @@ const CL2050_GTS=[
  'Рост годовой суммы осадков (+18 % / +21 %), особенно жидких в переходные периоды → увеличение поверхностного и подземного стока, рост уровня воды в водоёмах-охладителях, возможное нарушение режима водоотведения с территории хвостохранилищ, снижение пропускной способности дренажных систем.',
  'Сдвиг снежного максимума на ноябрь и рост доли жидких осадков → менее устойчивый снежный покров и изменение режима весеннего снеготаяния — влияние на гидрологический баланс водосборных площадей и режим наполнения водохранилищ.',
  'Ослабление ветрового режима (−0,2 м/с средняя; −1,0/−1,1 м/с максимальная) в целом благоприятно для эксплуатации, однако перенос максимума на апрель требует корректировки расчётных нагрузок в период ледохода.'];
-function climChartSVG(vid){
-  const v=CLIM2050[vid], R=v.rows;
-  const all=[...R.hist,...R.ssp245,...R.ssp585];
-  let mn=Math.min(...all), mx=Math.max(...all);
-  if(mn===mx){ mn-=1; mx+=1; }
-  const W=920,H=250,L=46,B=26,T=14,RT=8;
-  const x=i=>L+i*(W-L-RT)/11, y=val=>T+(mx-val)*(H-T-B)/(mx-mn);
-  const path=a=>'M'+a.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' L');
-  const ticks=[]; for(let t2=Math.ceil(mn);t2<=Math.floor(mx);t2++){ if((mx-mn)<=12||t2%5===0) ticks.push(t2); }
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; background:#fff; border:1px solid var(--line); border-radius:8px">
-    ${ticks.map(t2=>`<line x1="${L}" x2="${W-RT}" y1="${y(t2)}" y2="${y(t2)}" stroke="#e3e9ef"/><text x="${L-6}" y="${y(t2)+3}" font-size="9" text-anchor="end" fill="#7a8896">${t2}</text>`).join('')}
-    ${mn<0&&mx>0?`<line x1="${L}" x2="${W-RT}" y1="${y(0)}" y2="${y(0)}" stroke="#9fb2c2" stroke-width="1.2"/>`:''}
-    ${MT_MON.map((m,i)=>`<text x="${x(i)}" y="${H-8}" font-size="9" text-anchor="middle" fill="#7a8896">${m}</text>`).join('')}
-    <path d="${path(R.hist)}" fill="none" stroke="#63666a" stroke-width="2.4"/>
-    <path d="${path(R.ssp245)}" fill="none" stroke="#0077c8" stroke-width="2.4"/>
-    <path d="${path(R.ssp585)}" fill="none" stroke="#c8372d" stroke-width="2.4"/>
-    <circle cx="${W-330}" cy="16" r="4" fill="#63666a"/><text x="${W-322}" y="19" font-size="10" fill="#33475c">история 1985–2014</text>
-    <circle cx="${W-212}" cy="16" r="4" fill="#0077c8"/><text x="${W-204}" y="19" font-size="10" fill="#33475c">SSP2-4.5 (2050)</text>
-    <circle cx="${W-94}" cy="16" r="4" fill="#c8372d"/><text x="${W-86}" y="19" font-size="10" fill="#33475c">SSP5-8.5 (2050)</text>
-  </svg>`;
+const CL_S={view:'matrix', scen:'d245', vid:'t_mean', series:{hist:true,ssp245:true,ssp585:true}};
+const CL_VAR_ICON={t_mean:'🌡',t_max:'🔺',t_min:'🔻',precip:'🌧',snow:'❄',wind:'💨',wind_max:'🌬'};
+function climMatrix(){
+  const D=CL_S.scen;
+  const rows=Object.keys(CLIM2050).map(k=>{
+    const v=CLIM2050[k], a=v.rows[D];
+    const mx=Math.max(...a.map(x=>Math.abs(x)),0.001);
+    return {k,v,a,mx};
+  });
+  return `<table class="cl-tbl cl-mx"><thead><tr>
+    <th style="text-align:left">Переменная</th><th style="width:7%">Ед.</th>${MT_MON.map(m=>`<th>${m}</th>`).join('')}</tr></thead><tbody>
+    ${rows.map(({k,v,a,mx})=>`<tr data-clvid="${k}" class="${k===CL_S.vid?'on':''}">
+      <td class="rl">${CL_VAR_ICON[k]||''} ${esc(v.name)}</td><td style="text-align:center">${esc(v.unit)}</td>
+      ${a.map(x=>{const w=Math.abs(x)/mx; const bg=w<0.15?'#f4f8fb':w<0.35?'#d7e7f5':w<0.6?'#a9cbe8':w<0.85?'#6ea3d6':'#2f6fb2';
+        const fg=w>=0.6?'#fff':'#1a232e';
+        return `<td style="background:${bg};color:${fg}" title="${esc(v.name)}, ${esc(v.unit)}: Δ ${(x>=0?'+':'')+String(x).replace('.',',')}">${(x>=0?'+':'')+String(x).replace('.',',')}</td>`;}).join('')}</tr>`).join('')}
+  </tbody></table>
+  <div class="note" style="margin-top:4px">Интенсивность заливки — относительная величина изменения внутри строки (светлый — малые Δ, тёмно-синий — максимальные Δ). Клик по строке — переменная в виды «Таблица» и «График». Δ = сценарий ${CL_S.scen==='d245'?'SSP2-4.5':'SSP5-8.5'} − история (1985–2014); единицы — по столбцу «Ед.».</div>`;
 }
-function climRender(vid){
-  const v=CLIM2050[vid], R=v.rows;
+function climTable(){
+  const k=CL_S.vid, v=CLIM2050[k], R=v.rows;
   const f2=x=>x===null?'—':String(x).replace('.',',');
   const fsg=x=>x===null?'—':(x>=0?'+':'')+String(x).replace('.',',');
-  document.getElementById('clVar').value=vid;
-  document.getElementById('clTabWrap').innerHTML=`
-  <table class="cl-tbl"><thead><tr><th style="text-align:left">${esc(v.name)}, ${esc(v.unit)}</th>${MT_MON.map(m=>`<th>${m}</th>`).join('')}</tr></thead>
+  return `<table class="cl-tbl"><thead><tr><th style="text-align:left">${CL_VAR_ICON[k]||''} ${esc(v.name)}, ${esc(v.unit)}</th>${MT_MON.map(m=>`<th>${m}</th>`).join('')}</tr></thead>
   <tbody>
     <tr><td class="rl">История 1985–2014</td>${R.hist.map(x=>`<td>${f2(x)}</td>`).join('')}</tr>
     <tr class="ssp2"><td class="rl">SSP2-4.5 · 2036–2065</td>${R.ssp245.map(x=>`<td>${f2(x)}</td>`).join('')}</tr>
@@ -9113,32 +9118,92 @@ function climRender(vid){
     <tr class="d2"><td class="rl">Δ SSP2-4.5 − история</td>${R.d245.map(x=>`<td>${fsg(x)}</td>`).join('')}</tr>
     <tr class="d5"><td class="rl">Δ SSP5-8.5 − история</td>${R.d585.map(x=>`<td>${fsg(x)}</td>`).join('')}</tr>
   </tbody></table>
-  <div style="margin:8px 0 2px">${climChartSVG(vid)}</div>`;
+  <div style="margin-top:6px"><button class="wbtn" id="clCsv">⬇ Скачать таблицу CSV (все переменные)</button></div>`;
+}
+function climChart(){
+  const k=CL_S.vid, v=CLIM2050[k], R=v.rows, S=CL_S.series;
+  const ser=[['hist','история 1985–2014','#63666a'],['ssp245','SSP2-4.5 (2050)','#0077c8'],['ssp585','SSP5-8.5 (2050)','#c8372d']].filter(([id])=>S[id]);
+  const pool=ser.flatMap(([id])=>R[id]);
+  let mn=Math.min(...pool), mx=Math.max(...pool); if(mn===mx){ mn-=1; mx+=1; }
+  const W=940,H=270,L=48,B=28,T=30,RT=10;
+  const x=i=>L+i*(W-L-RT)/11, y=val=>T+(mx-val)*(H-T-B)/(mx-mn);
+  const path=a=>'M'+a.map((vv,i)=>x(i).toFixed(1)+','+y(vv).toFixed(1)).join(' L');
+  const ticks=[]; for(let t2=Math.ceil(mn);t2<=Math.floor(mx);t2++){ if((mx-mn)<=12||t2%5===0) ticks.push(t2); }
+  // область между историей и сценарием (если обе выбраны)
+  let area='';
+  const scn=S.ssp585?'ssp585':(S.ssp245?'ssp245':null);
+  if(S.hist&&scn){
+    const up=path(R[scn])+' L'+R.hist.map((vv,i)=>x(11-i).toFixed(1)+','+y(vv).toFixed(1)).join(' L')+' Z';
+    area=`<path d="${up}" fill="${scn==='ssp585'?'rgba(200,55,45,.10)':'rgba(0,119,200,.10)'}" stroke="none"/>`;
+  }
+  const anns=Object.keys(CLIM2050).length? (()=>{
+    const a=R[scn||'ssp245'], h=R.hist;
+    let im=0; a.forEach((vv,i)=>{ if(Math.abs(vv-h[i])>Math.abs(a[im]-h[im])) im=i; });
+    return `<circle cx="${x(im)}" cy="${y(a[im])}" r="3.4" fill="${scn==='ssp585'?'#c8372d':'#0077c8'}"/>
+      <text x="${Math.min(x(im)+6,W-150)}" y="${y(a[im])-6}" font-size="10" fill="#33475c">макс. Δ ${(a[im]-h[im]>=0?'+':'')+(a[im]-h[im]).toFixed(1).replace('.',',')} ${esc(v.unit)} (${MT_MON[im]})</text>`;
+  })():'';
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; background:#fff; border:1px solid var(--line); border-radius:8px">
+    ${ticks.map(t2=>`<line x1="${L}" x2="${W-RT}" y1="${y(t2)}" y2="${y(t2)}" stroke="#e3e9ef"/><text x="${L-6}" y="${y(t2)+3}" font-size="9" text-anchor="end" fill="#7a8896">${t2}</text>`).join('')}
+    ${mn<0&&mx>0?`<line x1="${L}" x2="${W-RT}" y1="${y(0)}" y2="${y(0)}" stroke="#9fb2c2" stroke-width="1.2"/>`:''}
+    ${MT_MON.map((m,i)=>`<text x="${x(i)}" y="${H-8}" font-size="9" text-anchor="middle" fill="#7a8896">${m}</text>`).join('')}
+    ${area}
+    ${ser.map(([id,,c])=>`<path d="${path(R[id])}" fill="none" stroke="${c}" stroke-width="2.4"/>`).join('')}
+    ${ser.map(([id],si)=>R[id].map((vv,i)=>`<circle cx="${x(i)}" cy="${y(vv)}" r="2.2" fill="${[['hist','#63666a'],['ssp245','#0077c8'],['ssp585','#c8372d']].find(z=>z[0]===id)[2]}"/>`).join('')).join('')}
+    ${anns}
+    ${[['hist','история 1985–2014','#63666a'],['ssp245','SSP2-4.5 (2050)','#0077c8'],['ssp585','SSP5-8.5 (2050)','#c8372d']].map(([id,nm,c],i)=>S[id]?`<circle cx="${L+12+i*150}" cy="12" r="4" fill="${c}"/><text x="${L+20+i*150}" y="15" font-size="10" fill="#33475c">${nm}</text>`:'').join('')}
+  </svg>
+  <div style="display:flex; gap:14px; margin-top:5px; font-size:12px">
+    ${[['hist','история'],['ssp245','SSP2-4.5'],['ssp585','SSP5-8.5']].map(([id,nm])=>`<label style="cursor:pointer"><input type="checkbox" data-clser="${id}"${S[id]?' checked':''}> ${nm}</label>`).join('')}
+    <span class="note">заливка — область изменения относительно истории; точка — максимальное Δ по году</span>
+  </div>`;
+}
+function climRender(){
+  document.querySelectorAll('#clViewTabs button').forEach(b=>b.classList.toggle('on',b.dataset.clview===CL_S.view));
+  document.querySelectorAll('#clScenTabs button').forEach(b=>b.classList.toggle('on',b.dataset.clscen===CL_S.scen));
+  const w=document.getElementById('clTabWrap');
+  w.innerHTML=(CL_S.view==='matrix'?climMatrix():CL_S.view==='table'?climTable():climChart());
+  w.querySelectorAll('[data-clvid]').forEach(tr=>tr.onclick=()=>{ CL_S.vid=tr.dataset.clvid; CL_S.view='table'; climRender(); });
+  w.querySelectorAll('[data-clser]').forEach(cb=>cb.onchange=()=>{ CL_S.series[cb.dataset.clser]=cb.checked; climRender(); });
+  const csv=document.getElementById('clCsv');
+  if(csv) csv.onclick=()=>{
+    const head=['Переменная;Ряд;'+MT_MON.join(';')];
+    const rows=Object.keys(CLIM2050).flatMap(k=>{ const v=CLIM2050[k];
+      return [['hist','История 1985–2014'],['ssp245','SSP2-4.5'],['ssp585','SSP5-8.5'],['d245','Δ SSP2-4.5 − история'],['d585','Δ SSP5-8.5 − история']]
+        .map(([r,nm])=>v.name+' ('+v.unit+');'+nm+';'+v.rows[r].join(';')); });
+    gsDownload('gtm_climate2050_NPR.csv','\ufeff'+head.concat(rows).join('\r\n'),'text/csv;charset=utf-8');
+  };
 }
 function climOpen(){
   document.getElementById('climModal').style.display='block';
-  const opts=Object.keys(CLIM2050).map(k=>`<option value="${k}">${esc(CLIM2050[k].name)}, ${esc(CLIM2050[k].unit)}</option>`).join('');
   document.getElementById('climBody').innerHTML=`
   <h2>🌍 Климатическая модель Норильского промышленного района до 2050 года</h2>
   <div class="normref">Источник: отчёт этапа 3 НИР (последняя версия Изм3 от 05.08.2026), разд. 2.1–2.2: модель NorESM2-MM (CMIP6), исторический климатический срез 1985–2014, прогнозный срез 2036–2065 («к 2050 году»), сценарии SSP2-4.5 (умеренный) и SSP5-8.5 (суровый). Различия «сценарий − история» статистически надёжнее абсолютных значений (физические ограничения климатического моделирования); показатели межмодельной и межгодовой статистической значимости — приложение В отчёта. Модуль автономный: работает без обращений к внешним данным.</div>
   <div class="cl-kpi">
-    <div class="k"><span>Среднегодовая t воздуха к 2050</span><b>+3,0 / +4,1 °C</b></div>
-    <div class="k"><span>Макс. суточная t</span><b>+3,4 / +4,4 °C</b></div>
-    <div class="k"><span>Мин. суточная t</span><b>+3,2 / +4,4 °C</b></div>
-    <div class="k"><span>Годовая сумма осадков</span><b>+18 % / +21 %</b></div>
-    <div class="k"><span>Осадки в виде снега</span><b>+4 % / +5 %</b></div>
-    <div class="k"><span>Скорость ветра / макс.</span><b>−0,2 / −1,0…−1,1 м/с</b></div>
+    <div class="k"><span>Среднегодовая t воздуха к 2050</span><b>+3,0 / +4,1 °C</b><i>SSP2-4.5 / SSP5-8.5</i></div>
+    <div class="k"><span>Макс. суточная t</span><b>+3,4 / +4,4 °C</b><i>май: переход через 0 °C</i></div>
+    <div class="k"><span>Мин. суточная t</span><b>+3,2 / +4,4 °C</b><i>сентябрь: переход через 0 °C</i></div>
+    <div class="k"><span>Годовая сумма осадков</span><b>+18 % / +21 %</b><i>максимум → октябрь</i></div>
+    <div class="k"><span>Осадки в виде снега</span><b>+4 % / +5 %</b><i>пик → ноябрь</i></div>
+    <div class="k"><span>Скорость ветра / макс.</span><b>−0,2 / −1,0…−1,1 м/с</b><i>максимум → апрель</i></div>
   </div>
-  <div style="display:flex; gap:10px; align-items:center; margin:6px 0">
-    <label style="font-size:12.5px">Переменная: <select id="clVar" style="padding:4px 6px; border:1px solid var(--line); border-radius:5px; max-width:460px">${opts}</select></label>
-    <span class="note">значения по месяцам: история / SSP2-4.5 / SSP5-8.5 и различия (таблицы 2.1.x.1 отчёта)</span>
+  <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0 4px">
+    <span id="clViewTabs" style="display:inline-flex; gap:4px">
+      <button data-clview="matrix" class="clTabBtn">▦ Матрица изменений</button>
+      <button data-clview="table" class="clTabBtn">▤ Таблица</button>
+      <button data-clview="chart" class="clTabBtn">📈 График</button></span>
+    <span class="note">·</span>
+    <span id="clScenTabs" style="display:inline-flex; gap:4px">сценарий:
+      <button data-clscen="d245" class="clTabBtn sm">SSP2-4.5</button>
+      <button data-clscen="d585" class="clTabBtn sm">SSP5-8.5</button></span>
+    <span class="note" id="clVarNote"></span>
   </div>
   <div id="clTabWrap"></div>
   <div class="cl-shift"><b>Качественные сдвиги режима (заключение 2.2 отчёта):</b><ul style="margin:4px 0 2px 18px; padding:0">${CL2050_SHIFTS.map(s=>`<li>${s}</li>`).join('')}</ul></div>
   <div class="cl-shift" style="border-left-color:var(--crit)"><b>Последствия для ГТС НПР (заключение 2.2 отчёта):</b><ul style="margin:4px 0 2px 18px; padding:0">${CL2050_GTS.map(s=>`<li>${s}</li>`).join('')}</ul>
   <div class="note" style="margin-top:4px">Связанные разделы приложения: вкладка карточки «Климат до 2050» (пообъектные риски и прогнозы), Центр контроля → «Прогноз состояния ММГ» (индексы Стефана по метеоряду), «АМС и метеовалидация» (калибровка метеотриггеров).</div></div>`;
-  document.getElementById('clVar').onchange=e=>climRender(e.target.value);
-  climRender('t_mean');
+  document.querySelectorAll('#clViewTabs button').forEach(b=>b.onclick=()=>{ CL_S.view=b.dataset.clview; climRender(); });
+  document.querySelectorAll('#clScenTabs button').forEach(b=>b.onclick=()=>{ CL_S.scen=b.dataset.clscen; climRender(); });
+  climRender();
 }
 document.getElementById('climBtn').onclick=climOpen;
 document.getElementById('climClose').onclick=()=>document.getElementById('climModal').style.display='none';
