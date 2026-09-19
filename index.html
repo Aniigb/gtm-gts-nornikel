@@ -171,6 +171,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   .photos figure{border:1px solid var(--line); border-radius:4px; overflow:hidden; background:#fff}
   .photos img{width:100%; height:90px; object-fit:cover; display:block; cursor:pointer}
   .photos figcaption{font-size:10.5px; padding:3px 6px; color:var(--mut); display:flex; justify-content:space-between; align-items:center}
+  .genplan{border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; margin:0 0 12px}
+  .genplan img{width:100%; display:block; cursor:zoom-in}
+  .genplan figcaption{font-size:11px; padding:6px 9px; color:var(--mut); border-top:1px solid var(--line); background:#f7f9fb}
   .ukgroup{position:sticky; top:0; background:#dde9f3; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.4px; color:#2c4a70; border-bottom:1px solid var(--line); z-index:5}
   .ukgroup .n{font-weight:400; color:var(--mut); margin-left:6px}
   /* --- ЦЕНТР КОНТРОЛЯ ГТМ: надстройка развития и раннего предупреждения --- */
@@ -2758,13 +2761,27 @@ function tabIgi(o, el){
 }
 
 /* ---------- сооружения в составе ГТС (ТЗ НИР, п. 4.1–4.10) ---------- */
+/* Генеральные планы объектов, извлечённые из проектной документации (вкладка «Сооружения») */
+const GENPLANS={
+  gts06:{src:'plans/gts06_genplan.png',
+         title:'Генеральный план гипсохранилища НМЗ (проект «Нейтрализация серной кислоты»)',
+         doc:'Раздел ПД № 2 «Планировочная организация участка» НМЗ-НСК-1961.18-ПЗУ, изм. 13 (фрагмент 2, лист 1)'}
+};
 function tabFac(o, el){
   const fs=facOf(o.id);
-  if(!fs.length){ el.innerHTML='<div class="note">Состав сооружений по объекту не задан.</div>'; return; }
+  const gp=GENPLANS[o.id]||null;
+  const gpHtml=gp?`
+  <div class="sect">Генеральный план объекта</div>
+  <figure class="genplan"><img src="${gp.src}" alt="${esc(gp.title)}" loading="lazy" title="Клик — открыть в полном размере (5052×2382)">
+  <figcaption><b>${esc(gp.title)}</b><br>Источник: ${esc(gp.doc)}</figcaption></figure>`:'';
+  if(!fs.length){
+    el.innerHTML=gpHtml||'<div class="note">Состав сооружений по объекту не задан.</div>';
+  } else {
   const groups=new Map();
   fs.forEach(f=>{ if(!groups.has(f.sys)) groups.set(f.sys,[]); groups.get(f.sys).push(f); });
   el.innerHTML=`
   <div class="normref">Состав сооружений в составе комплекса ГТС — по ТЗ НИР (раздел 4 «Характеристика объектов»), проектной и декларационной документации. Клик по строке открывает карточку сооружения.</div>
+  ${gpHtml}
   <div class="sect">Сооружения объекта · всего ${fs.length}</div>
   ${[...groups.entries()].map(([sys,items])=>`
     <table class="rows static" style="margin-bottom:10px"><thead><tr>
@@ -2772,6 +2789,9 @@ function tabFac(o, el){
     </tr></thead><tbody>
     ${items.map(f=>`<tr data-fid="${f.id}" style="cursor:pointer"><td><b>${esc(f.name)}</b></td><td>${FT_TXT[f.t]||f.t}</td><td>${esc(f.klass||'—')}</td><td>${esc(f.params||'—')}</td></tr>`).join('')}
     </tbody></table>`).join('')}`;
+  }
+  const gim=el.querySelector('.genplan img');
+  if(gim) gim.onclick=()=>{ const w=window.open(); w.document.write('<img src="'+gim.src+'" style="max-width:100%">'); };
   el.querySelectorAll('tr[data-fid]').forEach(tr=>tr.onclick=()=>{
     const f=(DB.facilities||[]).find(x=>x.id===tr.dataset.fid);
     if(f) selectFacility(f.id);
