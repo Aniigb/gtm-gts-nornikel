@@ -1123,7 +1123,7 @@ function cardOf(a){ return CARD[a]||(CARD[a]={}); }
 
 /* ---------- пользовательские замеры (загрузка по шаблону) ---------- */
 let USERDATA = JSON.parse(localStorage.getItem('gtm_userdata')||'[]');  // [{a,w,date,dep,pts:[[d,t]..],src,tOut,tSa}]
-function saveUSERDATA(){ localStorage.setItem('gtm_userdata', JSON.stringify(USERDATA)); }
+function saveUSERDATA(){ localStorage.setItem('gtm_userdata', JSON.stringify(USERDATA)); if(typeof ML!=='undefined') ML.invalidate(); }
 const AIR4={}; // 'адрес|скважина|дата' → {tOut,tSa,src,est} — температура наружного воздуха / воздуха подполья на дату замера
 function air4Set(a,w,dt,x){ AIR4[a+'|'+w+'|'+dt]={tOut:(x.tOut!=null?x.tOut:null), tSa:(x.tSa!=null?x.tSa:null), src:x.tOutSrc||null, est:!!x.tSaEst}; }
 
@@ -6295,8 +6295,304 @@ function gsViewRisk(){
       <td><div class="gsBar"><i style="width:${r.score}%"></i></div><b>${r.score}</b></td></tr>`).join('')}
     </table>
     <div class="mut" style="margin-top:4px">Балл = статус (КРИТИЧНО 55 / РИСК 30 / НОРМА 5 / без данных 15) + класс ГТС (I…IV = 5…2) + пробелы охвата КИА (нет термометрии/пьезометрии/геодезии — по +5) + множественные превышения К2 (+5 за каждое сверх первого). Охват: т — термометрия, п — пьезометрия, г — геодезия.</div>
-  </div>`;
+  </div>
+  ${ML.cardHtml()}`;
 }
+/* --- 2М. Интеллектуальный анализ, оценка и решения: адаптивные ML-контуры объектов --- */
+/* Архитектура: для каждого объекта ГТС — собственный контур (признаки, вероятностная модель К2,
+   аномалия, атрибуция климатических драйверов, адаптивные веса скоринга с онлайн-обучением,
+   экспертный слой решений). Полный пересчёт — автоматически при изменении базы (новые измерения)
+   и каждые 12 ч по метеоданным; участие пользователя не требуется. */
+const ML=(()=>{
+  const LS='gtm_ml_v1';
+  let cache=null;
+  try{ cache=JSON.parse(localStorage.getItem(LS)||'null'); }catch(e){ cache=null; }
+  if(!cache||typeof cache!=='object'||!cache.objects) cache={sig:'',ts:0,meteo:{},objects:{}};
+  const save=()=>{ try{ localStorage.setItem(LS,JSON.stringify(cache)); }catch(e){} };
+  let dirty=false, running=false;
+
+  /* метеоточки по кластерам предприятий (контур объекта привязан к своей точке) */
+  const MPTS={ТОФ:[69.50,88.33],НМЗ:[69.29,87.87],НОФ:[69.33,88.13],Дудинка:[69.42,86.30]};
+  const ptOf=o=>MPTS[o.d]?o.d:'ТОФ';
+
+  /* подпись состава базы: изменилась → пересчёт всех контуров */
+  function dataSig(){
+    let s='v1';
+    DB.objects.forEach(o=>{ s+='|'+o.id+(o.prof?kiaMaxDate(o.prof):'')+(o.ugv?kiaMaxDate(o.ugv):'')+(o.geod?kiaMaxDate(o.geod):'')+((typeof OSM!=='undefined'&&OSM[o.a])?OSM[o.a].length:0); });
+    return s;
+  }
+  function invalidate(){ dirty=true; }
+
+  /* суточный метеоряд 24 мес по каждой точке (кеш 12 ч, сеть не блокирует пересчёт) */
+  async function ensureMeteo(){
+    const now=Date.now(), jobs=[];
+    Object.entries(MPTS).forEach(([k,[la,lo]])=>{
+      const m=cache.meteo[k];
+      if(m&&(now-m.ts)<12*3600e3) return;
+      jobs.push((async()=>{
+        const d1=new Date(now-864e5), d0=new Date(now-731*864e5);
+        const f=d=>d.toISOString().slice(0,10);
+        const u=`https://archive-api.open-meteo.com/v1/archive?latitude=${la}&longitude=${lo}&start_date=${f(d0)}&end_date=${f(d1)}&daily=temperature_2m_mean,relative_humidity_2m_mean,rain_sum,snowfall_sum,wind_gusts_10m_max&wind_speed_unit=ms&timezone=auto`;
+        const r=await fetch(u).then(x=>x.json());
+        if(r&&r.daily&&r.daily.time) cache.meteo[k]={ts:now,d:r.daily};
+      })().catch(()=>{}));
+    });
+    if(jobs.length){ await Promise.all(jobs); save(); }
+  }
+
+  /* метео-признаки: текущие 365 дней против предыдущих 365 (аномалии климата) */
+  function meteoFeats(k){
+    const m=cache.meteo[k]; if(!m||!m.d) return null;
+    const D=m.d, n=D.time.length; if(n<400) return null;
+    function agg(a,b){
+      let tdd=0,fdd=0,rain=0,rainMax=0,snowD=0,bliz=0,hum=0,humN=0;
+      for(let i=Math.max(0,a);i<b;i++){
+        const t=D.temperature_2m_mean[i], rr=D.rain_sum[i], sf=D.snowfall_sum[i], gu=D.wind_gusts_10m_max[i], hu=D.relative_humidity_2m_mean[i];
+        if(t!=null){ if(t>0)tdd+=t; else fdd+=-t; }
+        if(rr!=null){ rain+=rr; if(rr>rainMax)rainMax=rr; }
+        if(sf!=null&&sf>=5) snowD++;
+        if(sf!=null&&sf>=1&&gu!=null&&gu>=15) bliz++;
+        if(hu!=null){ hum+=hu; humN++; }
+      }
+      return {tdd,fdd,rain,rainMax,snowD,bliz,hum:humN?hum/humN:null};
+    }
+    return {cur:agg(n-365,n), prev:agg(n-730,n-365)};
+  }
+
+  /* помесячные драйверы метео для атрибуции (24 мес) */
+  function meteoMonthly(k){
+    const m=cache.meteo[k]; if(!m||!m.d) return null;
+    const D=m.d, out={};
+    for(let i=0;i<D.time.length;i++){
+      const mk=D.time[i].slice(0,7); if(!out[mk]) out[mk]={tdd:0,fdd:0,rain:0,snowD:0};
+      const o=out[mk], t=D.temperature_2m_mean[i], rr=D.rain_sum[i], sf=D.snowfall_sum[i];
+      if(t!=null){ if(t>0)o.tdd+=t; else o.fdd+=-t; }
+      if(rr!=null) o.rain+=rr;
+      if(sf!=null&&sf>=5) o.snowD++;
+    }
+    return out;
+  }
+
+  /* признаки объекта из рядов мониторинга */
+  function objFeats(o){
+    const f={};
+    let tMax=null, wells=0; const tTr=[], accel=[], anom=[];
+    if(o.prof) Object.entries(o.prof).forEach(([w,wd])=>{
+      if(!wd.s||wd.s.length<2||wd.ngcH==null) return;
+      const s=wellDepthSeries(wd,wd.ngcH); if(s.ys.length<2) return;
+      wells++;
+      const k=linreg(s.xs,s.ys), t=s.ys[s.ys.length-1];
+      if(tMax===null||t>tMax) tMax=t;
+      if(k!==null){
+        // σ остатков вокруг тренда
+        const xy=s.xs.map(d=>(new Date(d)-new Date(s.xs[0]))/3.15576e10);
+        const my=s.ys.reduce((a,b)=>a+b,0)/s.ys.length, mx=xy.reduce((a,b)=>a+b,0)/xy.length;
+        const a0=my-k*mx; let sr=0;
+        for(let j=0;j<s.ys.length;j++){ const r=s.ys[j]-(a0+k*xy[j]); sr+=r*r; }
+        const sig=s.ys.length>2?Math.sqrt(sr/(s.ys.length-2)):0.05;
+        tTr.push({w,k,t,sig,yrs:xy[xy.length-1]||1});
+      }
+      if(s.ys.length>=5){
+        const n6=Math.floor(s.ys.length*0.6);
+        const k1=linreg(s.xs.slice(0,n6),s.ys.slice(0,n6)), k2=linreg(s.xs.slice(n6),s.ys.slice(n6));
+        if(k1!==null&&k2!==null) accel.push(k2-k1);
+      }
+      if(s.ys.length>=4){
+        const d=s.ys.slice(1).map((v,i)=>v-s.ys[i]);
+        const sd=d.slice().sort((a,b)=>a-b), md=sd[Math.floor(sd.length/2)];
+        const mad=sd.map(v=>Math.abs(v-md)).sort((a,b)=>a-b)[Math.floor(sd.length/2)]||0.01;
+        anom.push((d[d.length-1]-md)/(1.4826*mad));
+      }
+    });
+    f.tMax=tMax; f.tWells=wells; f.tTrW=tTr;
+    f.tTrend=tTr.length?tTr.reduce((a,b)=>a+b.k,0)/tTr.length:null;
+    f.tAccel=accel.length?accel.reduce((a,b)=>a+b,0)/accel.length:null;
+    f.tAnom=anom.length?anom.reduce((a,b)=>a+Math.abs(b),0)/anom.length:null;
+    // пьезометрия (УГВ): средний тренд по скважинам
+    const pz=[];
+    if(o.ugv) Object.values(o.ugv).forEach(s=>{
+      if(!s||s.length<3) return;
+      const xs=s.map(p=>p[0]), ys=s.map(p=>p[1]);
+      const k=linreg(xs,ys); if(k!==null) pz.push(k);
+    });
+    f.pzTrend=pz.length?pz.reduce((a,b)=>a+b,0)/pz.length:null;
+    // геодезия: скорость последнего цикла, осадка, неравномерность (общие метрики приложения)
+    const gm=(typeof geodMetrics==='function')?geodMetrics(o):null;
+    f.gdRate=gm?gm.maxSpeed:null; f.gdOsad=gm?gm.maxOsad:null; f.gdSpread=gm?gm.spread:null;
+    // осмотры
+    let osmAge=null;
+    try{ const arr=(typeof OSM!=='undefined'&&OSM[o.a])||[]; const md=kiaMaxDate(arr);
+      if(md) osmAge=(Date.now()-new Date(md))/864e5; }catch(e){}
+    f.osmAge=osmAge;
+    return f;
+  }
+
+  /* вероятность выхода на К2 по термометрии (нормальная модель тренда, max по скважинам) */
+  function probK2(o, K2){
+    const f=objFeatsCache[o.id]||objFeats(o);
+    if(!f.tTrW.length) return null;
+    const Phi=x=>0.5*(1+Math.tanh(0.7978845608028654*(x+0.044854715*x*x*x)));
+    const out={y1:0,y3:0,y5:0,well:null};
+    f.tTrW.forEach(wl=>{
+      [1,3,5].forEach(D=>{
+        const mean=wl.t+wl.k*D, sd=Math.max(0.03, wl.sig*Math.sqrt(1+D/Math.max(0.5,wl.yrs)));
+        const p=1-Phi((K2-mean)/sd);
+        const key='y'+D;
+        if(p>out[key]){ out[key]=p; out.well=wl.w; }
+      });
+    });
+    return out;
+  }
+
+  /* атрибуция климатических драйверов: корреляция помесячных дельт t грунта с метео (24 мес) */
+  function drivers(o){
+    const pt=ptOf(o), mm=meteoMonthly(pt);
+    const f=objFeatsCache[o.id]||objFeats(o);
+    if(!mm||!f.tTrW.length) return [];
+    // помесячная дельта t грунта — по самой длинной скважине
+    let best=null;
+    if(o.prof) Object.entries(o.prof).forEach(([w,wd])=>{
+      if(!wd.s||wd.ngcH==null) return;
+      const s=wellDepthSeries(wd,wd.ngcH);
+      if(s.ys.length>=6&&(!best||s.ys.length>best.s.ys.length)) best={w,s};
+    });
+    if(!best) return [];
+    const mon={};
+    best.s.xs.forEach((d,i)=>{ mon[d.slice(0,7)]=best.s.ys[i]; });
+    const keys=Object.keys(mm).filter(k=>mon[k]!==undefined&&mon[prevMk(k)]!==undefined).sort();
+    if(keys.length<8) return [];
+    const drv={tdd:'тепло суммы T>0',fdd:'холод суммы T<0',rain:'жидкие осадки',snowD:'снегопады/СТС'};
+    const xs={tdd:[],fdd:[],rain:[],snowD:[]}, ys=[];
+    keys.forEach(k=>{ ys.push(mon[k]-mon[prevMk(k)]); xs.tdd.push(mm[k].tdd); xs.fdd.push(mm[k].fdd); xs.rain.push(mm[k].rain); xs.snowD.push(mm[k].snowD); });
+    function corr(a,b){
+      const n=a.length, ma=a.reduce((x,y)=>x+y,0)/n, mb=b.reduce((x,y)=>x+y,0)/n;
+      let s1=0,s2=0,s3=0;
+      for(let i=0;i<n;i++){ const da=a[i]-ma, db=b[i]-mb; s1+=da*db; s2+=da*da; s3+=db*db; }
+      return (s2>0&&s3>0)?s1/Math.sqrt(s2*s3):0;
+    }
+    return Object.keys(drv).map(k=>({k,name:drv[k],rho:corr(ys,xs[k])}))
+      .filter(r=>Math.abs(r.rho)>=0.25).sort((a,b)=>Math.abs(b.rho)-Math.abs(a.rho)).slice(0,2);
+    function prevMk(k){ const y=+k.slice(0,4), m=+k.slice(5,7); return (m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0')); }
+  }
+
+  /* экспертный приор весов скоринга (вклады признаков в риск) */
+  const W0={sevT:1.6,tTrend:1.2,tAccel:0.8,tAnom:0.9,gdRate:1.3,gdSpread:0.9,pzTrend:0.7,osmAge:0.6,rainA:0.9,blizA:0.7,snowA:0.5,tddA:1.0,fddA:0.8,cov:0.8};
+  const LR=0.06; // скорость онлайн-обучения весов
+
+  /* главный расчёт контура объекта */
+  function computeObject(o){
+    const f=objFeats(o); objFeatsCache[o.id]=f;
+    const ov=(typeof DECL_OVR!=='undefined'&&DECL_OVR[o.id])||{};
+    const K2=(ov.tcrit!==undefined?ov.tcrit:(typeof TH!=='undefined'?TH.tcrit:-0.5));
+    const met=meteoFeats(ptOf(o));
+    const sd=(typeof statusDetail==='function')?statusDetail(o):{status:null,reasons:[]};
+    // нормированные признаки (z-подобные, устойчивые шкалы по экспертным диапазонам)
+    const x={
+      sevT: f.tMax===null?0:Math.max(0,Math.min(3,(f.tMax-(K2-1.5))/1.5)),      // приближение к К2
+      tTrend: f.tTrend===null?0:Math.max(0,Math.min(3,f.tTrend/0.03)),
+      tAccel: f.tAccel===null?0:Math.max(0,Math.min(2,f.tAccel/0.02)),
+      tAnom: f.tAnom===null?0:Math.min(3,f.tAnom/2),
+      gdRate: f.gdRate===null?0:Math.min(3,f.gdRate/15),
+      gdSpread: f.gdSpread===null?0:Math.min(3,f.gdSpread/80),
+      pzTrend: f.pzTrend===null?0:Math.max(-2,Math.min(2,f.pzTrend/0.5)),
+      osmAge: f.osmAge===null?0.8:Math.min(2,f.osmAge/400),
+      rainA: 0, blizA:0, snowA:0, tddA:0, fddA:0,
+      cov: (!o.prof?0.7:0)+(!o.ugv?0.5:0)+(!o.geod?0.5:0)
+    };
+    if(met){
+      const c=met.cur,p=met.prev;
+      x.rainA=Math.max(-2,Math.min(2,(c.rain-p.rain)/Math.max(60,p.rain*0.35)));
+      x.blizA=Math.max(-2,Math.min(2,(c.bliz-p.bliz)/6));
+      x.snowA=Math.max(-2,Math.min(2,(c.snowD-p.snowD)/10));
+      x.tddA=Math.max(-2,Math.min(2,(c.tdd-p.tdd)/Math.max(150,p.tdd*0.2)));
+      x.fddA=Math.max(-2,Math.min(2,(p.fdd-c.fdd)/Math.max(400,p.fdd*0.15))); // тёплая зима — риск ММГ
+    }
+    // адаптивные веса (онлайн-обучение на истории статусов объекта)
+    let st=cache.objects[o.id];
+    const w=Object.assign({},W0,(st&&st.w)||{});
+    const lvl={КРИТИЧНО:3,РИСК:2,НОРМА:1};
+    const curLvl=lvl[sd.status]||0, prevLvl=(st&&st.lvl)||0;
+    if(st&&curLvl!==prevLvl){
+      const dir=curLvl>prevLvl?1:-0.5; // ухудшение — усилить сработавшие признаки; улучшение — ослабить
+      Object.keys(w).forEach(k=>{
+        if(x[k]>0.4){ w[k]=Math.max(0.2*W0[k],Math.min(2.5*W0[k],w[k]*(1+dir*LR*Math.min(1,x[k])))); }
+      });
+    }
+    // регуляризация к экспертному приору (5%)
+    Object.keys(w).forEach(k=>{ w[k]=w[k]*0.95+W0[k]*0.05; });
+    // ML-балл: логистическая композиция взвешенных признаков
+    let z=0; const contrib={};
+    Object.keys(w).forEach(k=>{ const c=w[k]*x[k]; contrib[k]=c; z+=c; });
+    const score=Math.round(100/(1+Math.exp(-(z-3.2)/1.6)));
+    const cls=score>=75?'критический':score>=55?'высокий':score>=35?'умеренный':'низкий';
+    const prob=probK2(o,K2);
+    const anom=Math.round(100*(1-Math.exp(-(0.6*(x.tAnom||0)+0.7*(x.tAccel||0)+0.5*(x.gdSpread||0)+0.5*Math.max(0,x.pzTrend||0)))));
+    const drv=drivers(o);
+    // решения (экспертный слой)
+    const acts=[];
+    if(prob&&prob.y3>=0.5) acts.push({p:1,t:'Прогноз выхода на К2 в горизонте 3 лет ≥ 50% (скв. '+(prob.well||'—')+') — назначить инженерную экспертизу основания и мероприятия термостабилизации (пассивные/активные СТС)'});
+    if(cls==='критический'||sd.status==='КРИТИЧНО') acts.push({p:1,t:'Внеплановый комплексный осмотр ГТС с комиссией (ВСН 01-89), доклад эксплуатирующей организации и в надзор (ФЗ-117, ст. 9)'});
+    if(x.tAccel>=1) acts.push({p:2,t:'Ускорение роста температуры ММГ — удвоить периодичность термометрии и добавить контрольные створы'});
+    if(drv.some(d=>d.k==='rain'&&d.rho>0.4)||x.rainA>=1.5) acts.push({p:2,t:'Установлена связь состояния с жидкими осадками — ревизия водоотводных канав и лотков до сезона дождей, контроль притока (гидроблок карточки)'});
+    if(drv.some(d=>d.k==='snowD')||x.blizA>=1||x.snowA>=1) acts.push({p:2,t:'Аномальные снегопады/метели (СТС) — снегоуправление: очистка гребня и ветровых теней, снегозащитные мероприятия, контроль наледеобразования'});
+    if(x.tddA>=1) acts.push({p:2,t:'Аномально тёплый сезон (сумма T>0 выше нормы) — усиленная термометрия в оттепель, контроль температуры откосов южной экспозиции'});
+    if(x.gdRate>=1.5) acts.push({p:2,t:'Высокая скорость осадки — геодезический контроль ежемесячно, анализ неравномерности (риск поперечных трещин)'});
+    if(x.osmAge>=1) acts.push({p:3,t:'Давность последнего осмотра превышает период — плановый осмотр по графику ГТМ'});
+    if(x.cov>=1) acts.push({p:3,t:'Пробелы охвата КИА — доукомплектовать измерительную базу (дорожная карта, этап Б)'});
+    if(!acts.length) acts.push({p:3,t:'Отклонений за пределами адаптивных порогов нет — режимный мониторинг по программе ГТМ'});
+    acts.sort((a,b)=>a.p-b.p);
+    const rec={f,x,w:Object.fromEntries(Object.entries(w).map(([k,v])=>[k,+v.toFixed(3)])),
+      score,cls,prob,anom,drv,lvl:curLvl,ts:Date.now(),
+      act:acts.slice(0,4),metOk:!!met};
+    cache.objects[o.id]=rec;
+    return rec;
+  }
+
+  const objFeatsCache={};
+  /* полный цикл: пересчёт всех контуров при изменении базы или устаревании */
+  async function ensure(){
+    const sig=dataSig();
+    if(!dirty&&sig===cache.sig) return;
+    if(running) return;
+    running=true;
+    DB.objects.forEach(o=>{ try{ computeObject(o); }catch(e){} });
+    cache.sig=sig; cache.ts=Date.now(); dirty=false; save();
+    ensureMeteo().then(()=>{
+      // после обновления метео — точечный пересчёт метео-зависимых частей
+      DB.objects.forEach(o=>{ try{ computeObject(o); }catch(e){} });
+      cache.sig=dataSig(); cache.ts=Date.now(); save();
+      if(gsCur==='risk') gsOpen('risk',true);
+      running=false;
+    });
+  }
+
+  /* --- представление --- */
+  function cardHtml(){
+    const rows=DB.objects.map((o,i)=>({o,i,r:cache.objects[o.id]})).filter(q=>q.r).sort((a,b)=>b.r.score-a.r.score);
+    if(!rows.length) return `<div class="gsCard"><h3>🧠 Интеллектуальный анализ, оценка и решения — адаптивные ML-контуры объектов</h3><div class="mut">Выполняется первичное вычисление контуров объектов (признаки, вероятностные модели, драйверы) — раздел обновится автоматически по готовности…</div></div>`;
+    const clsCol={'критический':'#c8372d','высокий':'#e08a00','умеренный':'#b39600','низкий':'#2e7d32'};
+    const upd=cache.ts?new Date(cache.ts).toLocaleString('ru-RU'):'—';
+    return `<div class="gsCard"><h3>🧠 Интеллектуальный анализ, оценка и решения — адаптивные ML-контуры объектов</h3>
+    <div class="mut">Контур каждого объекта обучается на его собственных рядах (термометрия, пьезометрия, геодезия, осмотры) и метеоряде своей климатической точки (температура, жидкие и твёрдые осадки, влажность, ветер, метели/СТС). Вероятность выхода на К2 — нормальная модель тренда t на НГК; аномалия — робастные z-оценки; веса скоринга адаптируются онлайн при смене статуса (скорость ${LR}, регуляризация к экспертному приору). <b>Пересчёт автоматический</b> при поступлении новых измерений; последний: ${upd}.</div>
+    <table class="gsTbl"><tr><th>Объект</th><th>ML-балл</th><th>Класс</th><th>P(К2) 1г/3г/5г</th><th>Аномалия</th><th>Климатические драйверы</th><th>Приоритетное решение</th></tr>
+    ${rows.map(q=>{const r=q.r;return `<tr><td><span class="gsObjChip" style="background:var(--zf);border:none;max-width:none" data-gsobj="${q.i}">${esc(q.o.a)}</span></td>
+      <td><div class="gsBar"><i style="width:${r.score}%;background:${clsCol[r.cls]}"></i></div><b>${r.score}</b></td>
+      <td><span class="gsPill" style="background:${clsCol[r.cls]}">${r.cls}</span></td>
+      <td style="white-space:nowrap">${r.prob?`${Math.round(r.prob.y1*100)}% / ${Math.round(r.prob.y3*100)}% / ${Math.round(r.prob.y5*100)}%`:'—'}</td>
+      <td>${r.anom}</td>
+      <td>${r.drv.length?r.drv.map(d=>`${d.name} (ρ=${d.rho>0?'+':''}${d.rho.toFixed(2)})`).join('<br>'):'—'}</td>
+      <td style="max-width:340px">${esc(r.act[0]?r.act[0].t:'—')}</td></tr>`;}).join('')}
+    </table>
+    ${rows.map(q=>{const r=q.r;return `<details style="margin:6px 0"><summary style="cursor:pointer;font-size:12.5px"><b>Контур «${esc(q.o.a)}»</b> — признаки, веса модели, решения</summary>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
+      <div><div class="sect">Признаки (нормированные)</div><table class="gsTbl">${[['Приближение t к К2','sevT'],['Тренд t НГК','tTrend'],['Ускорение тренда','tAccel'],['Аномалия замеров','tAnom'],['Скорость осадки','gdRate'],['Неравномерность осадки','gdSpread'],['Тренд УГВ','pzTrend'],['Давность осмотра','osmAge'],['Аномалия дождей','rainA'],['Метели/СТС','blizA'],['Снегопады','snowA'],['Тёплый сезон (T>0)','tddA'],['Тёплая зима (T<0)','fddA'],['Пробелы охвата','cov']].map(([nm,k])=>`<tr><td>${nm}</td><td style="text-align:right">${(r.x[k]||0).toFixed(2)}</td><td style="text-align:right;color:#7a3fc9" title="адаптивный вес">w=${(r.w[k]!==undefined?r.w[k]:W0[k]).toFixed(2)}</td></tr>`).join('')}</table></div>
+      <div><div class="sect">Решения экспертного слоя</div>${r.act.map(a=>`<div class="rsn r-${a.p===1?'crit':a.p===2?'warn':'ok'}" style="margin:4px 0">${a.p===1?'⛔':a.p===2?'⚠️':'✔️'} ${esc(a.t)}</div>`).join('')}
+      <div class="mut" style="margin-top:6px">Вероятностная модель К2: тренд + σ остатков по скважинам (${r.prob&&r.prob.well?'макс. по скв. '+esc(r.prob.well):'нет рядов'}); метеоданные: точка «${esc(ptOf(q.o))}» (${r.metOk?'загружены':'офлайн-кеш недоступен'}).</div></div>
+      </div></details>`;}).join('')}</div>`;
+  }
+  return {ensure,invalidate,cardHtml};
+})();
+
 /* --- 3. Прогноз состояния ММГ --- */
 function gsViewProg(){
   const cl=DB.climate||{};
@@ -6877,6 +7173,7 @@ function gsOpen(key, silent){
   document.body.style.overflow='hidden';
   gsBindCommon();
   if(key==='prog') gsLoadStefan();
+  if(key==='risk'&&typeof ML!=='undefined') ML.ensure();
 }
 function gsCloseModal(){
   const m=document.getElementById('gsModal');
