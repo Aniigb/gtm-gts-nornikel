@@ -2761,19 +2761,82 @@ function tabIgi(o, el){
 }
 
 /* ---------- сооружения в составе ГТС (ТЗ НИР, п. 4.1–4.10) ---------- */
-/* Генеральные планы объектов, извлечённые из проектной документации (вкладка «Сооружения») */
+/* Генеральные планы объектов, извлечённые из проектной документации (вкладка «Сооружения»).
+   Каждый лист верифицирован визуально: содержит все сооружения объекта и экспликацию/условные обозначения. */
 const GENPLANS={
+  gts01:{src:'plans/gts01_genplan.png',
+         title:'Хвостохранилище ТОФ — план сооружений на конец расчётного срока эксплуатации (1:10000), с экспликацией',
+         doc:'Раздел ПД № 2, 07-02-170-ПЗУ, лист 1 (ООО «Мигруп Проект», 2022)'},
+  gts02:{src:'plans/gts02_genplan.png',
+         title:'Пруд-накопитель ТОФ — схема планировочной организации земельного участка (1:2000), с экспликацией',
+         doc:'Раздел ПД № 2, 3666-ПЗУ-ГЧ, лист 2, изм. 4 (АО «Механобр инжиниринг», 2023)'},
+  gts03:{src:'plans/gts03_genplan.png',
+         title:'Гидротранспорт ТОФ–НМЗ — генеральный план системы гидротранспорта (варианты трассы)',
+         doc:'19746-101, генплан (институт «Механобр», 1972)'},
+  gts05:{src:'plans/gts05_genplan.png',
+         title:'Хвостохранилище НМЗ — ситуационный план с экспликацией сооружений',
+         doc:'…ВЗ-РХ-40.200-ПЗУ, Том 2, лист 2 (ОАО «Гидроузел», 2015)'},
   gts06:{src:'plans/gts06_genplan.png',
-         title:'Генеральный план гипсохранилища НМЗ (проект «Нейтрализация серной кислоты»)',
-         doc:'Раздел ПД № 2 «Планировочная организация участка» НМЗ-НСК-1961.18-ПЗУ, изм. 13 (фрагмент 2, лист 1)'}
+         title:'Гипсохранилище НМЗ — ситуационный план сооружений (1:10000) с экспликацией',
+         doc:'Проект эксплуатации 2024–2025, 21-01-04-156-01-ПЭ2_ГЧ, лист 1 (ООО «Институт Гипроникель»)'},
+  gts07:{src:'plans/gts07_genplan.png',
+         title:'Хвостохранилище «Лебяжье» (3-е поле) — план (1:5000) с экспликацией сооружений',
+         doc:'Раздел ПД № 2, 3664.1-ПЗУ, изм. 2, лист 1 (АО «Механобр инжиниринг», 2018/2020)'},
+  gts08:{src:'plans/gts08_genplan.png',
+         title:'Хвостохранилище № 1 НОФ — ситуационный план с экспликацией сооружений',
+         doc:'Проект эксплуатации ХХ № 1 на 2022–2023 гг., 33016-58_ПЭ (ООО «Медвежий ручей»)'},
+  gts09:{src:'plans/gts09_genplan.png',
+         title:'Никелевые отстойники НОФ — схема расположения объектов с экспликацией сооружений',
+         doc:'Проект эксплуатации, 1006.3-ПрЭ, графическая часть, лист 1'}
 };
+/* Локальное хранилище вручную загруженных листов генплана (IndexedDB, в браузере пользователя) */
+const gpStore=(()=>{
+  const DBN='gtm_genplans', ST='plans';
+  function open(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DBN,1); r.onupgradeneeded=()=>{ r.result.createObjectStore(ST); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+  return {
+    get:k=>open().then(db=>new Promise(res=>{ const q=db.transaction(ST).objectStore(ST).get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); })).catch(()=>null),
+    put:(k,v)=>open().then(db=>new Promise((res,rej)=>{ const t=db.transaction(ST,'readwrite'); t.objectStore(ST).put(v,k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); })),
+    del:k=>open().then(db=>new Promise(res=>{ const t=db.transaction(ST,'readwrite'); t.objectStore(ST).delete(k); t.oncomplete=()=>res(); t.onerror=()=>res(); }))
+  };
+})();
+/* Отрисовка зоны генплана карточки: вручную загруженный лист (локально) → лист из базы → приглашение к загрузке */
+function gpPaint(o, zone){
+  gpStore.get(o.id).then(rec=>{
+    const gp=GENPLANS[o.id]||null;
+    let h='';
+    if(rec){
+      const url=URL.createObjectURL(rec.blob);
+      if(rec.type==='pdf'){
+        h=`<figure class="genplan"><embed src="${url}#page=${rec.page||1}&zoom=page-width" type="application/pdf" style="width:100%;height:660px;border:0;display:block">
+        <figcaption><b>${esc(rec.title||'Генеральный план (загружен вручную)')}</b><br>Файл: ${esc(rec.name)} · локальная копия в этом браузере · страница <input type="number" id="gpPageN" value="${rec.page||1}" min="1" max="999" style="width:56px"> <button class="addrow" id="gpPageGo" style="padding:2px 9px;margin:0">показать</button></figcaption></figure>`;
+      } else {
+        h=`<figure class="genplan"><img src="${url}" id="gpUserImg" title="Клик — полный размер"><figcaption><b>${esc(rec.title||'Генеральный план (загружен вручную)')}</b><br>Файл: ${esc(rec.name)} · локальная копия в этом браузере</figcaption></figure>`;
+      }
+      h+=`<div style="margin:-6px 0 10px"><button class="delrow" id="gpDel">✕ удалить загруженный лист</button></div>`;
+    } else if(gp){
+      h=`<figure class="genplan"><img src="${gp.src}" alt="${esc(gp.title)}" loading="lazy" title="Клик — открыть в полном размере">
+      <figcaption><b>${esc(gp.title)}</b><br>Источник: ${esc(gp.doc)}</figcaption></figure>`;
+    } else {
+      h=`<div class="note">Лист «Генеральный план» из проектной документации для этого объекта в базе пока не размещён. Загрузите скан листа (PDF/PNG/JPG) кнопкой ниже — объект и тип листа будут проверены по имени файла автоматически, файл сохранится локально в этом браузере.</div>`;
+    }
+    zone.innerHTML=h;
+    const del=zone.querySelector('#gpDel'); if(del) del.onclick=()=>{ gpStore.del(o.id).then(()=>gpPaint(o, zone)); };
+    const im=zone.querySelector('.genplan img');
+    if(im) im.onclick=()=>{ const w=window.open(); w.document.write('<img src="'+im.src+'" style="max-width:100%">'); };
+    const go=zone.querySelector('#gpPageGo');
+    if(go) go.onclick=()=>{ rec.page=Math.max(1, +zone.querySelector('#gpPageN').value||1); gpStore.put(o.id, rec).then(()=>gpPaint(o, zone)); };
+  });
+}
 function tabFac(o, el){
   const fs=facOf(o.id);
-  const gp=GENPLANS[o.id]||null;
-  const gpHtml=gp?`
+  const gpHtml=`
   <div class="sect">Генеральный план объекта</div>
-  <figure class="genplan"><img src="${gp.src}" alt="${esc(gp.title)}" loading="lazy" title="Клик — открыть в полном размере (5052×2382)">
-  <figcaption><b>${esc(gp.title)}</b><br>Источник: ${esc(gp.doc)}</figcaption></figure>`:'';
+  <div id="gpZone"></div>
+  <div id="gpUp" style="margin:0 0 12px">
+    <button class="addrow" id="gpAdd">+ загрузить лист генплана (PDF/PNG/JPG)</button>
+    <input type="file" id="gpFile" accept=".pdf,image/png,image/jpeg" style="display:none">
+    <div class="mut" id="gpUpMsg" style="margin-top:4px"></div>
+  </div>`;
   if(!fs.length){
     el.innerHTML=gpHtml||'<div class="note">Состав сооружений по объекту не задан.</div>';
   } else {
@@ -2790,8 +2853,30 @@ function tabFac(o, el){
     ${items.map(f=>`<tr data-fid="${f.id}" style="cursor:pointer"><td><b>${esc(f.name)}</b></td><td>${FT_TXT[f.t]||f.t}</td><td>${esc(f.klass||'—')}</td><td>${esc(f.params||'—')}</td></tr>`).join('')}
     </tbody></table>`).join('')}`;
   }
-  const gim=el.querySelector('.genplan img');
-  if(gim) gim.onclick=()=>{ const w=window.open(); w.document.write('<img src="'+gim.src+'" style="max-width:100%">'); };
+  /* зона генплана + загрузка с автораспознаванием */
+  const zone=el.querySelector('#gpZone');
+  gpPaint(o, zone);
+  const gF=el.querySelector('#gpFile'), gMsg=el.querySelector('#gpUpMsg');
+  el.querySelector('#gpAdd').onclick=()=>gF.click();
+  gF.onchange=()=>{
+    const f=gF.files[0]; gF.value=''; if(!f) return;
+    const isPdf=/\.pdf$/i.test(f.name), isImg=/\.(png|jpe?g)$/i.test(f.name);
+    if(!isPdf&&!isImg){ gMsg.textContent='✕ формат не поддерживается (нужен PDF, PNG или JPG)'; return; }
+    if(f.size>40*1024*1024){ gMsg.textContent='✕ файл слишком большой (более 40 МБ)'; return; }
+    /* автораспознавание: имя файла ↔ объект ГТС и тип листа */
+    const recObj=(typeof resolveGtsObj==='function')?resolveGtsObj(f.name):null;
+    const isGp=/генплан|ген\.?\s?план|генеральн|ситуац|пзу|план/i.test(f.name);
+    const warn=[];
+    if(recObj&&recObj.id!==o.id) warn.push('по имени файл похож на «'+recObj.a+'», а не на текущий объект');
+    if(!recObj) warn.push('объект по имени файла не распознан');
+    if(!isGp) warn.push('в имени нет признаков генплана («генплан», «ситуационный план», «ПЗУ»)');
+    const rec={blob:f, name:f.name, type:isPdf?'pdf':'img', page:1, ts:Date.now(),
+               title:'Генеральный план: '+String(o.a).replace(/\s*\(.*$/,'')};
+    gpStore.put(o.id, rec).then(()=>{
+      gMsg.textContent=warn.length?('⚠ лист сохранён, но проверьте: '+warn.join('; ')):'✓ объект и тип листа распознаны автоматически — лист сохранён локально';
+      gpPaint(o, zone);
+    });
+  };
   el.querySelectorAll('tr[data-fid]').forEach(tr=>tr.onclick=()=>{
     const f=(DB.facilities||[]).find(x=>x.id===tr.dataset.fid);
     if(f) selectFacility(f.id);
