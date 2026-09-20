@@ -120,7 +120,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   #mapTicker .tk{display:flex; white-space:nowrap; animation:tkScroll 40s linear infinite; will-change:transform}
   #mapTicker .tk span{padding-right:90px; font-size:12.3px; letter-spacing:.02em}
   #mapTicker:hover .tk{animation-play-state:paused}
-  #gtmCov{position:absolute; left:8px; bottom:34px; z-index:640; background:rgba(255,255,255,.93); border:1px solid var(--line); border-radius:8px; padding:6px 8px 4px; box-shadow:0 2px 10px rgba(20,30,40,.18); height:160px; box-sizing:border-box}
+  #gtmCov{position:absolute; left:8px; bottom:34px; z-index:640; background:rgba(255,255,255,.93); border:1px solid var(--line); border-radius:8px; padding:4px 8px 4px; box-shadow:0 2px 10px rgba(20,30,40,.18); height:24px; overflow:hidden; box-sizing:border-box; cursor:pointer; transition:height .25s ease}
+  #gtmCov.open{height:162px; cursor:default}
+  #gtmCov .covArrow{position:absolute; right:7px; top:3px; font-style:normal; font-size:11px; color:#5a6b7a; transition:transform .25s ease}
+  #gtmCov.open .covArrow{transform:rotate(90deg)}
   @media (max-width:900px){ #gtmCov{transform:scale(.82); transform-origin:bottom left} }
   #wxTicker{position:absolute; left:0; right:64px; top:0; z-index:650; height:24px; overflow:hidden; display:flex; align-items:center; background:rgba(15,28,38,.88); color:#dfe9f0; border-bottom:1px solid #3a4c5c}
   #wxTicker .tk{display:flex; white-space:nowrap; animation:tkScroll 46s linear infinite; will-change:transform}
@@ -664,7 +667,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
     <div id="wxTicker" title="Текущая погода в Норильске (Open-Meteo, обновление каждые 30 мин; пауза — навести курсор)"><div class="tk"><span id="wxA">загрузка погоды…</span><span id="wxB" aria-hidden="true"></span></div></div>
     <div id="mapTicker" title="Бегущая строка: количество объектов по категориям состояния (пауза — навести курсор)"><div class="tk"><span id="tkA"></span><span id="tkB" aria-hidden="true"></span></div></div>
-    <div id="gtmCov" title="Охват объектов геотехническим мониторингом: термометрические скважины, пьезометры, геодезические марки, осмотры за 12 мес.; полный ГТМ — все четыре вида наблюдений. Клик по строке — фильтр списка и подсветка на карте с приближением. Автообновление каждую минуту и при изменении данных."><canvas id="gtmCovC" width="248" height="150"></canvas></div>
+    <div id="gtmCov" title="Охват объектов геотехническим мониторингом: термометрические скважины, пьезометры, геодезические марки, осмотры за 12 мес.; полный ГТМ — все четыре вида наблюдений. Свернуто: наведите курсор или кликните для раскрытия; клик по заголовку — закрепить/открепить. Клик по строке — фильтр списка и подсветка на карте с приближением. Автообновление каждую минуту, при изменении данных и при возврате на вкладку."><i class="covArrow">▸</i><canvas id="gtmCovC" width="248" height="150"></canvas></div>
   </div>
   <div id="detail"><div class="empty">Выберите объект на карте или в списке слева</div></div>
   <div id="appFooter" title="Охрана результатов интеллектуальной деятельности: ст. 1259, 1261, 1271, 1333–1336 ГК РФ; ФЗ-117 «О безопасности ГТС»; ФЗ-98 «О коммерческой тайне»">© 2026 АНО «АНИИГБ» им. М.В. Кима — программная реализация и база данных; данные и документация ГТС — ПАО «ГМК «Норильский никель». Все права защищены (ст. 1259, 1261, 1333 ГК РФ). Копирование и распространение без письменного согласия правообладателей запрещено.</div>
@@ -2035,12 +2038,23 @@ function gtmCovDraw(){
       if(idx>=0&&idx<5){ covFilter=(covFilter===keys[idx])?null:keys[idx]; }
       else covFilter=null;
       renderList(); drawMarkers(); gtmCovDraw();
+      if(window.covSyncOpen) covSyncOpen(false); // при активном фильтре держим блок раскрытым
       if(covFilter){
         const pts=[];
         DB.objects.forEach(o=>{ if(o.lat!==null&&o.lat!==undefined&&covPass(o)) pts.push([o.lat,o.lon]); });
         if(pts.length>1) map.fitBounds(L.latLngBounds(pts).pad(0.15));
         else if(pts.length===1) map.setView(pts[0],13);
       }
+    });
+    /* компактный режим: раскрытие при наведении, закрепление кликом по заголовку */
+    const box=document.getElementById('gtmCov');
+    let covPinned=false;
+    window.covSyncOpen=hover=>{ box.classList.toggle('open', !!(covPinned||hover||covFilter)); };
+    box.addEventListener('mouseenter',()=>covSyncOpen(true));
+    box.addEventListener('mouseleave',()=>covSyncOpen(false));
+    box.addEventListener('click',ev=>{
+      const r=box.getBoundingClientRect();
+      if(ev.clientY-r.top<=20){ covPinned=!covPinned; covSyncOpen(true); }
     });
   }
 }
@@ -2052,8 +2066,9 @@ function statusLegendDraw(){
     const b=el.querySelector('.cnt'); if(b) b.textContent=' '+(cnt[el.dataset.st]||0);
   });
 }
-/* автообновление диаграммы охвата ГТМ и счётчиков легенды — каждую минуту (плюс перерисовка при изменении данных) */
+/* автообновление диаграммы охвата ГТМ и счётчиков легенды — каждую минуту (плюс перерисовка при изменении данных и при возврате на вкладку) */
 setInterval(()=>{ try{ gtmCovDraw(); statusLegendDraw(); }catch(e){} }, 60*1000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ try{ gtmCovDraw(); statusLegendDraw(); }catch(e){} } });
 /* --- бегущая строка погоды Норильска (Open-Meteo, обновление каждые 30 мин) --- */
 async function wxTick(){
   const A=document.getElementById('wxA'), B=document.getElementById('wxB'); if(!A) return;
