@@ -108,7 +108,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   .b-risk{background:#fbe8c8; color:var(--risk)}
   .b-crit{background:#f7dcd7; color:var(--crit)}
   .b-card{background:#e3e8ec; color:var(--mut)}
-  .legend{position:absolute; right:14px; bottom:34px; z-index:600; background:rgba(255,255,255,.92); border:1px solid var(--line); border-radius:6px; padding:8px 12px; font-size:12px; user-select:none; height:160px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center}
+  .legend{position:absolute; right:14px; bottom:34px; z-index:600; background:rgba(255,255,255,.92); border:1px solid var(--line); border-radius:6px; padding:4px 12px 6px; font-size:12px; user-select:none; height:24px; overflow:hidden; box-sizing:border-box; display:flex; flex-direction:column; justify-content:flex-start; cursor:pointer; transition:height .25s ease}
+  .legend.open{height:150px; cursor:default}
+  .legend .lgHead{display:block; font-size:11.5px; font-weight:700; color:#33404d; line-height:16px; position:relative; padding-right:14px; white-space:nowrap}
+  .legend .lgArrow{position:absolute; right:0; top:1px; font-style:normal; font-size:11px; color:#5a6b7a; transition:transform .25s ease}
+  .legend.open .lgArrow{transform:rotate(90deg)}
   .legend div{margin:2px -6px; padding:1px 6px; cursor:pointer; border-radius:4px}
   .legend div:hover{background:#eaf3fb}
   .legend div.sel{outline:2px solid var(--c-centr); background:#eaf3fb; font-weight:700}
@@ -449,7 +453,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     #side{order:2; border-right:none; border-top:1px solid var(--line); flex:none}
     #list{max-height:38vh}
     #detail{order:3; border-left:none; border-top:1px solid var(--line); overflow:visible; padding:12px}
-    .legend{font-size:10.5px; padding:5px 8px; right:8px; bottom:32px; height:auto}
+    .legend{font-size:10.5px; padding:4px 8px 5px; right:8px; bottom:32px}
+    .legend.open{height:132px}
     #warnStrip{font-size:11.3px; white-space:normal; padding:5px 10px; line-height:1.35}
     #appFooter{order:4; font-size:10px}
     .tabs{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin}
@@ -659,7 +664,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     </div>
   </div>
   <div id="map">
-    <div class="legend" id="statusLegend" title="Состояние объектов по критериям риска — живые счётчики, автообновление каждую минуту. Клик по строке — подсветить объекты категории на карте и приблизить их; повторный клик — снять подсветку">
+    <div class="legend" id="statusLegend" title="Состояние объектов по критериям риска — живые счётчики, автообновление каждую минуту и при возврате на вкладку. Свернуто: наведите курсор или кликните по заголовку — раскрыть/закрепить. Клик по строке — подсветить объекты категории на карте и приблизить их; повторный клик — снять подсветку">
+      <span class="lgHead" id="lgHead">Состояние объектов<i class="lgArrow">▸</i></span>
       <div data-st="НОРМА"><span class="sw" style="background:#2e7d32"></span>НОРМА<b class="cnt"></b></div>
       <div data-st="РИСК"><span class="sw" style="background:#e08a00"></span>РИСК<b class="cnt"></b></div>
       <div data-st="КРИТИЧНО"><span class="sw" style="background:#c8372d"></span>КРИТИЧНО<b class="cnt"></b></div>
@@ -1921,6 +1927,7 @@ function stSelApply(s){
   stFilter=(stFilter===s)?null:s;
   document.querySelectorAll('#statusLegend div').forEach(x=>x.classList.toggle('sel',x.dataset.st===stFilter));
   drawMarkers();
+  if(window.lgSyncOpen) lgSyncOpen(false); // при активном фильтре держим легенду раскрытой
   if(stFilter){
     const pts=[];
     DB.objects.forEach(o=>{
@@ -1935,6 +1942,16 @@ function stSelApply(s){
 document.querySelectorAll('#statusLegend div').forEach(el=>{
   el.addEventListener('click',()=>stSelApply(el.dataset.st));
 });
+/* компактный режим легенды: раскрытие при наведении, закрепление кликом по заголовку */
+(function(){
+  const box=document.getElementById('statusLegend'); if(!box) return;
+  let lgPinned=false;
+  window.lgSyncOpen=hover=>{ box.classList.toggle('open', !!(lgPinned||hover||stFilter)); };
+  box.addEventListener('mouseenter',()=>lgSyncOpen(true));
+  box.addEventListener('mouseleave',()=>lgSyncOpen(false));
+  const head=document.getElementById('lgHead');
+  if(head) head.addEventListener('click',()=>{ lgPinned=!lgPinned; lgSyncOpen(true); });
+})();
 
 /* ---------- точное позиционирование по спутнику (оператор) ---------- */
 let GEOVR=JSON.parse(localStorage.getItem('gtm_geo')||'{}');
