@@ -180,7 +180,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   .photos figcaption{font-size:10.5px; padding:3px 6px; color:var(--mut); display:flex; justify-content:space-between; align-items:center}
   .genplan{border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; margin:0 0 12px}
   .genplan img{width:100%; display:block; cursor:zoom-in}
+  .genplan embed{background:#f2f4f6}
   .genplan figcaption{font-size:11px; padding:6px 9px; color:var(--mut); border-top:1px solid var(--line); background:#f7f9fb}
+  .gpNote{background:rgba(255,255,255,.93); border:1px solid var(--line); border-radius:6px; padding:5px 9px; font-size:11px; line-height:1.45; box-shadow:0 2px 8px rgba(20,30,40,.15); max-width:330px}
+  .gpCalibMsg{position:absolute; top:30px; left:50%; transform:translateX(-50%); z-index:1200; background:#fff8e6; border:1.5px solid #d9a400; border-radius:6px; padding:7px 12px; font-size:12.5px; font-weight:600; box-shadow:0 3px 12px rgba(60,40,0,.25)}
   .ukgroup{position:sticky; top:0; background:#dde9f3; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.4px; color:#2c4a70; border-bottom:1px solid var(--line); z-index:5}
   .ukgroup .n{font-weight:400; color:var(--mut); margin-left:6px}
   /* --- ЦЕНТР КОНТРОЛЯ ГТМ: надстройка развития и раннего предупреждения --- */
@@ -1462,10 +1465,86 @@ window.addEventListener('orientationchange', ()=>{ map.invalidateSize(); if(curO
 const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'});
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
-const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup,'📍 Скважины мониторинга (геодезия WGS · KML 09.2026)':kmlWellsGroup},{position:'topright'}).addTo(map);
-map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); });
-map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); });
+const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup(), gpGroup=L.layerGroup();
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup,'📍 Скважины мониторинга (геодезия WGS · KML 09.2026)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup},{position:'topright'}).addTo(map);
+map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); if(e.layer===gpGroup) gpLayerToggle(true); });
+map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); if(e.layer===gpGroup) gpLayerToggle(false); });
+
+/* ---------- слой «Генеральные планы ГТС»: полупрозрачные подложки с геопривязкой ---------- */
+/* Источники подложек: реестр GENPLANS (база) + переопределения из калибровки и ручных загрузок (IndexedDB gpStore). */
+let gpOverlays={}, gpBuilt=false, gpOpacity=+(localStorage.getItem('gtm_gp_op')||0.55), gpOpCtl=null, gpCalib=null;
+async function gpRebuild(){
+  Object.values(gpOverlays).forEach(ov=>gpGroup.removeLayer(ov)); gpOverlays={};
+  const ids=new Set(Object.keys(GENPLANS));
+  try{ (await gpStore.keys()).forEach(k=>{ if(!k.startsWith('ovr_')) ids.add(k); }); }catch(e){}
+  for(const id of ids){
+    const reg=GENPLANS[id]||null;
+    let src=reg?(reg.srcGeo||reg.src):null, bounds=reg?reg.bounds:null, approx=reg?!!reg.approx:true, acc=reg?reg.acc:null;
+    let ovr=null; try{ ovr=await gpStore.get('ovr_'+id); }catch(e){}
+    if(ovr&&ovr.bounds){ bounds=ovr.bounds; approx=false; acc='откалибровано вручную '+new Date(ovr.ts||Date.now()).toLocaleDateString('ru-RU'); }
+    let rec=null; try{ rec=await gpStore.get(id); }catch(e){}
+    if(rec&&rec.blob&&rec.type!=='pdf'){ src=URL.createObjectURL(rec.blob); if(rec.bounds){ bounds=rec.bounds; approx=false; } }
+    if(rec&&rec.blob&&rec.type==='pdf'){ /* PDF на карту не выводим — только в карточке */ }
+    if(!src||!bounds) continue;
+    const im=L.imageOverlay(src, bounds, {opacity:gpOpacity, interactive:false, className:'gp-ol'});
+    im._gpApprox=approx; im._gpAcc=acc; gpOverlays[id]=im; im.addTo(gpGroup);
+  }
+  gpBuilt=true;
+  gpNote();
+}
+function gpNote(){
+  const ex=document.getElementById('gpLayerNote'); if(ex) ex.remove();
+  if(!map.hasLayer(gpGroup)) return;
+  const n=L.control({position:'bottomleft'});
+  n.onAdd=function(){
+    const d=L.DomUtil.create('div','gpNote');
+    const appr=Object.entries(gpOverlays).filter(([k,v])=>v._gpApprox).map(([k])=>k.replace('gts','ГТС-'));
+    d.innerHTML='🗺 <b>Подложки генпланов</b> · непрозрачность <input type="range" id="gpOpR" min="15" max="100" value="'+Math.round(gpOpacity*100)+'" style="width:90px;vertical-align:middle"> <span id="gpOpV">'+Math.round(gpOpacity*100)+'%</span><br>'
+      +(appr.length?('⚠ приблизительная привязка: '+appr.join(', ')+' — уточнение: карточка объекта → «Сооружения» → 🎯 Привязать'):'✓ все подложки откалиброваны');
+    return d;
+  };
+  n.addTo(map); n.getContainer().id='gpLayerNote';
+  setTimeout(()=>{
+    const r=document.getElementById('gpOpR');
+    if(r) r.oninput=()=>{ gpOpacity=r.value/100; localStorage.setItem('gtm_gp_op',gpOpacity);
+      document.getElementById('gpOpV').textContent=r.value+'%';
+      Object.values(gpOverlays).forEach(ov=>ov.setOpacity(gpOpacity)); };
+  },50);
+}
+function gpLayerToggle(on){
+  if(on){ if(!gpBuilt) gpRebuild(); else gpNote(); }
+  else { const ex=document.getElementById('gpLayerNote'); if(ex) ex.remove(); }
+}
+/* Двухточечная калибровка подложки: клики по двум противоположным углам листа на карте */
+function gpStartCalib(gid){
+  if(!map.hasLayer(gpGroup)){ gpGroup.addTo(map); gpLayerToggle(true); }
+  gpCalib={id:gid, pts:[]};
+  map.getContainer().style.cursor='crosshair';
+  gpCalibMsg('Калибровка подложки «'+gid.replace('gts','ГТС-')+'»: кликните на карте ПЕРВЫЙ угол листа (любой из четырёх)');
+}
+function gpCalibMsg(t){
+  let m=document.getElementById('gpCalibMsg');
+  if(!m){ m=L.DomUtil.create('div','gpCalibMsg',map.getContainer()); m.id='gpCalibMsg'; }
+  m.innerHTML=t+' <button onclick="gpCancelCalib()" style="margin-left:8px">отмена</button>';
+}
+window.gpCancelCalib=function(){ gpCalib=null; map.getContainer().style.cursor=''; const m=document.getElementById('gpCalibMsg'); if(m) m.remove(); };
+map.on('click', e=>{
+  if(!gpCalib) return;
+  gpCalib.pts.push([e.latlng.lat, e.latlng.lng]);
+  if(gpCalib.pts.length===1){ gpCalibMsg('Первый угол задан — кликните ПРОТИВОПОЛОЖНЫЙ (диагональный) угол листа'); return; }
+  const [a,b]=gpCalib.pts;
+  const bounds=[[Math.min(a[0],b[0]), Math.min(a[1],b[1])],[Math.max(a[0],b[0]), Math.max(a[1],b[1])]];
+  const id=gpCalib.id;
+  gpCancelCalib();
+  (async()=>{
+    let rec=null; try{ rec=await gpStore.get(id); }catch(e){}
+    if(rec&&rec.blob){ rec.bounds=bounds; await gpStore.put(id, rec); }
+    else{ await gpStore.put('ovr_'+id, {bounds, ts:Date.now()}); }
+    await gpRebuild();
+    gpNote();
+    alert('Подложка «'+id.replace('gts','ГТС-')+'» привязана по двум точкам. Если совмещение неточное — повторите калибровку по другим углам.');
+  })();
+});
 
 /* ---------- полноэкранный режим карты: ручное развёртывание кнопкой ⛶ (Esc — выход); остальные панели при работе с картой не скрываются ---------- */
 function mapFullToggle(on){
@@ -2794,30 +2873,41 @@ function tabIgi(o, el){
 
 /* ---------- сооружения в составе ГТС (ТЗ НИР, п. 4.1–4.10) ---------- */
 /* Генеральные планы объектов, извлечённые из проектной документации (вкладка «Сооружения»).
-   Каждый лист верифицирован визуально: содержит все сооружения объекта и экспликацию/условные обозначения. */
+   Каждый лист верифицирован визуально: содержит все сооружения объекта и экспликацию/условные обозначения.
+   bounds — границы подложки на карте [[шЮ],[шВ]] WGS-84; approx: подложка приблизительная (ожидает калибровки 🎯);
+   srcGeo — вариант изображения, повёрнутый north-up для картослоя. */
 const GENPLANS={
-  gts01:{src:'plans/gts01_genplan.png',
+  gts01:{src:'plans/gts01_genplan.png', srcGeo:'plans/gts01_genplan_geo.png',
+         bounds:[[69.519049, 88.13186],[69.572717, 88.349273]], approx:false,
+         acc:'спутниковая регистрация по контурам прудов (погр. ~30–50 м)',
          title:'Хвостохранилище ТОФ — план сооружений на конец расчётного срока эксплуатации (1:10000), с экспликацией',
          doc:'Раздел ПД № 2, 07-02-170-ПЗУ, лист 1 (ООО «Мигруп Проект», 2022)'},
   gts02:{src:'plans/gts02_genplan.png',
+         bounds:[[69.451803, 88.254122],[69.548677, 88.44984]], approx:true,
          title:'Пруд-накопитель ТОФ — схема планировочной организации земельного участка (1:2000), с экспликацией',
          doc:'Раздел ПД № 2, 3666-ПЗУ-ГЧ, лист 2, изм. 4 (АО «Механобр инжиниринг», 2023)'},
   gts03:{src:'plans/gts03_genplan.png',
+         bounds:[[69.474858, 88.219542],[69.523062, 88.473626]], approx:true,
          title:'Гидротранспорт ТОФ–НМЗ — генеральный план системы гидротранспорта (варианты трассы)',
          doc:'19746-101, генплан (институт «Механобр», 1972)'},
   gts05:{src:'plans/gts05_genplan.png',
+         bounds:[[69.254105, 87.808412],[69.318299, 87.93672]], approx:true,
          title:'Хвостохранилище НМЗ — ситуационный план с экспликацией сооружений',
          doc:'…ВЗ-РХ-40.200-ПЗУ, Том 2, лист 2 (ОАО «Гидроузел», 2015)'},
   gts06:{src:'plans/gts06_genplan.png',
+         bounds:[[69.243552, 87.782374],[69.329214, 87.953454]], approx:true,
          title:'Гипсохранилище НМЗ — ситуационный план сооружений (1:10000) с экспликацией',
          doc:'Проект эксплуатации 2024–2025, 21-01-04-156-01-ПЭ2_ГЧ, лист 1 (ООО «Институт Гипроникель»)'},
   gts07:{src:'plans/gts07_genplan.png',
+         bounds:[[69.356317, 87.988392],[69.416827, 88.23171]], approx:true,
          title:'Хвостохранилище «Лебяжье» (3-е поле) — план (1:5000) с экспликацией сооружений',
          doc:'Раздел ПД № 2, 3664.1-ПЗУ, изм. 2, лист 1 (АО «Механобр инжиниринг», 2018/2020)'},
   gts08:{src:'plans/gts08_genplan.png',
+         bounds:[[69.309695, 88.005189],[69.370205, 88.247983]], approx:true,
          title:'Хвостохранилище № 1 НОФ — ситуационный план с экспликацией сооружений',
          doc:'Проект эксплуатации ХХ № 1 на 2022–2023 гг., 33016-58_ПЭ (ООО «Медвежий ручей»)'},
   gts09:{src:'plans/gts09_genplan.png',
+         bounds:[[69.288607, 88.087455],[69.342111, 88.301591]], approx:true,
          title:'Никелевые отстойники НОФ — схема расположения объектов с экспликацией сооружений',
          doc:'Проект эксплуатации, 1006.3-ПрЭ, графическая часть, лист 1'}
 };
@@ -2828,7 +2918,8 @@ const gpStore=(()=>{
   return {
     get:k=>open().then(db=>new Promise(res=>{ const q=db.transaction(ST).objectStore(ST).get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); })).catch(()=>null),
     put:(k,v)=>open().then(db=>new Promise((res,rej)=>{ const t=db.transaction(ST,'readwrite'); t.objectStore(ST).put(v,k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); })),
-    del:k=>open().then(db=>new Promise(res=>{ const t=db.transaction(ST,'readwrite'); t.objectStore(ST).delete(k); t.oncomplete=()=>res(); t.onerror=()=>res(); }))
+    del:k=>open().then(db=>new Promise(res=>{ const t=db.transaction(ST,'readwrite'); t.objectStore(ST).delete(k); t.oncomplete=()=>res(); t.onerror=()=>res(); })),
+    keys:()=>open().then(db=>new Promise(res=>{ const q=db.transaction(ST).objectStore(ST).getAllKeys(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>res([]); })).catch(()=>[])
   };
 })();
 /* Отрисовка зоны генплана карточки: вручную загруженный лист (локально) → лист из базы → приглашение к загрузке */
@@ -2844,10 +2935,11 @@ function gpPaint(o, zone){
       } else {
         h=`<figure class="genplan"><img src="${url}" id="gpUserImg" title="Клик — полный размер"><figcaption><b>${esc(rec.title||'Генеральный план (загружен вручную)')}</b><br>Файл: ${esc(rec.name)} · локальная копия в этом браузере</figcaption></figure>`;
       }
-      h+=`<div style="margin:-6px 0 10px"><button class="delrow" id="gpDel">✕ удалить загруженный лист</button></div>`;
+      h+=`<div style="margin:-6px 0 10px"><button class="delrow" id="gpDel">✕ удалить загруженный лист</button>${rec.type!=='pdf'?' <button class="addrow" id="gpCal" style="padding:3px 10px">🎯 Привязать к карте (2 угла)'+(rec.bounds?' — привязан':'')+'</button>':''}</div>`;
     } else if(gp){
       h=`<figure class="genplan"><img src="${gp.src}" alt="${esc(gp.title)}" loading="lazy" title="Клик — открыть в полном размере">
-      <figcaption><b>${esc(gp.title)}</b><br>Источник: ${esc(gp.doc)}</figcaption></figure>`;
+      <figcaption><b>${esc(gp.title)}</b><br>Источник: ${esc(gp.doc)}${gp.approx?'<br>⚠ Подложка на карте — приблизительная привязка; уточните кнопкой 🎯 ниже.':(gp.acc?'<br>Привязка подложки: '+esc(gp.acc)+'.':'')}</figcaption></figure>`;
+      h+=`<div style="margin:-6px 0 10px"><button class="addrow" id="gpCal" style="padding:3px 10px">🎯 Привязать подложку к карте (2 угла)</button></div>`;
     } else {
       h=`<div class="note">Лист «Генеральный план» из проектной документации для этого объекта в базе пока не размещён. Загрузите скан листа (PDF/PNG/JPG) кнопкой ниже — объект и тип листа будут проверены по имени файла автоматически, файл сохранится локально в этом браузере.</div>`;
     }
@@ -2857,6 +2949,8 @@ function gpPaint(o, zone){
     if(im) im.onclick=()=>{ const w=window.open(); w.document.write('<img src="'+im.src+'" style="max-width:100%">'); };
     const go=zone.querySelector('#gpPageGo');
     if(go) go.onclick=()=>{ rec.page=Math.max(1, +zone.querySelector('#gpPageN').value||1); gpStore.put(o.id, rec).then(()=>gpPaint(o, zone)); };
+    const cal=zone.querySelector('#gpCal');
+    if(cal) cal.onclick=()=>{ if(typeof gpStartCalib==='function') gpStartCalib(o.id); };
   });
 }
 function tabFac(o, el){
@@ -2905,7 +2999,7 @@ function tabFac(o, el){
     const rec={blob:f, name:f.name, type:isPdf?'pdf':'img', page:1, ts:Date.now(),
                title:'Генеральный план: '+String(o.a).replace(/\s*\(.*$/,'')};
     gpStore.put(o.id, rec).then(()=>{
-      gMsg.textContent=warn.length?('⚠ лист сохранён, но проверьте: '+warn.join('; ')):'✓ объект и тип листа распознаны автоматически — лист сохранён локально';
+      gMsg.textContent=warn.length?('⚠ лист сохранён, но проверьте: '+warn.join('; ')):'✓ объект и тип листа распознаны автоматически — лист сохранён локально'+(isImg?'; теперь можно привязать к карте (🎯 ниже)':'');
       gpPaint(o, zone);
     });
   };
