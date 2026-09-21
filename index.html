@@ -233,6 +233,45 @@ document.addEventListener('DOMContentLoaded',()=>{
   .gsBar{height:7px; border-radius:4px; background:#dce7f1; overflow:hidden; margin:4px 0}
   .gsBar i{display:block; height:100%; background:var(--zf)}
   .gsPill{display:inline-block; padding:1px 8px; border-radius:9px; font-size:10.5px; font-weight:700; color:#fff}
+  /* --- ML-контур: профессиональное оформление --- */
+  .mlcHead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 14px;margin:0 0 8px}
+  .mlcMeta{font-size:10.5px;color:var(--mut);line-height:1.5}
+  .mlcMeta b{color:#33404d;font-weight:600}
+  .mlcKpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 10px}
+  .mlcKpi{border:1px solid var(--line);border-radius:6px;padding:6px 10px;background:#fbfcfe;border-top:2px solid var(--zf)}
+  .mlcKpi b{display:block;font-size:18px;font-variant-numeric:tabular-nums;line-height:1.2}
+  .mlcKpi span{font-size:9.8px;color:var(--mut);letter-spacing:.02em}
+  .mlcKpi.warn{border-top-color:#e08a00}.mlcKpi.crit{border-top-color:#c8372d}.mlcKpi.ok{border-top-color:#2e7d32}
+  .mlcScore{display:flex;align-items:center;gap:7px;min-width:104px}
+  .mlcScore .tr{flex:1;height:7px;border-radius:4px;background:#e6ecf3;overflow:hidden}
+  .mlcScore .tr i{display:block;height:100%}
+  .mlcScore b{font-variant-numeric:tabular-nums;font-size:12.5px;min-width:24px;text-align:right}
+  .mlcProb{display:flex;gap:6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .mlcProb div{text-align:center;min-width:36px;padding:2px 4px;border-radius:5px;background:#f4f7fb;border:1px solid #e4ebf3}
+  .mlcProb small{display:block;font-size:8.8px;color:var(--mut)}
+  .mlcProb b{font-size:11.8px}
+  .mlcDrv{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+  .mlcDrv i{font-style:normal;font-size:10px;padding:1px 7px;border-radius:8px;border:1px solid var(--line);background:#f6f8fb;white-space:nowrap}
+  .mlcDrv i b{font-variant-numeric:tabular-nums;margin-left:3px}
+  .mlcDrv i.neg b{color:#0077c8}.mlcDrv i.pos b{color:#c8372d}
+  .mlcAct{border-left:3px solid #d9a400;background:#fffdf4;padding:5px 8px;font-size:11.3px;border-radius:0 5px 5px 0;line-height:1.4}
+  .mlcAct.p1{border-color:#c8372d;background:#fdf1f0}
+  .mlcAct.p3{border-color:#2e7d32;background:#f2f9f3}
+  .mlcDet{border:1px solid var(--line);border-radius:6px;margin:6px 0;background:#fff}
+  .mlcDet>summary{padding:7px 10px;cursor:pointer;font-size:12px;list-style:none;display:flex;align-items:center;gap:8px;user-select:none}
+  .mlcDet>summary::-webkit-details-marker{display:none}
+  .mlcDet>summary::before{content:'▸';color:var(--zf);transition:transform .2s;font-size:11px}
+  .mlcDet[open]>summary::before{transform:rotate(90deg)}
+  .mlcDet>summary .gsPill{margin-left:auto}
+  .mlcGrid{display:grid;grid-template-columns:1.15fr 1fr;gap:12px;padding:2px 10px 10px}
+  .mlcFeat{width:100%;border-collapse:collapse;font-size:11px}
+  .mlcFeat td{padding:2.5px 4px;border-bottom:1px solid #eef2f6;font-variant-numeric:tabular-nums}
+  .mlcFeat tr:last-child td{border-bottom:none}
+  .mlcFeat .wb{height:5px;background:#ece4f7;border-radius:3px;overflow:hidden;min-width:52px}
+  .mlcFeat .wb i{display:block;height:100%;background:#7a3fc9}
+  .mlcFeat .xv{color:#33404d;text-align:right;min-width:38px}
+  .mlcFeat .wv{color:#7a3fc9;text-align:right;min-width:44px;font-size:10.3px}
+  @media (max-width:1100px){.mlcKpis{grid-template-columns:repeat(2,1fr)}.mlcGrid{grid-template-columns:1fr}}
   select.gsSt{font-size:11px; padding:2px 4px}
   body.role-view select.gsSt, body.role-insp select.gsSt{pointer-events:none; opacity:.75}
   /* --- аккордеон по предприятиям (полный реестр ГТС) --- */
@@ -6582,24 +6621,47 @@ const ML=(()=>{
     const rows=DB.objects.map((o,i)=>({o,i,r:cache.objects[o.id]})).filter(q=>q.r).sort((a,b)=>b.r.score-a.r.score);
     if(!rows.length) return `<div class="gsCard"><h3>🧠 Интеллектуальный анализ, оценка и решения — адаптивные ML-контуры объектов</h3><div class="mut">Выполняется первичное вычисление контуров объектов (признаки, вероятностные модели, драйверы) — раздел обновится автоматически по готовности…</div></div>`;
     const clsCol={'критический':'#c8372d','высокий':'#e08a00','умеренный':'#b39600','низкий':'#2e7d32'};
+    const nCrit=rows.filter(q=>q.r.cls==='критический').length, nHigh=rows.filter(q=>q.r.cls==='высокий').length;
+    const nP=rows.filter(q=>q.r.prob&&q.r.prob.y3>=0.5).length, nMet=rows.filter(q=>q.r.metOk).length;
     const upd=cache.ts?new Date(cache.ts).toLocaleString('ru-RU'):'—';
-    return `<div class="gsCard"><h3>🧠 Интеллектуальный анализ, оценка и решения — адаптивные ML-контуры объектов</h3>
-    <div class="mut">Контур каждого объекта обучается на его собственных рядах (термометрия, пьезометрия, геодезия, осмотры) и метеоряде своей климатической точки (температура, жидкие и твёрдые осадки, влажность, ветер, метели/СТС). Вероятность выхода на К2 — нормальная модель тренда t на НГК; аномалия — робастные z-оценки; веса скоринга адаптируются онлайн при смене статуса (скорость ${LR}, регуляризация к экспертному приору). <b>Пересчёт автоматический</b> при поступлении новых измерений; последний: ${upd}.</div>
-    <table class="gsTbl"><tr><th>Объект</th><th>ML-балл</th><th>Класс</th><th>P(К2) 1г/3г/5г</th><th>Аномалия</th><th>Климатические драйверы</th><th>Приоритетное решение</th></tr>
+    const featList=[['Приближение t к К2','sevT'],['Тренд t НГК','tTrend'],['Ускорение тренда','tAccel'],['Аномалия замеров','tAnom'],['Скорость осадки','gdRate'],['Неравномерность осадки','gdSpread'],['Тренд УГВ','pzTrend'],['Давность осмотра','osmAge'],['Аномалия дождей','rainA'],['Метели/СТС','blizA'],['Снегопады','snowA'],['Тёплый сезон (T>0)','tddA'],['Тёплая зима (T<0)','fddA'],['Пробелы охвата','cov']];
+    const anomCol=v=>v>=60?'#c8372d':v>=35?'#e08a00':'#2e7d32';
+    const probCell=r=>{
+      if(!r.prob) return '—';
+      const c=v=>v>=0.5?'#c8372d':v>=0.2?'#e08a00':'#2e7d32';
+      return `<div class="mlcProb">${[['1 г',r.prob.y1],['3 г',r.prob.y3],['5 л',r.prob.y5]].map(([l,v])=>`<div><small>${l}</small><b style="color:${c(v)}">${Math.round(v*100)}%</b></div>`).join('')}</div>`;
+    };
+    return `<div class="gsCard">
+    <div class="mlcHead"><h3 style="margin:0">🧠 Интеллектуальный анализ, оценка и решения · адаптивные ML-контуры</h3>
+      <div class="mlcMeta">пересчёт автоматически при новых измерениях · последний: <b>${upd}</b></div></div>
+    <div class="mlcKpis">
+      <div class="mlcKpi crit"><b>${nCrit}</b><span>объектов в критическом классе контура</span></div>
+      <div class="mlcKpi warn"><b>${nHigh}</b><span>в высоком классе · P(К2)₃г ≥ 50%: ${nP}</span></div>
+      <div class="mlcKpi ok"><b>${rows.length-nCrit-nHigh}</b><span>в умеренном и низком классах</span></div>
+      <div class="mlcKpi"><b>${nMet}/${rows.length}</b><span>контуров с актуальным метеорядом (24 мес)</span></div>
+    </div>
+    <table class="gsTbl"><tr><th style="text-align:left">Объект</th><th>ML-балл</th><th>Класс</th><th>P(К2) по горизонтам</th><th>Аномалия</th><th style="text-align:left">Климатические драйверы</th><th style="text-align:left">Приоритетное решение</th></tr>
     ${rows.map(q=>{const r=q.r;return `<tr><td><span class="gsObjChip" style="background:var(--zf);border:none;max-width:none" data-gsobj="${q.i}">${esc(q.o.a)}</span></td>
-      <td><div class="gsBar"><i style="width:${r.score}%;background:${clsCol[r.cls]}"></i></div><b>${r.score}</b></td>
+      <td><div class="mlcScore"><span class="tr"><i style="width:${r.score}%;background:${clsCol[r.cls]}"></i></span><b>${r.score}</b></div></td>
       <td><span class="gsPill" style="background:${clsCol[r.cls]}">${r.cls}</span></td>
-      <td style="white-space:nowrap">${r.prob?`${Math.round(r.prob.y1*100)}% / ${Math.round(r.prob.y3*100)}% / ${Math.round(r.prob.y5*100)}%`:'—'}</td>
-      <td>${r.anom}</td>
-      <td>${r.drv.length?r.drv.map(d=>`${d.name} (ρ=${d.rho>0?'+':''}${d.rho.toFixed(2)})`).join('<br>'):'—'}</td>
-      <td style="max-width:340px">${esc(r.act[0]?r.act[0].t:'—')}</td></tr>`;}).join('')}
+      <td>${probCell(r)}</td>
+      <td style="text-align:center"><b style="font-variant-numeric:tabular-nums;color:${anomCol(r.anom)}">${r.anom}</b></td>
+      <td><div class="mlcDrv">${r.drv.length?r.drv.map(d=>`<i class="${d.rho>=0?'pos':'neg'}" title="корреляция приращений t грунта с драйвером за 24 мес">${esc(d.name)}<b>ρ=${d.rho>0?'+':''}${d.rho.toFixed(2)}</b></i>`).join(''):'—'}</div></td>
+      <td style="max-width:360px"><div class="mlcAct p${r.act[0]?r.act[0].p:3}">${esc(r.act[0]?r.act[0].t:'—')}</div></td></tr>`;}).join('')}
     </table>
-    ${rows.map(q=>{const r=q.r;return `<details style="margin:6px 0"><summary style="cursor:pointer;font-size:12.5px"><b>Контур «${esc(q.o.a)}»</b> — признаки, веса модели, решения</summary>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
-      <div><div class="sect">Признаки (нормированные)</div><table class="gsTbl">${[['Приближение t к К2','sevT'],['Тренд t НГК','tTrend'],['Ускорение тренда','tAccel'],['Аномалия замеров','tAnom'],['Скорость осадки','gdRate'],['Неравномерность осадки','gdSpread'],['Тренд УГВ','pzTrend'],['Давность осмотра','osmAge'],['Аномалия дождей','rainA'],['Метели/СТС','blizA'],['Снегопады','snowA'],['Тёплый сезон (T>0)','tddA'],['Тёплая зима (T<0)','fddA'],['Пробелы охвата','cov']].map(([nm,k])=>`<tr><td>${nm}</td><td style="text-align:right">${(r.x[k]||0).toFixed(2)}</td><td style="text-align:right;color:#7a3fc9" title="адаптивный вес">w=${(r.w[k]!==undefined?r.w[k]:W0[k]).toFixed(2)}</td></tr>`).join('')}</table></div>
-      <div><div class="sect">Решения экспертного слоя</div>${r.act.map(a=>`<div class="rsn r-${a.p===1?'crit':a.p===2?'warn':'ok'}" style="margin:4px 0">${a.p===1?'⛔':a.p===2?'⚠️':'✔️'} ${esc(a.t)}</div>`).join('')}
-      <div class="mut" style="margin-top:6px">Вероятностная модель К2: тренд + σ остатков по скважинам (${r.prob&&r.prob.well?'макс. по скв. '+esc(r.prob.well):'нет рядов'}); метеоданные: точка «${esc(ptOf(q.o))}» (${r.metOk?'загружены':'офлайн-кеш недоступен'}).</div></div>
-      </div></details>`;}).join('')}</div>`;
+    <div style="margin-top:10px">
+    ${rows.map(q=>{const r=q.r;return `<details class="mlcDet"><summary><b>${esc(q.o.a)}</b><span class="mut" style="font-size:10.5px">контур объекта · признаки · веса модели · решения</span><span class="gsPill" style="background:${clsCol[r.cls]}">ML ${r.score} · ${r.cls}</span></summary>
+      <div class="mlcGrid">
+      <div><div class="sect">Признаки контура (нормированные) · адаптивные веса</div>
+        <table class="mlcFeat">${featList.map(([nm,k])=>{const xv=r.x[k]||0, wv=(r.w[k]!==undefined?r.w[k]:W0[k]); const wp=Math.min(100,Math.round(wv/(2.5*W0[k])*100)); return `<tr><td>${nm}</td><td class="xv">${xv.toFixed(2)}</td><td><span class="wb"><i style="width:${wp}%"></i></span></td><td class="wv">w ${wv.toFixed(2)}</td></tr>`;}).join('')}</table>
+        <div class="mut" style="margin-top:5px">Веса обучаются онлайн при смене статуса объекта (скорость ${LR}) и стабилизируются регуляризацией к экспертному приору — отклонение веса от приора показывает, чему контур «научился» на истории именно этого объекта.</div></div>
+      <div><div class="sect">Решения экспертного слоя</div>
+        ${r.act.map(a=>`<div class="mlcAct p${a.p}" style="margin:4px 0">${a.p===1?'⛔':a.p===2?'⚠️':'✔️'} ${esc(a.t)}</div>`).join('')}
+        <div class="mlcMeta" style="margin-top:7px">Вероятностная модель К2: линейный тренд + σ остатков, консервативный максимум по скважинам${r.prob&&r.prob.well?' — ограничивающая скв. <b>'+esc(r.prob.well)+'</b>':''}.<br>Метеоточка контура: <b>${esc(ptOf(q.o))}</b> (${r.metOk?'ряд 24 мес загружен':'офлайн — работа на кеше/без метео'}).</div></div>
+      </div></details>`;}).join('')}
+    </div>
+    <div class="mlcMeta" style="margin-top:6px">Методика: P(К2) — нормальная модель тренда t на НГК; аномалия — робастные z-оценки (медиана/MAD); драйверы — корреляция Пирсона помесячных приращений t грунта с метеопараметрами (температура, жидкие и твёрдые осадки, влажность, ветер, метели/СТС); скоринг — логистическая композиция признаков с адаптивными весами. Оценки носят скрининговый характер и подлежат подтверждению инженерными обследованиями (ФЗ-117, ГОСТ Р 59873-2021).</div>
+    </div>`;
   }
   return {ensure,invalidate,cardHtml,of:id=>cache.objects[id]||null};
 })();
