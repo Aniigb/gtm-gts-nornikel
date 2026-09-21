@@ -184,6 +184,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   .genplan figcaption{font-size:11px; padding:6px 9px; color:var(--mut); border-top:1px solid var(--line); background:#f7f9fb}
   .gpNote{background:rgba(255,255,255,.93); border:1px solid var(--line); border-radius:6px; padding:5px 9px; font-size:11px; line-height:1.45; box-shadow:0 2px 8px rgba(20,30,40,.15); max-width:330px}
   .gpCalibMsg{position:absolute; top:30px; left:50%; transform:translateX(-50%); z-index:1200; background:#fff8e6; border:1.5px solid #d9a400; border-radius:6px; padding:7px 12px; font-size:12.5px; font-weight:600; box-shadow:0 3px 12px rgba(60,40,0,.25)}
+  .geoBanner{position:absolute; top:30px; left:50%; transform:translateX(-50%); z-index:1200; background:#e8f5e9; border:1.5px solid #2e7d32; border-radius:6px; padding:6px 12px; font-size:12px; box-shadow:0 3px 12px rgba(0,60,0,.22); max-width:600px; line-height:1.45}
+  body.role-view #geoPosBtn, body.role-insp #geoPosBtn{display:none}
   .ukgroup{position:sticky; top:0; background:#dde9f3; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.4px; color:#2c4a70; border-bottom:1px solid var(--line); z-index:5}
   .ukgroup .n{font-weight:400; color:var(--mut); margin-left:6px}
   /* --- ЦЕНТР КОНТРОЛЯ ГТМ: надстройка развития и раннего предупреждения --- */
@@ -2035,7 +2037,8 @@ function drawMarkers(){
       fillColor:kp?'#7b5ea7':markerColor(o),
       fillOpacity:sf===null?(window.kpOn?(kp?.95:.22):(covFilter?(covPass(o)?.92:.12):.92)):(sf?.95:.08)});
     m.bindTooltip(o.a+(statusOf(o)?' · '+statusOf(o):'')+(kp?' · КП '+kpYear:''),{direction:'top',offset:[0,-6]});
-    m.on('click',()=>select(i));
+    m.on('click',()=>{ if(geoMode) return; select(i); });
+    geoWireMarker(m, i);
     markers[i]=m;
   });
   applyFilter();
@@ -2071,10 +2074,10 @@ document.querySelectorAll('#statusLegend div').forEach(el=>{
   if(head) head.addEventListener('click',()=>{ lgPinned=!lgPinned; lgSyncOpen(true); });
 })();
 
-/* ---------- точное позиционирование по спутнику (оператор) ---------- */
+/* ---------- точное позиционирование: перетаскивание маркера + запись в общую базу (Supabase) ---------- */
 let GEOVR=JSON.parse(localStorage.getItem('gtm_geo')||'{}');
 DB.objects.forEach(o=>{ const g=GEOVR[o.a]; if(g){ o.lat=g[0]; o.lon=g[1]; o.p='уточнено вручную'; } });
-let geoMode=false, geoCtl=null;
+let geoMode=false, geoCtl=null, geoDrag=null;
 function hav(a,b,c,d){ const R=6371000, dLa=(c-a)*Math.PI/180, dLo=(d-b)*Math.PI/180;
   const s=Math.sin(dLa/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLo/2)**2;
   return 2*R*Math.asin(Math.sqrt(s)); }
@@ -2082,44 +2085,96 @@ function toggleGeoMode(){
   geoMode=!geoMode;
   if(geoCtl) geoCtl.style.background=geoMode?'#2e7d32':'#fff';
   map.getContainer().style.cursor=geoMode?'crosshair':'';
+  geoBannerShow(geoMode);
 }
-map.on('click', e=>{
-  if(!geoMode||!document.body.classList.contains('role-edit')) return;
-  const {lat, lng}=e.latlng;
-  let best=null, bd=1e9;
-  DB.objects.forEach((o,i)=>{
-    if(o.lat==null) return;
-    const d=hav(lat,lng,o.lat,o.lon);
-    if(d<bd){ bd=d; best=i; }
+function geoBannerShow(on){
+  let b=document.getElementById('geoBanner');
+  if(!on){ if(b) b.remove(); return; }
+  if(!b){ b=document.createElement('div'); b.id='geoBanner'; b.className='geoBanner';
+    document.getElementById('map').appendChild(b); }
+  b.innerHTML='📍 <b>Режим позиционирования.</b> Кликните маркер объекта и, не отпуская кнопку мыши, перетащите его на фактическое место — затем подтвердите сохранение в общую базу. <button id="geoBannerX" style="margin-left:8px;cursor:pointer">выход ✕</button>';
+  document.getElementById('geoBannerX').onclick=toggleGeoMode;
+}
+/* перетаскивание маркера объекта (только в режиме позиционирования, роль оператора) */
+function geoWireMarker(m, i){
+  m.on('mousedown', ev=>{
+    if(!geoMode||!document.body.classList.contains('role-edit')) return;
+    L.DomEvent.stop(ev);
+    map.dragging.disable();
+    const o=DB.objects[i];
+    geoDrag={i, moved:false, orig:[o.lat,o.lon]};
+    map.on('mousemove', geoDragMove);
+    map.once('mouseup', geoDragEnd);
   });
-  if(best===null||bd>2000){
-    L.popup().setLatLng(e.latlng).setContent('В радиусе 2 км объектов базы нет.').openOn(map);
-    return;
-  }
-  const o=DB.objects[best];
+}
+function geoDragMove(e){
+  if(!geoDrag) return;
+  geoDrag.moved=true;
+  markers[geoDrag.i].setLatLng(e.latlng);
+}
+function geoDragEnd(e){
+  map.off('mousemove', geoDragMove);
+  map.dragging.enable();
+  if(!geoDrag) return;
+  const d=geoDrag; geoDrag=null;
+  if(!d.moved) return; // простой клик без переноса
+  const o=DB.objects[d.i], nl=e.latlng;
   const div=document.createElement('div');
-  div.style.cssText='font-size:13px; min-width:210px';
-  div.innerHTML=`<b>${esc(o.a)}</b><br><span style="color:#666">расстояние от точки клика: ${bd.toFixed(0)} м · текущая точность: ${esc(o.p||'—')}</span><br>`;
-  const b1=document.createElement('button'); b1.textContent='Открыть карточку'; b1.style.cssText='margin:4px 4px 0 0; padding:3px 8px; cursor:pointer';
-  b1.onclick=()=>{ map.closePopup(); select(best); };
-  const b2=document.createElement('button'); b2.textContent='📍 Перенести координату сюда'; b2.style.cssText='margin:4px 0 0; padding:3px 8px; cursor:pointer; background:#2e7d32; color:#fff; border:none; border-radius:4px';
-  b2.onclick=()=>{
-    const _pv=[o.lat,o.lon];
-    o.lat=+lat.toFixed(6); o.lon=+lng.toFixed(6); o.p='уточнено вручную';
+  div.style.cssText='font-size:13px; min-width:235px';
+  div.innerHTML=`<b>${esc(o.a)}</b><br><span style="color:#666">новые координаты: <b>${nl.lat.toFixed(6)}, ${nl.lng.toFixed(6)}</b><br>смещение от прежней точки: <b>${hav(d.orig[0],d.orig[1],nl.lat,nl.lng).toFixed(0)} м</b></span><br>`;
+  const b1=document.createElement('button'); b1.textContent='💾 Сохранить в общую базу';
+  b1.style.cssText='margin:5px 4px 0 0; padding:4px 9px; cursor:pointer; background:#2e7d32; color:#fff; border:none; border-radius:4px';
+  b1.onclick=()=>{
+    o.lat=+nl.lat.toFixed(6); o.lon=+nl.lng.toFixed(6); o.p='уточнено вручную (перетаскивание)';
     GEOVR[o.a]=[o.lat,o.lon]; localStorage.setItem('gtm_geo', JSON.stringify(GEOVR));
-    audLog('coords', o.a, null, 'перенос кликом по карте: '+_pv.join(', ')+' → '+o.lat+', '+o.lon, null);
-    if(markers[best]) markers[best].setLatLng([o.lat,o.lon]);
-    map.closePopup(); select(best);
+    audLog('coords', o.a, null, 'перенос перетаскиванием по спутнику: '+d.orig.join(', ')+' → '+o.lat+', '+o.lon, null);
+    gsGeoPush(o);
+    if(markers[d.i]) markers[d.i].setLatLng([o.lat,o.lon]);
+    map.closePopup(); select(d.i);
   };
+  const b2=document.createElement('button'); b2.textContent='✕ Отмена';
+  b2.style.cssText='margin:5px 0 0; padding:4px 9px; cursor:pointer';
+  b2.onclick=()=>{ if(markers[d.i]) markers[d.i].setLatLng(d.orig); map.closePopup(); };
   div.appendChild(b1); div.appendChild(b2);
-  L.popup().setLatLng(e.latlng).setContent(div).openOn(map);
-});
+  L.popup().setLatLng(nl).setContent(div).openOn(map);
+}
+/* общая геопривязка объектов в центральной БД: записи from_status='geo' в серверном журнале */
+function gsGeoPush(o){
+  try{
+    if(!sbMode()) return;
+    const who=(typeof gsDuty!=='undefined'&&gsDuty&&gsDuty.name)||'оператор';
+    const rows=[{ts:new Date().toISOString(),obj:o.id,name:o.a,ent:who,from_status:'geo',to_status:o.lat+','+o.lon,
+                 reasons:['уточнение координат перетаскиванием маркера по спутнику']}];
+    sbFetch('/rest/v1/gs_journal',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(rows)}).catch(()=>{});
+  }catch(e){}
+}
+async function gsGeoPull(){
+  if(!sbMode()) return;
+  try{
+    const rows=await sbFetch('/rest/v1/gs_journal?from_status=eq.geo&select=ts,obj,name,to_status&order=ts.desc&limit=300');
+    if(!Array.isArray(rows)) return;
+    const latest={};
+    rows.forEach(r=>{ if(!latest[r.obj]) latest[r.obj]=r; });
+    let changed=0;
+    DB.objects.forEach(o=>{
+      const r=latest[o.id]; if(!r||!r.to_status) return;
+      const p=String(r.to_status).split(',').map(Number);
+      if(p.length===2&&isFinite(p[0])&&isFinite(p[1])){
+        if(o.lat!==p[0]||o.lon!==p[1]){ o.lat=p[0]; o.lon=p[1]; o.p='уточнено вручную (общая база)'; changed++; }
+        GEOVR[o.a]=[p[0],p[1]];
+      }
+    });
+    if(changed){ localStorage.setItem('gtm_geo', JSON.stringify(GEOVR)); drawMarkers(); if(curObj) renderDetail(curObj); }
+  }catch(e){}
+}
+setTimeout(()=>{ try{ gsGeoPull(); }catch(e){} }, 6000);
+setInterval(()=>{ try{ gsGeoPull(); }catch(e){} }, 5*60*1000);
 // кнопка режима (только оператор — скрывается CSS по роли)
 geoCtl=document.createElement('button');
 geoCtl.id='geoPosBtn';
 geoCtl.textContent='📍';
 geoCtl.style.cssText='position:absolute; top:84px; left:10px; z-index:700; background:#fff; border:2px solid rgba(0,0,0,.25); border-radius:5px; width:30px; height:30px; padding:0; font-size:14px; line-height:1; cursor:pointer';
-geoCtl.title='Позиционирование — режим уточнения координат: клик по сооружению на снимке → ближайший объект → перенос точки';
+geoCtl.title='Позиционирование — перетаскивание маркера объекта на фактическое место с сохранением новых координат в общую базу';
 geoCtl.onclick=toggleGeoMode;
 document.getElementById('map').appendChild(geoCtl);
 drawMarkers();
@@ -6100,7 +6155,7 @@ async function gsJournalPull(){ // общая история из централ
     const rows=await sbFetch('/rest/v1/gs_journal?select=ts,obj,name,ent,from_status,to_status,reasons&order=ts.desc&limit=500');
     if(Array.isArray(rows)){
       const map=new Map();
-      rows.forEach(r=>map.set(r.ts+'|'+r.obj,{ts:r.ts,obj:r.obj,name:r.name,ent:r.ent,from:r.from_status,to:r.to_status,reasons:r.reasons||[]}));
+      rows.forEach(r=>{ if(r.from_status==='geo') return; map.set(r.ts+'|'+r.obj,{ts:r.ts,obj:r.obj,name:r.name,ent:r.ent,from:r.from_status,to:r.to_status,reasons:r.reasons||[]}); });
       gsJournal.forEach(e=>{ const k=e.ts+'|'+e.obj; if(!map.has(k)) map.set(k,e); });
       gsJournal=[...map.values()].sort((a,b)=>a.ts<b.ts?-1:1).slice(-500);
       gsSave(GS_STORE.j,gsJournal);
