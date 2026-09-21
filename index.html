@@ -2686,7 +2686,7 @@ function renderDetail(o){
     : (st?'<div class="reasons"><div class="rsn r-ok">✔ все показатели в пределах превентивных порогов</div></div>':'');
   d.innerHTML=`
     <div class="crumbs"><a id="crHome" title="Снять выбор и вернуться к общей карте всех объектов">⌂ Карта</a><span class="csep">›</span><a id="crDist" title="Показать все объекты предприятия в списке и на карте">${esc(o.d||'—')}</a><span class="csep">›</span><span class="cobj">${esc(o.a)}</span><span class="csep">›</span><span class="ctab">${esc(tabLabel)}</span><span class="crnav"><button id="crPrev" ${prevI<0?'disabled':''} title="Предыдущий объект предприятия">←</button><button id="crNext" ${nextI<0?'disabled':''} title="Следующий объект предприятия">→</button></span></div>
-    <h2>${esc(o.a)}<span class="badge ${st?('b-'+{НОРМА:'ok',РИСК:'risk',КРИТИЧНО:'crit'}[st]):'b-card'}">${st||'карточка'}</span><button class="tglock" id="tgLock" title="Замечания и предписания (доступ для эксплуатирующей и надзорной организаций)">🔒</button><button class="tglock" id="inspLock" title="Текущий осмотр — чек-лист (доступ для надзорной организации)">📋</button></h2>
+    <h2>${esc(o.a)}<span class="badge ${st?('b-'+{НОРМА:'ok',РИСК:'risk',КРИТИЧНО:'crit'}[st]):'b-card'}">${st||'карточка'}</span>${mlBadgeHtml(o, true)}<button class="tglock" id="tgLock" title="Замечания и предписания (доступ для эксплуатирующей и надзорной организаций)">🔒</button><button class="tglock" id="inspLock" title="Текущий осмотр — чек-лист (доступ для надзорной организации)">📋</button></h2>
     <div class="rayon">Предприятие: <b style="color:${DCOL[o.d]||'#666'}">${esc(o.d||'—')}</b> · Тип: <b>${esc(o.gts?o.gts.type:'—')}</b> · Класс ГТС: <b>${esc(o.gts&&o.gts.klass?o.gts.klass:'—')}</b></div>
     ${osmLine(o)}
     ${reasonsHtml}
@@ -2710,6 +2710,7 @@ function renderDetail(o){
   if(act) setTimeout(()=>{ try{ act.scrollIntoView({block:'nearest', inline:'center'}); }catch(e){} },60);
   const tgL=document.getElementById('tgLock');
   if(tgL) tgL.onclick=()=>openTg(o);
+  d.querySelectorAll('.mlBadge').forEach(b=>b.onclick=e=>{ e.stopPropagation(); gsOpen('risk'); });
   document.getElementById('inspLock').onclick=()=>openTg(o,'insp');
   document.getElementById('crHome').onclick=()=>{ curObj=null; document.querySelectorAll('.item,.fitem').forEach(e=>e.classList.remove('sel')); d.innerHTML='<div class="empty">Выберите объект на карте или в списке слева</div>'; const pts=DB.objects.filter(x=>x.lat!=null).map(x=>[x.lat,x.lon]); if(pts.length>1) map.flyToBounds(L.latLngBounds(pts).pad(0.12)); };
   document.getElementById('crDist').onclick=()=>{ curD=o.d; renderChips(); renderList(); const pts=DB.objects.filter(x=>x.d===o.d&&x.lat!=null).map(x=>[x.lat,x.lon]); if(pts.length>1) map.flyToBounds(L.latLngBounds(pts),{padding:[30,30]}); };
@@ -6283,20 +6284,29 @@ function gsViewRisk(){
   return `<h2>🎯 Матрица рисков и скоринг объектов ГТМ</h2>
   <div class="gsCard"><h3>Матрица 5×5: вероятность события × тяжесть последствий (класс ГТС)</h3>
     <table class="gsTbl" style="text-align:center"><tr><th style="text-align:left">последствия ↓ / вероятность →</th>${[1,2,3,4,5].map(L=>`<th style="white-space:normal">${lName[L]}</th>`).join('')}</tr>
-    ${[5,4,3,2,1].map(C=>`<tr><th style="text-align:left;white-space:nowrap">${cName[C]}</th>${[1,2,3,4,5].map(L=>{const cell=grid[C+'_'+L]||[];return `<td style="background:${cc(C,L)};color:#fff">${cell.map(r=>`<span class="gsObjChip" data-gsobj="${r.i}" title="${esc(r.o.a)} — балл ${r.score}">${esc(r.o.a)}</span>`).join('')||'<span style="opacity:.45">·</span>'}</td>`;}).join('')}</tr>`).join('')}
+    ${[5,4,3,2,1].map(C=>`<tr><th style="text-align:left;white-space:nowrap">${cName[C]}</th>${[1,2,3,4,5].map(L=>{const cell=grid[C+'_'+L]||[];return `<td style="background:${cc(C,L)};color:#fff">${cell.map(r=>`<span class="gsObjChip" data-gsobj="${r.i}" title="${esc(r.o.a)} — балл ${r.score}${ML.of(r.o.id)?' · ML '+ML.of(r.o.id).score+' ('+ML.of(r.o.id).cls+')':''}">${esc(r.o.a)}${mlBadgeHtml(r.o)}</span>`).join('')||'<span style="opacity:.45">·</span>'}</td>`;}).join('')}</tr>`).join('')}
     </table>
     <div class="mut" style="margin-top:4px">Клик по объекту — открыть его карточку. Цвет ячейки — произведение L×C: ≥15 недопустимый, 8–14 высокий, 4–7 умеренный, &lt;4 приемлемый риск.</div>
   </div>
   <div class="gsCard"><h3>Скоринг объектов (0–100 баллов)</h3>
-    <table class="gsTbl"><tr><th>Объект</th><th>Предприятие</th><th>Статус</th><th>Класс</th><th>Охват КИА</th><th>Балл</th></tr>
+    <table class="gsTbl"><tr><th>Объект</th><th>Предприятие</th><th>Статус</th><th>Класс</th><th>Охват КИА</th><th>ML</th><th>Балл</th></tr>
     ${rows.map(r=>`<tr><td><span class="gsObjChip" style="background:var(--zf);border:none;max-width:none" data-gsobj="${r.i}">${esc(r.o.a)}</span></td><td>${esc(r.o.d||'')}</td>
       <td><span class="gsPill" style="background:${r.st==='КРИТИЧНО'?'#c8372d':r.st==='РИСК'?'#e08a00':r.st==='НОРМА'?'#2e7d32':'#8a8a8a'}">${r.st}</span></td>
       <td>${esc(String((r.o.gts&&r.o.gts.klass)||'—'))}</td><td style="white-space:nowrap">${r.cov}</td>
+      <td>${mlBadgeHtml(r.o)}</td>
       <td><div class="gsBar"><i style="width:${r.score}%"></i></div><b>${r.score}</b></td></tr>`).join('')}
     </table>
     <div class="mut" style="margin-top:4px">Балл = статус (КРИТИЧНО 55 / РИСК 30 / НОРМА 5 / без данных 15) + класс ГТС (I…IV = 5…2) + пробелы охвата КИА (нет термометрии/пьезометрии/геодезии — по +5) + множественные превышения К2 (+5 за каждое сверх первого). Охват: т — термометрия, п — пьезометрия, г — геодезия.</div>
   </div>
   ${ML.cardHtml()}`;
+}
+/* Бейдж ML-оценки объекта (карточка, матрица): цвет по классу контура */
+function mlBadgeHtml(o, withText){
+  const r=(typeof ML!=='undefined'&&ML.of)?ML.of(o.id):null;
+  if(!r) return '';
+  const col={'критический':'#c8372d','высокий':'#e08a00','умеренный':'#b39600','низкий':'#2e7d32'}[r.cls]||'#8a8a8a';
+  const t=`Интеллектуальная оценка ML-контура: ${r.cls} (${r.score}/100)`+(r.prob?`; P(К2) 1/3/5 лет: ${Math.round(r.prob.y1*100)}/${Math.round(r.prob.y3*100)}/${Math.round(r.prob.y5*100)}%`:'')+`; аномалия ${r.anom}; драйверы: ${r.drv.map(d=>d.name).join(', ')||'—'}. Клик — Центр контроля → Матрица рисков`;
+  return `<span class="badge mlBadge" data-gml="1" style="background:${col};cursor:pointer" title="${esc(t)}">ML ${r.score}${withText?(' · '+r.cls):''}</span>`;
 }
 /* --- 2М. Интеллектуальный анализ, оценка и решения: адаптивные ML-контуры объектов --- */
 /* Архитектура: для каждого объекта ГТС — собственный контур (признаки, вероятностная модель К2,
@@ -6562,6 +6572,7 @@ const ML=(()=>{
       DB.objects.forEach(o=>{ try{ computeObject(o); }catch(e){} });
       cache.sig=dataSig(); cache.ts=Date.now(); save();
       if(gsCur==='risk') gsOpen('risk',true);
+      if(typeof curObj!=='undefined'&&curObj&&typeof renderDetail==='function'){ try{ renderDetail(curObj); }catch(e){} }
       running=false;
     });
   }
@@ -6590,7 +6601,7 @@ const ML=(()=>{
       <div class="mut" style="margin-top:6px">Вероятностная модель К2: тренд + σ остатков по скважинам (${r.prob&&r.prob.well?'макс. по скв. '+esc(r.prob.well):'нет рядов'}); метеоданные: точка «${esc(ptOf(q.o))}» (${r.metOk?'загружены':'офлайн-кеш недоступен'}).</div></div>
       </div></details>`;}).join('')}</div>`;
   }
-  return {ensure,invalidate,cardHtml};
+  return {ensure,invalidate,cardHtml,of:id=>cache.objects[id]||null};
 })();
 
 /* --- 3. Прогноз состояния ММГ --- */
