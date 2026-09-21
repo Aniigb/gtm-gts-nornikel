@@ -186,6 +186,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   .gpCalibMsg{position:absolute; top:30px; left:50%; transform:translateX(-50%); z-index:1200; background:#fff8e6; border:1.5px solid #d9a400; border-radius:6px; padding:7px 12px; font-size:12.5px; font-weight:600; box-shadow:0 3px 12px rgba(60,40,0,.25)}
   .geoBanner{position:absolute; top:30px; left:50%; transform:translateX(-50%); z-index:1200; background:#e8f5e9; border:1.5px solid #2e7d32; border-radius:6px; padding:6px 12px; font-size:12px; box-shadow:0 3px 12px rgba(0,60,0,.22); max-width:600px; line-height:1.45}
   body.role-view #geoPosBtn, body.role-insp #geoPosBtn{display:none}
+  .gpRotH{background:#fff; border:2px solid var(--zf); border-radius:50%; color:var(--zf); font-size:15px; font-weight:700; text-align:center; line-height:20px; box-shadow:0 1px 6px rgba(20,40,60,.35); cursor:grab}
   .ukgroup{position:sticky; top:0; background:#dde9f3; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.4px; color:#2c4a70; border-bottom:1px solid var(--line); z-index:5}
   .ukgroup .n{font-weight:400; color:var(--mut); margin-left:6px}
   /* --- ЦЕНТР КОНТРОЛЯ ГТМ: надстройка развития и раннего предупреждения --- */
@@ -1520,15 +1521,20 @@ async function gpRebuild(){
   try{ (await gpStore.keys()).forEach(k=>{ if(!k.startsWith('ovr_')) ids.add(k); }); }catch(e){}
   for(const id of ids){
     const reg=GENPLANS[id]||null;
-    let src=reg?(reg.srcGeo||reg.src):null, bounds=reg?reg.bounds:null, approx=reg?!!reg.approx:true, acc=reg?reg.acc:null;
+    let src=reg?(reg.srcGeo||reg.src):null, bounds=reg?reg.bounds:null, approx=reg?!!reg.approx:true, acc=reg?reg.acc:null, rot=0;
     let ovr=null; try{ ovr=await gpStore.get('ovr_'+id); }catch(e){}
     if(ovr&&ovr.bounds){ bounds=ovr.bounds; approx=false; acc='откалибровано вручную '+new Date(ovr.ts||Date.now()).toLocaleDateString('ru-RU'); }
+    if(ovr&&ovr.rotDeg) rot=ovr.rotDeg;
     let rec=null; try{ rec=await gpStore.get(id); }catch(e){}
     if(rec&&rec.blob&&rec.type!=='pdf'){ src=URL.createObjectURL(rec.blob); if(rec.bounds){ bounds=rec.bounds; approx=false; } }
     if(rec&&rec.blob&&rec.type==='pdf'){ /* PDF на карту не выводим — только в карточке */ }
     if(!src||!bounds) continue;
-    const im=L.imageOverlay(src, bounds, {opacity:gpOpacity, interactive:false, className:'gp-ol'});
-    im._gpApprox=approx; im._gpAcc=acc; gpOverlays[id]=im; im.addTo(gpGroup);
+    const baseSrc=src, baseBounds=JSON.parse(JSON.stringify(bounds));
+    let effSrc=src, effBounds=bounds;
+    if(rot){ try{ effSrc=await gpRotateImage(baseSrc, rot); effBounds=gpRotBounds(baseBounds, rot); }catch(e){ effSrc=baseSrc; effBounds=baseBounds; } }
+    const im=L.imageOverlay(effSrc, effBounds, {opacity:gpOpacity, interactive:false, className:'gp-ol'});
+    im._gpApprox=approx; im._gpAcc=acc; im._gpBaseSrc=baseSrc; im._gpBaseBounds=baseBounds; im._gpRot=rot;
+    gpOverlays[id]=im; im.addTo(gpGroup);
   }
   gpBuilt=true;
   gpNote();
@@ -1556,36 +1562,125 @@ function gpLayerToggle(on){
   if(on){ if(!gpBuilt) gpRebuild(); else gpNote(); }
   else { const ex=document.getElementById('gpLayerNote'); if(ex) ex.remove(); }
 }
-/* Двухточечная калибровка подложки: клики по двум противоположным углам листа на карте */
+/* Интерактивная привязка подложки генплана: перемещение и поворот курсором (ручки на карте) */
+function gpRotBounds(bounds, deg){
+  const s=bounds[0][0], w=bounds[0][1], n=bounds[1][0], e=bounds[1][1];
+  const cLa=(s+n)/2, cLo=(w+e)/2, rad=deg*Math.PI/180, cos=Math.cos(rad), sin=Math.sin(rad), cl=Math.cos(cLa*Math.PI/180);
+  const pts=[[s,w],[s,e],[n,e],[n,w]].map(([la,lo])=>{
+    const y=la-cLa, x=(lo-cLo)*cl;
+    return [cLa+y*cos-x*sin, cLo+(y*sin+x*cos)/cl];
+  });
+  const lats=pts.map(p=>p[0]), lons=pts.map(p=>p[1]);
+  return [[Math.min.apply(0,lats), Math.min.apply(0,lons)],[Math.max.apply(0,lats), Math.max.apply(0,lons)]];
+}
+function gpRotateImage(src, deg, maxDim){
+  return new Promise((res,rej)=>{
+    const im=new Image();
+    im.onload=()=>{
+      const rad=deg*Math.PI/180, c=Math.cos(rad), s=Math.sin(rad);
+      let w=im.naturalWidth, h=im.naturalHeight, k=1;
+      if(maxDim&&Math.max(w,h)>maxDim) k=maxDim/Math.max(w,h);
+      w=Math.round(w*k); h=Math.round(h*k);
+      const W=Math.ceil(Math.abs(w*c)+Math.abs(h*s)), H=Math.ceil(Math.abs(w*s)+Math.abs(h*c));
+      const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+      const cx=cv.getContext('2d');
+      cx.translate(W/2,H/2); cx.rotate(rad); cx.drawImage(im,-w/2,-h/2,w,h);
+      res(cv.toDataURL('image/png'));
+    };
+    im.onerror=rej; im.src=src;
+  });
+}
 function gpStartCalib(gid){
-  if(!map.hasLayer(gpGroup)){ gpGroup.addTo(map); gpLayerToggle(true); }
-  gpCalib={id:gid, pts:[]};
-  map.getContainer().style.cursor='crosshair';
-  gpCalibMsg('Калибровка подложки «'+gid.replace('gts','ГТС-')+'»: кликните на карте ПЕРВЫЙ угол листа (любой из четырёх)');
+  (async()=>{
+    if(!map.hasLayer(gpGroup)){ gpGroup.addTo(map); gpLayerToggle(true); }
+    if(!gpBuilt) await gpRebuild();
+    let ov=gpOverlays[gid];
+    /* если подложки нет (нет листа/границ) — стартовые границы вокруг точки объекта */
+    if(!ov){
+      const o=DB.objects.find(x=>x.id===gid);
+      if(!o||o.lat==null){ alert('Сначала загрузите лист генплана в карточке объекта (раздел «Сооружения»).'); return; }
+      const rec=await gpStore.get(gid).catch(()=>null);
+      if(!rec||!rec.blob||rec.type==='pdf'){ alert('Сначала загрузите изображение листа (PNG/JPG) в карточке объекта.'); return; }
+      const d=0.02;
+      rec.bounds=[[o.lat-d/2, o.lon-d],[o.lat+d/2, o.lon+d]];
+      await gpStore.put(gid, rec);
+      await gpRebuild(); ov=gpOverlays[gid];
+      if(!ov){ alert('Не удалось построить подложку.'); return; }
+    }
+    gpEndCalib(false);
+    let ovr=null; try{ ovr=await gpStore.get('ovr_'+gid); }catch(e){}
+    const base=ov._gpBaseBounds||(ovr&&ovr.bounds)||(GENPLANS[gid]?GENPLANS[gid].bounds:null);
+    const rot0=ov._gpRot||(ovr&&ovr.rotDeg)||0;
+    if(!base){ alert('Нет исходных границ подложки.'); return; }
+    const cen=[(base[0][0]+base[1][0])/2,(base[0][1]+base[1][1])/2];
+    const mk=L.marker(cen,{draggable:true,title:'Центр плана — тяните для перемещения'}).addTo(map);
+    const top=[base[1][0], cen[1]];
+    const rotMk=L.marker(gpRotHandlePos(cen,top,rot0),{draggable:true,
+      icon:L.divIcon({className:'gpRotH',html:'↻',iconSize:[24,24],iconAnchor:[12,12]}),title:'Ручка поворота — тяните по дуге'}).addTo(map);
+    gpCalib={id:gid,ov,mk,rotMk,bounds:JSON.parse(JSON.stringify(base)),bounds0:JSON.parse(JSON.stringify(base)),rot:rot0,rot0,center0:cen,top0:top};
+    map.fitBounds(L.latLngBounds(gpRotBounds(base,rot0)).pad(0.25));
+    gpCalibMsg('🎯 Привязка «'+gid.replace('gts','ГТС-')+'»: тяните <b>● центр</b> — перемещение плана, ручку <b>↻</b> — поворот (<b class="rotv">'+rot0.toFixed(1)+'°</b>). '
+      +'<button id="gpCalOk" style="margin-left:8px;background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:3px 10px;cursor:pointer">💾 сохранить</button> '
+      +'<button id="gpCalX" style="cursor:pointer;margin-left:4px">отмена</button>');
+    mk.on('drag',()=>{
+      const c=gpCalib, ll=mk.getLatLng(), c0=c.center0;
+      const dLa=ll.lat-c0[0], dLo=ll.lng-c0[1], b=c.bounds0;
+      c.bounds=[[b[0][0]+dLa,b[0][1]+dLo],[b[1][0]+dLa,b[1][1]+dLo]];
+      gpApplyCalib();
+    });
+    rotMk.on('drag',()=>{
+      const c=gpCalib, ll=rotMk.getLatLng(), cc=mk.getLatLng(), cl=Math.cos(cc.lat*Math.PI/180);
+      const bN=c.bounds[1][0];
+      const a1=Math.atan2((c.top0[1]-c.center0[1])*cl, c.top0[0]-c.center0[0]);
+      const a2=Math.atan2((ll.lng-cc.lng)*cl, ll.lat-cc.lat);
+      c.rot=c.rot0+(a2-a1)*180/Math.PI;
+      gpApplyCalib();
+    });
+    document.getElementById('gpCalOk').onclick=()=>gpEndCalib(true);
+    document.getElementById('gpCalX').onclick=()=>gpEndCalib(false);
+  })();
+}
+function gpRotHandlePos(cen, top, deg){
+  const rad=deg*Math.PI/180, cl=Math.cos(cen[0]*Math.PI/180);
+  const y=top[0]-cen[0], x=(top[1]-cen[1])*cl;
+  return [cen[0]+y*Math.cos(rad)-x*Math.sin(rad), cen[1]+(y*Math.sin(rad)+x*Math.cos(rad))/cl];
+}
+function gpApplyCalib(){
+  const c=gpCalib; if(!c) return;
+  c.ov.setBounds(gpRotBounds(c.bounds, c.rot));
+  const m=document.getElementById('gpCalibMsg');
+  if(m){ const b=m.querySelector('b.rotv'); if(b) b.textContent=c.rot.toFixed(1)+'°'; }
+  if(!c._rt){ c._rt=setTimeout(async()=>{ c._rt=null;
+    try{ c.ov.setUrl(await gpRotateImage(c.ov._gpBaseSrc||c.ov._url, c.rot, 1400)); }catch(e){}
+  },240); }
+}
+async function gpEndCalib(save){
+  const c=gpCalib; if(!c) return;
+  gpCalib=null;
+  map.removeLayer(c.mk); map.removeLayer(c.rotMk);
+  const m=document.getElementById('gpCalibMsg'); if(m) m.remove();
+  if(c._rt){ clearTimeout(c._rt); c._rt=null; }
+  if(save){
+    const id=c.id;
+    c.ov.setUrl(await gpRotateImage(c.ov._gpBaseSrc||c.ov._url, c.rot));
+    const rb=gpRotBounds(c.bounds,c.rot);
+    c.ov.setBounds(rb);
+    c.ov._gpBaseBounds=c.bounds; c.ov._gpRot=c.rot;
+    let ovr=null; try{ ovr=await gpStore.get('ovr_'+id); }catch(e){}
+    await gpStore.put('ovr_'+id, Object.assign(ovr||{}, {bounds:c.bounds, rotDeg:c.rot, ts:Date.now()}));
+    let rec=null; try{ rec=await gpStore.get(id); }catch(e){}
+    if(rec&&rec.blob){ rec.bounds=c.bounds; await gpStore.put(id, rec); }
+    alert('Подложка «'+id.replace('gts','ГТС-')+'» сохранена: смещение и поворот '+c.rot.toFixed(1)+'° применены. При необходимости — скорректируйте повторно.');
+  } else {
+    c.ov.setBounds(gpRotBounds(c.bounds0, c.rot0));
+    c.ov.setUrl(c.ov._url);
+  }
 }
 function gpCalibMsg(t){
   let m=document.getElementById('gpCalibMsg');
   if(!m){ m=L.DomUtil.create('div','gpCalibMsg',map.getContainer()); m.id='gpCalibMsg'; }
-  m.innerHTML=t+' <button onclick="gpCancelCalib()" style="margin-left:8px">отмена</button>';
+  m.innerHTML=t;
 }
-window.gpCancelCalib=function(){ gpCalib=null; map.getContainer().style.cursor=''; const m=document.getElementById('gpCalibMsg'); if(m) m.remove(); };
-map.on('click', e=>{
-  if(!gpCalib) return;
-  gpCalib.pts.push([e.latlng.lat, e.latlng.lng]);
-  if(gpCalib.pts.length===1){ gpCalibMsg('Первый угол задан — кликните ПРОТИВОПОЛОЖНЫЙ (диагональный) угол листа'); return; }
-  const [a,b]=gpCalib.pts;
-  const bounds=[[Math.min(a[0],b[0]), Math.min(a[1],b[1])],[Math.max(a[0],b[0]), Math.max(a[1],b[1])]];
-  const id=gpCalib.id;
-  gpCancelCalib();
-  (async()=>{
-    let rec=null; try{ rec=await gpStore.get(id); }catch(e){}
-    if(rec&&rec.blob){ rec.bounds=bounds; await gpStore.put(id, rec); }
-    else{ await gpStore.put('ovr_'+id, {bounds, ts:Date.now()}); }
-    await gpRebuild();
-    gpNote();
-    alert('Подложка «'+id.replace('gts','ГТС-')+'» привязана по двум точкам. Если совмещение неточное — повторите калибровку по другим углам.');
-  })();
-});
 
 /* ---------- полноэкранный режим карты: ручное развёртывание кнопкой ⛶ (Esc — выход); остальные панели при работе с картой не скрываются ---------- */
 function mapFullToggle(on){
@@ -2972,37 +3067,37 @@ function tabIgi(o, el){
    bounds — границы подложки на карте [[шЮ],[шВ]] WGS-84; approx: подложка приблизительная (ожидает калибровки 🎯);
    srcGeo — вариант изображения, повёрнутый north-up для картослоя. */
 const GENPLANS={
-  gts01:{src:'plans/gts01_genplan.png', srcGeo:'plans/gts01_genplan_geo.png',
-         bounds:[[69.519049, 88.13186],[69.572717, 88.349273]], approx:false,
+  gts01:{src:'plans/gts01_genplan.png', srcGeo:'plans/gts01_map_geo.png',
+         bounds:[[69.521803, 88.144588],[69.569607, 88.282751]], approx:false,
          acc:'спутниковая регистрация по контурам прудов (погр. ~30–50 м)',
          title:'Хвостохранилище ТОФ — план сооружений на конец расчётного срока эксплуатации (1:10000), с экспликацией',
          doc:'Раздел ПД № 2, 07-02-170-ПЗУ, лист 1 (ООО «Мигруп Проект», 2022)'},
-  gts02:{src:'plans/gts02_genplan.png',
-         bounds:[[69.451803, 88.254122],[69.548677, 88.44984]], approx:true,
+  gts02:{src:'plans/gts02_genplan.png', srcGeo:'plans/gts02_map.png',
+         bounds:[[69.453456, 88.264382],[69.546701, 88.408029]], approx:true,
          title:'Пруд-накопитель ТОФ — схема планировочной организации земельного участка (1:2000), с экспликацией',
          doc:'Раздел ПД № 2, 3666-ПЗУ-ГЧ, лист 2, изм. 4 (АО «Механобр инжиниринг», 2023)'},
-  gts03:{src:'plans/gts03_genplan.png',
-         bounds:[[69.474858, 88.219542],[69.523062, 88.473626]], approx:true,
+  gts03:{src:'plans/gts03_genplan.png', srcGeo:'plans/gts03_map.png',
+         bounds:[[69.491082, 88.237497],[69.51857, 88.473626]], approx:true,
          title:'Гидротранспорт ТОФ–НМЗ — генеральный план системы гидротранспорта (варианты трассы)',
          doc:'19746-101, генплан (институт «Механобр», 1972)'},
-  gts05:{src:'plans/gts05_genplan.png',
-         bounds:[[69.254105, 87.808412],[69.318299, 87.93672]], approx:true,
+  gts05:{src:'plans/gts05_genplan.png', srcGeo:'plans/gts05_map.png',
+         bounds:[[69.275898, 87.830254],[69.316862, 87.915589]], approx:true,
          title:'Хвостохранилище НМЗ — ситуационный план с экспликацией сооружений',
          doc:'…ВЗ-РХ-40.200-ПЗУ, Том 2, лист 2 (ОАО «Гидроузел», 2015)'},
-  gts06:{src:'plans/gts06_genplan.png',
-         bounds:[[69.243552, 87.782374],[69.329214, 87.953454]], approx:true,
+  gts06:{src:'plans/gts06_genplan.png', srcGeo:'plans/gts06_map.png',
+         bounds:[[69.246211, 87.785422],[69.308553, 87.953454]], approx:true,
          title:'Гипсохранилище НМЗ — ситуационный план сооружений (1:10000) с экспликацией',
          doc:'Проект эксплуатации 2024–2025, 21-01-04-156-01-ПЭ2_ГЧ, лист 1 (ООО «Институт Гипроникель»)'},
-  gts07:{src:'plans/gts07_genplan.png',
-         bounds:[[69.356317, 87.988392],[69.416827, 88.23171]], approx:true,
+  gts07:{src:'plans/gts07_genplan.png', srcGeo:'plans/gts07_map.png',
+         bounds:[[69.369037, 88.051671],[69.415929, 88.229516]], approx:true,
          title:'Хвостохранилище «Лебяжье» (3-е поле) — план (1:5000) с экспликацией сооружений',
          doc:'Раздел ПД № 2, 3664.1-ПЗУ, изм. 2, лист 1 (АО «Механобр инжиниринг», 2018/2020)'},
-  gts08:{src:'plans/gts08_genplan.png',
-         bounds:[[69.309695, 88.005189],[69.370205, 88.247983]], approx:true,
+  gts08:{src:'plans/gts08_genplan.png', srcGeo:'plans/gts08_map.png',
+         bounds:[[69.310198, 88.006717],[69.369846, 88.183669]], approx:true,
          title:'Хвостохранилище № 1 НОФ — ситуационный план с экспликацией сооружений',
          doc:'Проект эксплуатации ХХ № 1 на 2022–2023 гг., 33016-58_ПЭ (ООО «Медвежий ручей»)'},
-  gts09:{src:'plans/gts09_genplan.png',
-         bounds:[[69.288607, 88.087455],[69.342111, 88.301591]], approx:true,
+  gts09:{src:'plans/gts09_genplan.png', srcGeo:'plans/gts09_map.png',
+         bounds:[[69.28929, 88.090507],[69.341033, 88.23496]], approx:true,
          title:'Никелевые отстойники НОФ — схема расположения объектов с экспликацией сооружений',
          doc:'Проект эксплуатации, 1006.3-ПрЭ, графическая часть, лист 1'}
 };
@@ -3030,11 +3125,11 @@ function gpPaint(o, zone){
       } else {
         h=`<figure class="genplan"><img src="${url}" id="gpUserImg" title="Клик — полный размер"><figcaption><b>${esc(rec.title||'Генеральный план (загружен вручную)')}</b><br>Файл: ${esc(rec.name)} · локальная копия в этом браузере</figcaption></figure>`;
       }
-      h+=`<div style="margin:-6px 0 10px"><button class="delrow" id="gpDel">✕ удалить загруженный лист</button>${rec.type!=='pdf'?' <button class="addrow" id="gpCal" style="padding:3px 10px">🎯 Привязать к карте (2 угла)'+(rec.bounds?' — привязан':'')+'</button>':''}</div>`;
+      h+=`<div style="margin:-6px 0 10px"><button class="delrow" id="gpDel">✕ удалить загруженный лист</button>${rec.type!=='pdf'?' <button class="addrow" id="gpCal" style="padding:3px 10px">🎯 Привязать к карте (сдвиг и поворот)'+(rec.bounds?' — привязан':'')+'</button>':''}</div>`;
     } else if(gp){
       h=`<figure class="genplan"><img src="${gp.src}" alt="${esc(gp.title)}" loading="lazy" title="Клик — открыть в полном размере">
       <figcaption><b>${esc(gp.title)}</b><br>Источник: ${esc(gp.doc)}${gp.approx?'<br>⚠ Подложка на карте — приблизительная привязка; уточните кнопкой 🎯 ниже.':(gp.acc?'<br>Привязка подложки: '+esc(gp.acc)+'.':'')}</figcaption></figure>`;
-      h+=`<div style="margin:-6px 0 10px"><button class="addrow" id="gpCal" style="padding:3px 10px">🎯 Привязать подложку к карте (2 угла)</button></div>`;
+      h+=`<div style="margin:-6px 0 10px"><button class="addrow" id="gpCal" style="padding:3px 10px">🎯 Привязать подложку к карте (сдвиг и поворот)</button></div>`;
     } else {
       h=`<div class="note">Лист «Генеральный план» из проектной документации для этого объекта в базе пока не размещён. Загрузите скан листа (PDF/PNG/JPG) кнопкой ниже — объект и тип листа будут проверены по имени файла автоматически, файл сохранится локально в этом браузере.</div>`;
     }
