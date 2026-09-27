@@ -954,18 +954,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   </div>
 </div>
 
-<script src="db_p1.js?v=4402c0cc"></script>
-<script src="db_p2.js?v=4402c0cc"></script>
-<script src="db_p3.js?v=4402c0cc"></script>
-<script src="db_p4.js?v=4402c0cc"></script>
-<script src="db_p5.js?v=4402c0cc"></script>
-<script src="db_p6.js?v=4402c0cc"></script>
-<script src="db_p7.js?v=4402c0cc"></script>
-<script src="db_p8.js?v=4402c0cc"></script>
-<script src="db_wells.js?v=14191fd7"></script>
+<script src="db_p1.js?v=2cb4c426"></script>
+<script src="db_p2.js?v=2cb4c426"></script>
+<script src="db_p3.js?v=2cb4c426"></script>
+<script src="db_p4.js?v=2cb4c426"></script>
+<script src="db_p5.js?v=2cb4c426"></script>
+<script src="db_p6.js?v=2cb4c426"></script>
+<script src="db_p7.js?v=2cb4c426"></script>
+<script src="db_p8.js?v=2cb4c426"></script>
+<script src="db_wells.js?v=acff808a"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=02b2f4095c"></script>
 <script src="stok_data.js?v=20260916a"></script>
+<script src="reestr_coords.js?v=20260928a"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -2934,10 +2935,55 @@ function renderDetail(o){
   if(nextI>=0) document.getElementById('crNext').onclick=()=>select(nextI,true);
   renderTab(o);
 }
+/* ---------- Реестры наблюдательных точек с координатами (reestr_coords.js) ---------- */
+function reestrHTML(o, kind){
+  const R=window.REESTR_COORDS, rec=R&&R[o.id];
+  if(!rec) return '';
+  const fmtC=v=>typeof v==='number'?v.toFixed(5):'—';
+  const fmtZ=v=>typeof v==='number'?v.toFixed(2):'—';
+  const distM=(lat,lon)=>{ if(typeof o.lat!=='number'||typeof lat!=='number'||typeof lon!=='number') return null;
+    const dy=(lat-o.lat)*111320, dx=(lon-o.lon)*111320*Math.cos(o.lat*Math.PI/180);
+    return Math.hypot(dx,dy); };
+  const meta={term:['термоскважин','🌡'],piezo:['пьезометров','💧'],geod:['деформационных марок','📐']}[kind];
+  let rows='', N=0, note='';
+  if(kind==='term'){
+    const T=rec.term||[]; N=T.length; note=rec.termNote||'';
+    rows=T.map((r,i)=>{ const d=distM(r[1],r[2]); const far=d!==null&&d>3000;
+      return `<tr class="${i>=15?'rzmore':''}${far?' rzfar':''}"><td>${esc(r[0])}</td><td>${fmtC(r[1])}</td><td>${fmtC(r[2])}</td><td>${fmtZ(r[3])}</td><td>${r[4]!=null?r[4]:'—'}</td><td>${esc(r[5]||'')}</td><td>${esc(r[6]||'')}${far?' ⚠&gt;3&nbsp;км':''}</td></tr>`; }).join('');
+    rows=`<table class="rows static"><thead><tr><th>Скважина</th><th>Широта, °</th><th>Долгота, °</th><th>Отм. устья, м</th><th>Глубина, м</th><th>Местная СК</th><th>Источник (отчёт ИГИ)</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="note">нет данных</td></tr>'}</tbody></table>`;
+  } else if(kind==='piezo'){
+    const G=rec.piezo||[]; N=G.reduce((a,g)=>a+g.rows.length,0); note=rec.pzNote||'';
+    rows=G.map(g=>`<div class="sect" style="margin:8px 0 2px">${esc(g.g||'Пьезометры')} · ${g.rows.length}</div>
+      <table class="rows static"><thead><tr><th>Пьезометр</th><th>Размещение (дамба / створ / ПК)</th><th>Широта, °</th><th>Долгота, °</th><th>Отм. устья, м</th></tr></thead><tbody>
+      ${g.rows.map((r,i)=>`<tr class="${i>=15?'rzmore':''}"><td>${esc(r.id)}</td><td>${esc([r.dam,r.stv].filter(Boolean).join(' · '))||'—'}</td><td>${fmtC(r.lat)}</td><td>${fmtC(r.lon)}</td><td>${fmtZ(r.z)}</td></tr>`).join('')}
+      </tbody></table>`).join('')||'<div class="note">Сведения о пьезометрах в имеющихся материалах не выделены (запрошены у Заказчика 15.09.2026).</div>';
+  } else {
+    const G=rec.geod||[]; N=G.reduce((a,g)=>a+g.rows.length,0); note=rec.mkNote||'';
+    rows=G.map(g=>{
+      const by={}; g.rows.forEach(r=>{ const k=r.dam||''; (by[k]=by[k]||[]).push(r); });
+      return Object.entries(by).map(([dam,rs])=>`${dam?`<div class="sect" style="margin:8px 0 2px">${esc(dam)} · ${rs.length}</div>`:''}
+        <table class="rows static"><thead><tr><th>Марка</th><th>ПК (пикет)</th><th>Широта, °</th><th>Долгота, °</th></tr></thead><tbody>
+        ${rs.map((r,i)=>`<tr class="${i>=15?'rzmore':''}"><td>${esc(r.id)}</td><td>${esc(r.pk||'—')}</td><td>—</td><td>—</td></tr>`).join('')}
+        </tbody></table>`).join(''); }).join('')||'<div class="note">Отчёты по поверхностным маркам по объекту в имеющихся материалах отсутствуют (запрошены у Заказчика 15.09.2026).</div>';
+  }
+  return `<details class="tsec rzblk"><summary><span class="ti">📍</span><span class="tt">Реестр ${meta[0]} с координатами</span><span class="ts">${N} точек · ${esc(rec.sysC)}</span></summary>
+    <div class="tsec-body"><style>.rzmore{display:none}.rzfar td{background:#fdf3e3}</style>
+    <div class="note" style="margin-top:0">Система координат: <b>${esc(rec.sysC)}</b>; система высот: <b>${esc(rec.sysH)}</b> (подтверждение: ${esc(rec.sysSrc)}). Координаты — WGS-84. ${esc(note)}</div>
+    ${rows}
+    ${N>15?`<button class="addrow rzall" type="button">показать все ${N}</button>`:''}
+    </div></details>`;
+}
+function reestrBind(el){
+  el.querySelectorAll('.rzblk').forEach(b=>{
+    const btn=b.querySelector('.rzall');
+    if(btn) btn.onclick=()=>{ b.querySelectorAll('.rzmore').forEach(r=>r.classList.remove('rzmore')); btn.remove(); };
+  });
+}
 function renderTab(o){
   const el=document.getElementById('tabBody');
   ({passport:tabGtsPassport, gtm:tabGtmGts, igi:tabIgi, fac:tabFac, kk:tabKK, geoterm:tabGeoterm, piezo:tabPiezo, geod:tabGeod, calc:tabCalcGts, climate:tabClimate,
     expl:tabExpl, repairs:tabRepairs, docs:tabGtsDocs, photo:tabPhoto, misc:tabMisc})[curTab](o, el);
+  reestrBind(el);
 }
 
 /* ---------- инженерно-геологические данные (конспект разделов отчётов ИГИ) ---------- */
@@ -3514,6 +3560,7 @@ function tabPiezo(o, el){
   const archNames=Object.keys(arch).filter(k=>(arch[k]||[]).length>=1);
   el.innerHTML=`
   <div class="normref">Наблюдения за уровнем и напором подземных вод — по программе мониторинга ГТС (ТЗ НИР, этап 2: уровень грунтовых вод); сводные ведомости — форма 5 (ПБ 03-438-02); обработка рядов — по аналогии с ГОСТ 24846-2019.</div>
+  ${reestrHTML(o,'piezo')}
   ${archNames.length?`
   <div class="sect">Архивные ряды из журналов наблюдений · рядов: ${archNames.length}</div>
   <table class="rows static"><thead><tr>
@@ -4175,6 +4222,7 @@ function tabGeoterm(o, el){
   if(o.prof){
     el.innerHTML =
     '<div class="normref">ГОСТ 25358-2020 «Грунты. Методы полевых измерений температуры»: график распределения температуры по глубине (прил. Д, рис. Д.1); график термоизоплет (прил. Д, рис. Д.2); глубина НГК — СП 25.13330.2020 (п. 3.1). Подразделы раскрываются кликом; графики строятся в момент раскрытия.</div>'
+    +reestrHTML(o,'term')
     +'<div class="twnav" id="twNav"></div>'
     +'<div class="twsum" style="border-left-color:'+(SCOL[st]||'#8a97a3')+'">'
     +'<div class="sect" style="margin-top:0">Тепловое состояние основания — сводка</div>'
@@ -4205,7 +4253,7 @@ function tabGeoterm(o, el){
         '<div class="note" style="margin:0 0 2px">Глубина прогноза: <span id="fcBtns"></span></div><canvas class="plot" id="fcChart"></canvas>'
         +'<div class="note">Прогноз оценочный: сплошная линия — ряд наблюдений; штриховая — линейная экстраполяция наблюдаемого тренда; пунктир — тренд с климатической поправкой потепления воздуха Арктической зоны ≈ +0,35 °C/декаду (сценарий SSP2-4.5, оценочно) с затуханием по глубине (5 м — ×0,6; 10 м — ×0,8; 15 м — ×0,9). Красная линия — 0 °C (граница мёрзлого состояния). Подлежит уточнению теплотехническим расчётом.</div>');
   } else {
-    el.innerHTML = '<div class="empty" style="text-align:left;padding:8px 0">Числовые замеры по объекту в файлах не найдены — запись зарезервирована в структуре БД.<br>Замеры можно добавить через «⬆ Загрузка данных» в шапке.</div>';
+    el.innerHTML = reestrHTML(o,'term')+'<div class="empty" style="text-align:left;padding:8px 0">Числовые замеры по объекту в файлах не найдены — запись зарезервирована в структуре БД.<br>Замеры можно добавить через «⬆ Загрузка данных» в шапке.</div>';
   }
   if(IGI_THERM[o.id]&&IGI_THERM[o.id].length){
     el.insertAdjacentHTML('beforeend', sec('igi','📐','Термометрия этапов инженерных изысканий', IGI_THERM[o.id].length+' этап. · базовое тепловое состояние', igiThermHtml(o)));
@@ -4457,6 +4505,7 @@ function tabGeod(o, el){
   <div class="normref">ФЗ-117 «О безопасности ГТС» (ст. 9 — мониторинг состояния); ФНП «Требования к обеспечению безопасности ГТС» (приказ Ростехнадзора от 08.05.2024 № 151) — контроль показателей состояния и действия при достижении К1/К2; ГОСТ Р 59873-2021 (контрольные критерии безопасности); ГОСТ 24846-2019, ГОСТ 53778-2010 (методика и точность геодезических измерений); СП 25.13330.2020 (эксплуатация оснований на ММГ). Формы ведомостей — по унаследованным шаблонам ПБ 03-438-02 (отменён ПП РФ от 22.07.2020 № 1086): форма 7 — вертикальные осадки, форма 8 — плановые смещения.</div>
   ${kinds.length?`<div class="sect">Контролируемые деформационные показатели по видам сооружений объекта</div>
   <table class="rows static"><thead><tr><th style="width:22%">Вид сооружения</th><th>Показатели (по проекту мониторинга и ФНП № 151)</th></tr></thead><tbody>${kinds.map(k=>`<tr><td><b>${esc(k)}</b></td><td>${IND[k]}</td></tr>`).join('')}</tbody></table>`:''}
+  ${reestrHTML(o,'geod')}
   ${builtin}
   ${gdMarksBlock(o)}
   <div class="note">📐 <b>Плановые (горизонтальные) смещения</b> марок (форма 8) — обязательный показатель устойчивости откосов дамб и плотин. В базе пока не загружены: вводятся в примечании к замеру или журналом формы 8 после расширения загрузчика (см. «Загрузка данных»).</div>
@@ -10473,8 +10522,8 @@ setTimeout(()=>{ try{
 })();
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"XURcheAnUBVooWpl",ivW:"WwdiFr7EQAeaNJHa"};
-const BUILD="4402c0cc";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"2eqVKYBsx3qMXLTE",ivW:"QOS+MNQy4dFvkqbE"};
+const BUILD="2cb4c426";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
