@@ -1507,10 +1507,37 @@ window.addEventListener('orientationchange', ()=>{ map.invalidateSize(); if(curO
 const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'});
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
-const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup(), gpGroup=L.layerGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup,'📍 Скважины мониторинга (геодезия WGS · KML 09.2026)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup},{position:'topright'}).addTo(map);
-map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); if(e.layer===gpGroup) gpLayerToggle(true); });
-map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); if(e.layer===gpGroup) gpLayerToggle(false); });
+const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup(), gpGroup=L.layerGroup(), ortoGroup=L.layerGroup();
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup,'📍 Скважины мониторинга (геодезия WGS · KML 09.2026)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup,'🛰 Ортофотопланы ГТС (БПЛА-съёмка)':ortoGroup},{position:'topright'}).addTo(map);
+map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); if(e.layer===gpGroup) gpLayerToggle(true); if(e.layer===ortoGroup) ortoLayerToggle(true); });
+map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); if(e.layer===gpGroup) gpLayerToggle(false); if(e.layer===ortoGroup) ortoLayerToggle(false); });
+
+/* ---------- слой «Ортофотопланы ГТС» (БПЛА-съёмка из архива исходных данных НИР) ---------- */
+const ORTOPHOTOS=[
+ {id:'orto_gts01_2025', obj:'gts01', src:'plans/orto/gts01_2025-09-06.png', date:'06.09.2025',
+  bounds:[[69.519077, 88.169233],[69.572689, 88.3119]], approx:true, res:'0,23 м/px',
+  note:'Ортофотоплан ХХ ТОФ 06.09.2025 (БПЛА); приблизительная привязка по контуру объекта'},
+ {id:'orto_gts05_2025', obj:'gts05', src:'plans/orto/gts05_2025-07-07.png', date:'07.07.2025',
+  bounds:[[69.226698, 87.764361],[69.254724, 87.858005]], approx:false, res:'0,09 м/px',
+  note:'Ортофотоплан ХХ НМЗ 07.07.2025 (БПЛА); геопривязка из GeoTIFF (UTM 45N → WGS-84)'},
+ {id:'orto_gts06_2025', obj:'gts06', src:'plans/orto/gts06_2025-09-16.png', date:'16.09.2025',
+  bounds:[[69.262345, 87.805659],[69.313148, 87.945154]], approx:false, res:'0,20 м/px',
+  note:'Ортофотоплан ГПХ 16.09.2025 (БПЛА); геопривязка из GeoTIFF (UTM 45N → WGS-84)'},
+ {id:'orto_gts06_2026', obj:'gts06', src:'plans/orto/gts06_2026-06-09.png', date:'09.06.2026',
+  bounds:[[69.262345, 87.805659],[69.313148, 87.945154]], approx:false, res:'0,10 м/px',
+  note:'Ортофотоплан ГПХ 09.06.2026 (БПЛА); геопривязка из GeoTIFF (UTM 45N → WGS-84)'},
+];
+let ortoBuilt=false;
+function ortoLayerToggle(on){
+  if(!on) return;
+  if(ortoBuilt) return;
+  ORTOPHOTOS.forEach(p=>{
+    const im=L.imageOverlay(p.src, p.bounds, {opacity:0.9, interactive:true, className:'gp-ol'});
+    im.bindTooltip('<b>Ортофотоплан: '+esc(p.obj.replace('gts','ГТС-'))+' · '+p.date+'</b><br>'+esc(p.note)+'<br>Разрешение: '+esc(p.res)+(p.approx?' · ⚠ приблизительная привязка':''), {sticky:true});
+    im.addTo(ortoGroup);
+  });
+  ortoBuilt=true;
+}
 
 /* ---------- слой «Генеральные планы ГТС»: полупрозрачные подложки с геопривязкой ---------- */
 /* Источники подложек: реестр GENPLANS (база) + переопределения из калибровки и ручных загрузок (IndexedDB gpStore). */
