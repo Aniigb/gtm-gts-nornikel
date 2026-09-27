@@ -1508,9 +1508,9 @@ window.addEventListener('orientationchange', ()=>{ map.invalidateSize(); if(curO
 const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'© OpenStreetMap'});
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
-const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup(), gpGroup=L.layerGroup(), ortoGroup=L.layerGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (местные СК → WGS-84)':igiWellsGroup,'📍 Скважины мониторинга (геодезия WGS · KML 09.2026)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup,'🛰 Ортофотопланы ГТС (БПЛА-съёмка)':ortoGroup},{position:'topright'}).addTo(map);
-map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); if(e.layer===gpGroup) gpLayerToggle(true); if(e.layer===ortoGroup) ortoLayerToggle(true); });
+const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup(), piezoGroup=L.featureGroup(), gpGroup=L.layerGroup(), ortoGroup=L.layerGroup();
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (реестр координат · вериф. спутником 20.09.2026)':igiWellsGroup,'💧 Пьезометры (реестр координат)':piezoGroup,'📍 Скважины геодезии KML (не верифицировано · справочно)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup,'🛰 Ортофотопланы ГТС (БПЛА-съёмка)':ortoGroup},{position:'topright'}).addTo(map);
+map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); if(e.layer===gpGroup) gpLayerToggle(true); if(e.layer===ortoGroup) ortoLayerToggle(true); if(e.layer===piezoGroup&&piezoGroup.getLayers().length) map.fitBounds(piezoGroup.getBounds().pad(0.2)); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); if(e.layer===gpGroup) gpLayerToggle(false); if(e.layer===ortoGroup) ortoLayerToggle(false); });
 
 /* ---------- слой «Ортофотопланы ГТС» (БПЛА-съёмка из архива исходных данных НИР) ---------- */
@@ -1539,6 +1539,25 @@ function ortoLayerToggle(on){
   });
   ortoBuilt=true;
 }
+
+/* ---------- слой «Пьезометры (реестр координат)»: точки с подтверждёнными координатами из reestr_coords.js ---------- */
+(function(){
+  const R=window.REESTR_COORDS; if(!R) return;
+  const NM={}; (DB.objects||[]).forEach(o=>{ NM[o.id]=o.a; });
+  Object.keys(R).filter(k=>/^gts\d+$/.test(k)).forEach(gid=>{
+    (R[gid].piezo||[]).forEach(g=>{
+      (g.rows||[]).forEach(r=>{
+        if(typeof r.lat!=='number'||typeof r.lon!=='number') return;
+        L.circleMarker([r.lat,r.lon],{radius:4.5, color:'#0658b2', weight:1.6, fillColor:'#5aa9f2', fillOpacity:.85})
+          .bindPopup('<b>Пьезометр '+esc(r.id)+'</b> · '+esc(NM[gid]||gid)+
+            ((r.dam||r.stv)?'<br>Размещение: '+esc([r.dam,r.stv].filter(Boolean).join(' · ')):'')+
+            '<br>WGS-84: '+r.lat.toFixed(6)+', '+r.lon.toFixed(6)+(typeof r.z==='number'?' · отм. устья '+r.z.toFixed(2)+' м':'')+
+            '<br><span style="color:#888">Координаты — каталог ИГИ (пересчёт из Кайерканской СК, вериф. спутником 20.09.2026); система высот — Балтийская.</span>')
+          .addTo(piezoGroup);
+      });
+    });
+  });
+})();
 
 /* ---------- слой «Генеральные планы ГТС»: полупрозрачные подложки с геопривязкой ---------- */
 /* Источники подложек: реестр GENPLANS (база) + переопределения из калибровки и ручных загрузок (IndexedDB gpStore). */
@@ -1767,7 +1786,7 @@ async function igiWellsLayer(notify){
       L.circleMarker([ll.lat,ll.lon],{radius:4, color:'#7a3fc9', weight:1.4, fillColor:'#a06ae0', fillOpacity:.75})
         .bindPopup('<b>Скважина '+esc(w.w)+'</b> · '+esc(o.a)+
           '<br>X '+w.x.toLocaleString('ru-RU')+', Y '+w.y.toLocaleString('ru-RU')+(w.z!=null?', Z '+w.z:'')+' м · СК «'+esc(w.sys||'—')+'»'+(w.dep?'<br>Глубина: '+w.dep+' м':'')+(w.dt?'<br>Дата бурения: '+esc(w.dt):'')+
-          '<br>WGS-84: '+ll.lat.toFixed(6)+', '+ll.lon.toFixed(6)+' <span style="color:#888">'+(ll.exact?'(геодезические координаты — поправки геодезслужбы 09.2026)':'(по параметрам перехода — уточнить у геодезиста)')+'</span>'+
+          '<br>WGS-84: '+ll.lat.toFixed(6)+', '+ll.lon.toFixed(6)+' <span style="color:#888">'+(ll.exact?'('+esc(w.wgs||'прямые координаты WGS-84')+')':'(по параметрам перехода — уточнить у геодезиста)')+'</span>'+
           '<br><span style="color:#888">Источник: '+esc(cap)+'</span>')
         .addTo(igiWellsGroup);
     });
@@ -1784,12 +1803,13 @@ async function kmlWellsLayer(notify){
   kmlWellsGroup.clearLayers();
   let n=0;
   (DB.objects||[]).forEach(o=>{
+    if(o.id==='gts01'||o.id==='gts02'||o.id==='gts03') return; // KML-поправки для этих объектов ОТКЛОНЕНЫ спутниковой верификацией 20.09.2026 (до 14 км смещения) — на карту не выводятся; верные координаты — в слое «Термоскважины ИГИ»
     (o.kmlWells||[]).forEach(w=>{
       if(w.lat==null||w.lon==null) return;
       n++;
       L.circleMarker([w.lat,w.lon],{radius:4, color:'#b25f06', weight:1.4, fillColor:'#f2a65a', fillOpacity:.8})
         .bindPopup('<b>Скважина '+esc(w.w)+'</b> · '+esc(o.a)+
-          '<br>WGS-84: '+w.lat.toFixed(6)+', '+w.lon.toFixed(6)+' <span style="color:#888">(прямые геодезические координаты — KML-выгрузка геодезслужбы 09.2026)</span>'+
+          '<br>WGS-84: '+w.lat.toFixed(6)+', '+w.lon.toFixed(6)+' <span style="color:#a86400">(KML-выгрузка геодезслужбы 09.2026 — <b>не верифицировано</b> спутником; справочно)</span>'+
           '<br>Система источника: «'+esc(w.sys||'—')+'» · привязка: '+esc(w.rule||'—')+(w.m?'<br>Соответствует точке мониторинга: '+esc(w.m):'')+
           '<br><span style="color:#888">Слой справочный: скважина в реестре мониторинга объекта не числится; замеры в базе ГТМ по ней отсутствуют.</span>')
         .addTo(kmlWellsGroup);
