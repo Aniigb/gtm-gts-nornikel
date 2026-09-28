@@ -1509,7 +1509,7 @@ const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{max
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
 const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup(), piezoGroup=L.featureGroup(), gpGroup=L.layerGroup(), ortoGroup=L.layerGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (по термоскважинам, в границах ЗУ)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (реестр координат · вериф. спутником 20.09.2026)':igiWellsGroup,'💧 Пьезометры (реестр координат)':piezoGroup,'📍 Скважины геодезии KML (не верифицировано · справочно)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup,'🛰 Ортофотопланы ГТС (БПЛА-съёмка)':ortoGroup},{position:'topright'}).addTo(map);
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (по термоскважинам объектов)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (реестр координат · вериф. спутником 20.09.2026)':igiWellsGroup,'💧 Пьезометры (реестр координат)':piezoGroup,'📍 Скважины геодезии KML (не верифицировано · справочно)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup,'🛰 Ортофотопланы ГТС (БПЛА-съёмка)':ortoGroup},{position:'topright'}).addTo(map);
 map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); if(e.layer===gpGroup) gpLayerToggle(true); if(e.layer===ortoGroup) ortoLayerToggle(true); if(e.layer===piezoGroup&&piezoGroup.getLayers().length) map.fitBounds(piezoGroup.getBounds().pad(0.2)); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); if(e.layer===gpGroup) gpLayerToggle(false); if(e.layer===ortoGroup) ortoLayerToggle(false); });
 
@@ -2090,7 +2090,14 @@ function thermDraw(){
     DB.objects.forEach(o=>{
       const pts=thermWellPts(o, thermDepth);
       if(!pts.length) return;
-      const rings=kadRingsFor(o.id);
+      // контур ЗУ — граница построения, только если он фактически покрывает поле скважин (≥60% точек внутри);
+      // иначе границей служит буфер 800 м вокруг скважин (для gts01/02/05/10 контур ЗУ сеть наблюдений не покрывает)
+      let rings=[];
+      const ringsAll=kadRingsFor(o.id);
+      if(ringsAll.length){
+        const inside=pts.reduce((a,p)=>a+(inPoly(p.la,p.lo,ringsAll)?1:0),0);
+        if(inside/pts.length>=0.6) rings=ringsAll;
+      }
       let s=90,n=-90,w=180,e=-180;
       const grow=(la,lo)=>{ if(la<s)s=la; if(la>n)n=la; if(lo<w)w=lo; if(lo>e)e=lo; };
       if(rings.length) rings.forEach(rg=>rg.forEach(pt=>grow(pt[0],pt[1]))); else pts.forEach(p=>grow(p.la,p.lo));
@@ -2102,7 +2109,7 @@ function thermDraw(){
       for(let gy=0;gy<GY;gy++) lats.push(n-(gy+0.5)/GY*(n-s));
       for(let gx=0;gx<GX;gx++) lons.push(w+(gx+0.5)/GX*(e-w));
       const uni=(pts.length<3)?pts.reduce((a,p)=>a+p.t,0)/pts.length:null; // <3 скважин → однородная заливка средним
-      const maxD=rings.length?1200:450, maxD2=(maxD/mLa)*(maxD/mLa);       // радиус влияния скважины
+      const maxD=rings.length?1200:800, maxD2=(maxD/mLa)*(maxD/mLa);       // радиус влияния скважины
       const TG=[];
       for(let gy=0;gy<GY;gy++){
         const row=[];
@@ -2210,7 +2217,7 @@ function thermDraw(){
   thermCtl.innerHTML='🌡 Глубина: <button class="wbtn" data-td="ngk" style="padding:1px 6px; '+(isNgc?'background:#0077c8;color:#fff':'')+'">НГК</button> '+
     THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#0077c8;color:#fff':''}">${d} м</button>`).join(' ')+
     ` · изолинии 0,3 °C · <span style="color:#08306b">━</span> 0 °C · <span style="color:#08306b">■</span><0°C <span style="color:#f50818">■</span>>0°C`+
-    `<br><span style="font-size:10.5px;color:#555">Поскважинная IDW-интерполяция термозамеров (раздел «Термометрия» карточек объектов${isNgc?', t на глубине НГК — нулевых годовых колебаний, последний замер':''}) — строго в границах ЗУ (кадастр НСПД/ЕГРН, выгрузка ${window.KAD?KAD.updated:'—'}). Точки — скважины с замерами; объектов: ${objsN}, скважин: ${wellsN}. Объекты без геопривязанных замеров не отображаются.</span>`;
+    `<br><span style="font-size:10.5px;color:#555">Поскважинная IDW-интерполяция термозамеров (раздел «Термометрия» карточек объектов${isNgc?', t на глубине НГК — нулевых годовых колебаний, последний замер':''}) — в границах объектов: контур ЗУ (кадастр НСПД/ЕГРН, выгрузка ${window.KAD?KAD.updated:'—'}), где он покрывает сеть наблюдений, иначе — буфер 800 м вокруг поля скважин. Точки — скважины с замерами; объектов: ${objsN}, скважин: ${wellsN}. Объекты без геопривязанных замеров не отображаются.</span>`;
   thermCtl.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ const v=bt.dataset.td; thermDepth=(v==='ngk')?'ngk':+v; thermDraw(); });
 }
 function thermToggle(on){
