@@ -1792,8 +1792,8 @@ async function igiWellsLayer(notify){
     });
   });
   if(notify){
-    if(n) map.fitBounds(igiWellsGroup.getBounds().pad(0.15));
-    else alert('Слой «Термоскважины ИГИ»: параметры перехода местных СК в WGS-84 не заданы — скважины не позиционируются ('+need+' шт. в ожидании). Параметры вводятся в карточке объекта: «Инженерно-геологические изыскания» → «Геокриология» → «⚙ Параметры перехода СК» (роль «оператор»).');
+    if(n&&!window.__rzNoFit) map.fitBounds(igiWellsGroup.getBounds().pad(0.15));
+    else if(!n) alert('Слой «Термоскважины ИГИ»: параметры перехода местных СК в WGS-84 не заданы — скважины не позиционируются ('+need+' шт. в ожидании). Параметры вводятся в карточке объекта: «Инженерно-геологические изыскания» → «Геокриология» → «⚙ Параметры перехода СК» (роль «оператор»).');
   }
 }
 
@@ -2990,6 +2990,10 @@ function reestrHTML(o, kind){
     <div class="tsec-body"><style>.rzmore{display:none}.rzfar td{background:#fdf3e3}</style>
     <div class="note" style="margin-top:0">Система координат: <b>${esc(rec.sysC)}</b>; система высот: <b>${esc(rec.sysH)}</b> (подтверждение: ${esc(rec.sysSrc)}). Координаты — WGS-84. ${esc(note)}</div>
     ${rows}
+    ${(()=>{ let pts=0;
+      if(kind==='term') pts=(rec.term||[]).filter(r=>typeof r[1]==='number').length;
+      else if(kind==='piezo') pts=(rec.piezo||[]).reduce((a,g)=>a+g.rows.filter(r=>typeof r.lat==='number').length,0);
+      return pts?`<button class="addrow rzmap" type="button" data-k="${kind}" data-g="${o.id}">🗺 Показать на карте (${pts})</button>`:''; })()}
     ${N>15?`<button class="addrow rzall" type="button">показать все ${N}</button>`:''}
     </div></details>`;
 }
@@ -2997,6 +3001,25 @@ function reestrBind(el){
   el.querySelectorAll('.rzblk').forEach(b=>{
     const btn=b.querySelector('.rzall');
     if(btn) btn.onclick=()=>{ b.querySelectorAll('.rzmore').forEach(r=>r.classList.remove('rzmore')); btn.remove(); };
+    b.querySelectorAll('.rzmap').forEach(mb=>{
+      mb.onclick=async()=>{
+        const kind=mb.dataset.k, gid=mb.dataset.g;
+        const R=window.REESTR_COORDS, rec=R&&R[gid]; if(!rec) return;
+        let pts=[];
+        if(kind==='term') pts=(rec.term||[]).filter(r=>typeof r[1]==='number'&&typeof r[2]==='number').map(r=>[r[1],r[2]]);
+        if(kind==='piezo') pts=(rec.piezo||[]).flatMap(g=>g.rows).filter(r=>typeof r.lat==='number').map(r=>[r.lat,r.lon]);
+        if(!pts.length) return;
+        const grp=(kind==='term')?igiWellsGroup:piezoGroup;
+        if(kind==='term') await igiWellsLayer(false); // построить точки без fitBounds на все объекты
+        window.__rzNoFit=true;
+        if(!map.hasLayer(grp)) map.addLayer(grp);
+        setTimeout(()=>{ window.__rzNoFit=false; },50);
+        const bb=L.latLngBounds(pts);
+        if(pts.length===1) map.flyTo(pts[0],15); else map.flyToBounds(bb.pad(0.2));
+        const mel=document.getElementById('map');
+        if(mel) mel.scrollIntoView({behavior:'smooth', block:'nearest'});
+      };
+    });
   });
 }
 function renderTab(o){
