@@ -954,14 +954,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   </div>
 </div>
 
-<script src="db_p1.js?v=de7b8c4c"></script>
-<script src="db_p2.js?v=de7b8c4c"></script>
-<script src="db_p3.js?v=de7b8c4c"></script>
-<script src="db_p4.js?v=de7b8c4c"></script>
-<script src="db_p5.js?v=de7b8c4c"></script>
-<script src="db_p6.js?v=de7b8c4c"></script>
-<script src="db_p7.js?v=de7b8c4c"></script>
-<script src="db_p8.js?v=de7b8c4c"></script>
+<script src="db_p1.js?v=f6fd66f7"></script>
+<script src="db_p2.js?v=f6fd66f7"></script>
+<script src="db_p3.js?v=f6fd66f7"></script>
+<script src="db_p4.js?v=f6fd66f7"></script>
+<script src="db_p5.js?v=f6fd66f7"></script>
+<script src="db_p6.js?v=f6fd66f7"></script>
+<script src="db_p7.js?v=f6fd66f7"></script>
+<script src="db_p8.js?v=f6fd66f7"></script>
 <script src="db_wells.js?v=37610ef2"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=02b2f4095c"></script>
@@ -3498,6 +3498,17 @@ function tabGtsPassport(o, el){
   }
 }
 
+function monFreqBlock(o){
+  const mf=(typeof DB!=='undefined'&&DB.monFreq)?DB.monFreq[o.id]:null;
+  if(!mf) return '';
+  if(!mf.doc) return `<div class="sect">Периодичность наблюдений по действующему проекту мониторинга</div>
+  <div class="note">${esc(mf.note||'Действующий проект мониторинга в исходные данные не предоставлен.')}</div>`;
+  return `<div class="sect">Периодичность наблюдений по действующему проекту мониторинга</div>
+  <div class="note" style="margin:-4px 0 6px">Источник: ${esc(mf.doc)}. Извлечено в базу 29.09.2026.</div>
+  <table class="rows static"><thead><tr><th>Вид наблюдений</th><th style="width:36%">Периодичность по проекту</th></tr></thead>
+  <tbody>${mf.rows.map(r=>`<tr><td>${esc(r[0])}</td><td><b>${esc(r[1])}</b></td></tr>`).join('')}</tbody></table>
+  ${mf.note?`<div class="note" style="margin-top:6px">${esc(mf.note)}</div>`:''}`;
+}
 function tabGtmGts(o, el){
   const ro=!document.body.classList.contains('role-edit');
   const kia=(o.gts&&o.gts.kia)||{};
@@ -3544,6 +3555,7 @@ function tabGtmGts(o, el){
     <tr><td>Осмотры сооружений</td><td>${sel(o,'gtm','freq_osm','',['','ежемесячно','еженедельно','2 раза в год (весенний, осенний)','иная по проекту'])}</td></tr>
     <tr><td>Факт: осмотры за 12 мес.</td><td><b>${osmN}</b> <span class="note">— журнал осмотров (📋)</span></td></tr>
   </table>
+  ${monFreqBlock(o)}
   <div style="margin:10px 0; padding:9px 12px; border-radius:6px; background:#f6f7f9; border-left:4px solid ${conclCol}">
     <b>Заключение по обеспеченности мониторингом: <span style="color:${conclCol}">${worst.s==='—'?'НЕТ ДАННЫХ (плановый состав КИА не задан)':worst.s}</span></b>
     <div class="note">Плановый состав КИА принимается из паспорта/декларации ГТС и проекта мониторинга (этап 2 НИР); фактические ряды появятся после загрузки журналов замеров (вкладки «Термометрия», «Пьезометрия», «Деформации»).</div>
@@ -10618,8 +10630,8 @@ setTimeout(()=>{ try{
 })();
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"VZYF2keo5F+U2Rs1",ivW:"B112c22CT9Vz+Nln"};
-const BUILD="de7b8c4c";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"fzxkZwIvQG1ccaBx",ivW:"B112c22CT9Vz+Nln"};
+const BUILD="f6fd66f7";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
