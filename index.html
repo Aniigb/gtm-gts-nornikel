@@ -1509,7 +1509,7 @@ const osmTiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{max
 const satTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'});
 satTiles.addTo(map);
 const hydroGroup=L.layerGroup(), thermGroup=L.layerGroup(), hydroOgGroup=L.layerGroup(), fpGroup=L.layerGroup(), runoffGroup=L.layerGroup(), kadGroup=L.layerGroup(), igiWellsGroup=L.featureGroup(), kmlWellsGroup=L.featureGroup(), piezoGroup=L.featureGroup(), gpGroup=L.layerGroup(), ortoGroup=L.layerGroup();
-L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (t° на НГК / по глубинам)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (реестр координат · вериф. спутником 20.09.2026)':igiWellsGroup,'💧 Пьезометры (реестр координат)':piezoGroup,'📍 Скважины геодезии KML (не верифицировано · справочно)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup,'🛰 Ортофотопланы ГТС (БПЛА-съёмка)':ortoGroup},{position:'topright'}).addTo(map);
+L.control.layers({'Спутник (Esri)':satTiles,'Карта (OSM)':osmTiles},{'🌡 Тепловая карта грунтов (по термоскважинам, в границах ЗУ)':thermGroup,'🌊 Поверхностный сток и эрозионный скрининг по ЦМР (ГТС)':runoffGroup,'🗺 Кадастровые границы ЗУ (НСПД/ЕГРН)':kadGroup,'🕳 Термоскважины ИГИ (реестр координат · вериф. спутником 20.09.2026)':igiWellsGroup,'💧 Пьезометры (реестр координат)':piezoGroup,'📍 Скважины геодезии KML (не верифицировано · справочно)':kmlWellsGroup,'🗺 Генеральные планы ГТС (полупрозрачная подложка)':gpGroup,'🛰 Ортофотопланы ГТС (БПЛА-съёмка)':ortoGroup},{position:'topright'}).addTo(map);
 map.on('overlayadd',e=>{ if(e.layer===thermGroup) thermToggle(true); if(e.layer===runoffGroup) runoffNote(true); if(e.layer===igiWellsGroup) igiWellsLayer(true); if(e.layer===kmlWellsGroup) kmlWellsLayer(true); if(e.layer===gpGroup) gpLayerToggle(true); if(e.layer===ortoGroup) ortoLayerToggle(true); if(e.layer===piezoGroup&&piezoGroup.getLayers().length) map.fitBounds(piezoGroup.getBounds().pad(0.2)); });
 map.on('overlayremove',e=>{ if(e.layer===thermGroup) thermToggle(false); if(e.layer===runoffGroup) runoffNote(false); if(e.layer===gpGroup) gpLayerToggle(false); if(e.layer===ortoGroup) ortoLayerToggle(false); });
 
@@ -1972,7 +1972,9 @@ function kadPopup(p){
   console.log('KAD слой: '+nPoly+' контуров, '+nPt+' ориентиров (выгрузка '+(KAD.updated||'')+')');
 })();
 
-/* ---------- тепловая карта грунтов (IDW-интерполяция по объектам, глубины 3–15 м) ---------- */
+/* ---------- тепловая карта грунтов: поскважинная IDW-интерполяция в границах ЗУ объектов ----------
+   точки — термоскважины из раздела «Термометрия» карточек объектов (данные o.prof),
+   координаты — реестр скважин (reestr_coords.js), клиппинг — контуры ЗУ из kadastr.js ---------- */
 function inPoly(la, lo, rings){
   let inside=false;
   for(const ring of rings){
@@ -1985,47 +1987,84 @@ function inPoly(la, lo, rings){
   }
   return inside;
 }
-function inDistricts(la, lo){
-  for(const k in DB.districts) if(inPoly(la, lo, DB.districts[k])) return true;
-  return false;
+/* нормализация идентификаторов скважин (единая с реестром координат): регистр, лат. T → кирил. Т,
+   штрихи → ', без пробелов/кавычек; нули НЕ схлопываются (1П-1 ≠ 1П-01 — разные скважины) */
+function xnormW(s){ return String(s==null?'':s).toUpperCase().replace(/T/g,'Т').replace(/[\^´’`′]/g,"'").replace(/[\s"]/g,''); }
+function xnR1(s){ return s.replace(/^СКВ[.\-]?/,''); }            // «скв. 1.1» → «1.1»
+function xnR2(s){ return s.replace(/([А-ЯЁ])-(\d)/g,'$1$2'); }    // «Т-14» → «Т14»
+const __reestrMaps={};   // gid → {m0,m1,m2}: ключи-нормы → {la,lo,raw}; неоднозначные ключи исключены (null)
+function reestrWellMaps(gid){
+  let mm=__reestrMaps[gid]; if(mm) return mm;
+  const R=window.REESTR_COORDS, rec=R&&R[gid];
+  const m0=new Map(), m1=new Map(), m2=new Map();
+  const put=(mp,k,la,lo,raw)=>{
+    if(!k) return;
+    if(mp.has(k)){
+      const ex=mp.get(k);
+      if(ex&&ex.raw!==raw&&(Math.abs(ex.la-la)>1e-5||Math.abs(ex.lo-lo)>1e-5)) mp.set(k,null); // разные скважины под одним ключом
+      return;
+    }
+    mp.set(k,{la,lo,raw});
+  };
+  (rec?rec.term||[]:[]).forEach(rw=>{
+    if(typeof rw[1]!=='number'||typeof rw[2]!=='number') return;  // без координат (в т.ч. noMap)
+    const k0=xnormW(rw[0]), k1=xnR1(k0), k2=xnR2(k1);
+    put(m0,k0,rw[1],rw[2],rw[0]); put(m1,k1,rw[1],rw[2],rw[0]); put(m2,k2,rw[1],rw[2],rw[0]);
+  });
+  mm={m0,m1,m2}; __reestrMaps[gid]=mm; return mm;
+}
+function reestrFindWell(gid,wid){  // приоритет: точное совпадение → без «скв.» → без дефиса буква-цифра
+  const mm=reestrWellMaps(gid);
+  const k0=xnormW(wid), k1=xnR1(k0), k2=xnR2(k1);
+  return mm.m0.get(k0)||mm.m1.get(k1)||mm.m2.get(k2)||null;
+}
+const __kadRings={};     // gid → [ring,...]: все контуры ЗУ объекта из kadastr.js
+function kadRingsFor(gid){
+  if(gid in __kadRings) return __kadRings[gid];
+  const rings=[];
+  if(window.KAD&&KAD.plots) KAD.plots.forEach(p=>{ if(p.obj===gid&&p.rings) p.rings.forEach(rg=>rings.push(rg)); });
+  __kadRings[gid]=rings; return rings;
 }
 const THERM_DEPTHS=[3,5,7,10,12,15];
-let thermDepth='ngk', thermCv=null, thermOn=false, thermCtl=null;   // по умолчанию — температура на глубине НГК
-function thermPointsNgc(){
-  // t на глубине НГК (нулевых годовых колебаний) по каждой скважине (последний замер) → статистика объекта
-  const pts=[];
-  DB.objects.forEach(o=>{
-    if(!o.prof||o.lat==null) return;
-    const vs=[]; let hsum=0;
-    Object.values(o.prof).forEach(wd=>{
-      const h=(wd.ngcH!==undefined)?wd.ngcH:wellNgcH(wd);
-      if(h===null||h===undefined) return;
+let thermDepth='ngk', thermCv=null, thermOn=false, thermCtl=null, thermCache=null;   // по умолчанию — t на глубине НГК
+/* точки-скважины объекта с температурами: замеры из раздела «Термометрия» карточки объекта,
+   координаты — реестр скважин (reestr_coords.js). Режим: 'ngk' (t на глубине НГК, последний замер)
+   или число — глубина, м (среднее по замерам за последние 3 года). Возврат: [{la,lo,t,wid,h,n}] */
+function thermWellPts(o, mode){
+  if(!o.prof) return [];
+  const out=[];
+  for(const key in o.prof){
+    const wd=o.prof[key];
+    if(!wd||!wd.s||!wd.s.length) continue;
+    const wid=key.split(' · ').pop().trim();
+    const hit=reestrFindWell(o.id, wid);
+    if(!hit) continue;
+    let t=null, h=null;
+    if(mode==='ngk'){
+      h=(wd.ngcH!==undefined)?wd.ngcH:wellNgcH(wd);
+      if(h===null||h===undefined) continue;
       const pr=wd.s[wd.s.length-1][1];
-      if(h>pr[pr.length-1][0]) return;
-      const t=interp(pr,h); if(t===null) return;
-      vs.push(t); hsum+=h;
-    });
-    if(!vs.length) return;
-    pts.push([o.lat, o.lon, +(vs.reduce((a,b)=>a+b,0)/vs.length).toFixed(2), o.a,
-      {n:vs.length, min:+Math.min.apply(null,vs).toFixed(2), max:+Math.max.apply(null,vs).toFixed(2), h:+(hsum/vs.length).toFixed(1)}]);
+      if(!pr||!pr.length||h>pr[pr.length-1][0]) continue;
+      t=interp(pr,h); if(t===null) continue;
+    }else{
+      const cut=new Date(); cut.setFullYear(cut.getFullYear()-3);
+      const iso=cut.toISOString().slice(0,10);
+      let vs=wd.s.filter(e=>e[0]>=iso&&e[1]&&e[1].length&&mode<=e[1][e[1].length-1][0]).map(e=>interp(e[1],mode)).filter(v=>v!==null);
+      if(!vs.length){ const pr=wd.s[wd.s.length-1][1]; if(pr&&pr.length&&mode<=pr[pr.length-1][0]){ const v=interp(pr,mode); if(v!==null) vs=[v]; } }
+      if(!vs.length) continue;
+      t=vs.reduce((a,b)=>a+b,0)/vs.length;
+    }
+    out.push({la:hit.la, lo:hit.lo, t, wid, h});
+  }
+  // дедупликация по координатам (повторные id в разных секциях сооружения) → среднее t
+  const dd=new Map();
+  out.forEach(p=>{
+    const k=p.la.toFixed(5)+','+p.lo.toFixed(5);
+    const e=dd.get(k);
+    if(e){ e.t=(e.t*e.n+p.t)/(e.n+1); e.n++; }
+    else dd.set(k,{la:p.la,lo:p.lo,t:p.t,wid:p.wid,h:p.h,n:1});
   });
-  return pts;
-}
-function thermPoints(dep){
-  // по каждому объекту: средняя t на глубине dep за последние 3 года замеров
-  const cut=new Date(); cut.setFullYear(cut.getFullYear()-3);
-  const iso=cut.toISOString().slice(0,10);
-  const pts=[];
-  DB.objects.forEach(o=>{
-    if(!o.prof||o.lat==null) return;
-    const s=objDepthSeries(o, dep);
-    if(!s.xs.length) return;
-    let vs=s.xs.map((d,i)=>[d,s.ys[i]]).filter(p=>p[0]>=iso).map(p=>p[1]);
-    if(!vs.length) vs=[s.ys[s.ys.length-1]];
-    const t=vs.reduce((a,b)=>a+b,0)/vs.length;
-    pts.push([o.lat, o.lon, t, o.a]);
-  });
-  return pts;
+  return [...dd.values()];
 }
 function thermEnsure(){
   if(thermCv) return;
@@ -2034,7 +2073,7 @@ function thermEnsure(){
   document.getElementById('map').appendChild(thermCv);
   // переключатель глубин
   thermCtl=document.createElement('div');
-  thermCtl.style.cssText='position:absolute; right:64px; top:26px; z-index:640; background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:11.5px; display:none';
+  thermCtl.style.cssText='position:absolute; right:64px; top:26px; z-index:640; background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:11.5px; display:none; max-width:430px';
   document.getElementById('map').appendChild(thermCtl);
   map.on('resize move zoom', ()=>{ if(thermOn) thermDraw(); });
 }
@@ -2044,95 +2083,134 @@ function thermDraw(){
   const ctx=thermCv.getContext('2d');
   ctx.clearRect(0,0,r.width,r.height);
   const isNgc=(thermDepth==='ngk');
-  const pts=isNgc?thermPointsNgc():thermPoints(thermDepth);
-  if(pts.length<4){ ctx.fillStyle='#666'; ctx.font='12px sans-serif'; ctx.fillText(isNgc?'мало скважин с определённой НГК':'мало данных на этой глубине',10,20); return; }
-  const b=map.getBounds().pad(0.15);
-  const GX=110, GY=Math.round(GX*r.height/r.width);
-  const STEP=0.3;                     // шаг изолиний, °C
-  const tmin=-3, tmax=1;
-  const TG=[], PG=[];
-  for(let gy=0; gy<GY; gy++){
-    const rowT=[], rowP=[];
-    for(let gx=0; gx<GX; gx++){
-      const lat=b.getNorth()-(gy+0.5)/GY*(b.getNorth()-b.getSouth());
-      const lon=b.getWest()+(gx+0.5)/GX*(b.getEast()-b.getWest());
-      if(!inDistricts(lat,lon)){ rowT.push(null); rowP.push(null); continue; }   // только в границах районов
-      let sw=0, swt=0;
-      for(const [la,lo,t] of pts){
-        const d2=(la-lat)**2+((lo-lon)*Math.cos(lat*Math.PI/180))**2;
-        if(d2>0.03) continue;                      // радиус ≈ 5.5 км
-        const w=1/(d2+1e-6);
-        sw+=w; swt+=w*t;
+  const STEP=0.3, tmin=-3, tmax=1;
+  // значения сеток — кэшируются по режиму (геопривязаны, от панорамы/зума не зависят)
+  if(!thermCache||thermCache.key!==thermDepth){
+    const objs={};
+    DB.objects.forEach(o=>{
+      const pts=thermWellPts(o, thermDepth);
+      if(!pts.length) return;
+      const rings=kadRingsFor(o.id);
+      let s=90,n=-90,w=180,e=-180;
+      const grow=(la,lo)=>{ if(la<s)s=la; if(la>n)n=la; if(lo<w)w=lo; if(lo>e)e=lo; };
+      if(rings.length) rings.forEach(rg=>rg.forEach(pt=>grow(pt[0],pt[1]))); else pts.forEach(p=>grow(p.la,p.lo));
+      const pad=0.0032; s-=pad; n+=pad; w-=pad; e+=pad;                    // поле ~350 м вокруг границ
+      const midLa=(s+n)/2, mLa=111320, mLo=111320*Math.cos(midLa*Math.PI/180);
+      const GX=Math.max(20,Math.min(96,Math.round((e-w)*mLo/40)));        // ячейка ~40 м
+      const GY=Math.max(20,Math.min(96,Math.round((n-s)*mLa/40)));
+      const lats=[], lons=[];
+      for(let gy=0;gy<GY;gy++) lats.push(n-(gy+0.5)/GY*(n-s));
+      for(let gx=0;gx<GX;gx++) lons.push(w+(gx+0.5)/GX*(e-w));
+      const uni=(pts.length<3)?pts.reduce((a,p)=>a+p.t,0)/pts.length:null; // <3 скважин → однородная заливка средним
+      const maxD=rings.length?1200:450, maxD2=(maxD/mLa)*(maxD/mLa);       // радиус влияния скважины
+      const TG=[];
+      for(let gy=0;gy<GY;gy++){
+        const row=[];
+        const lat=lats[gy], cosLa=Math.cos(lat*Math.PI/180);
+        for(let gx=0;gx<GX;gx++){
+          const lon=lons[gx];
+          if(rings.length&&!inPoly(lat,lon,rings)){ row.push(null); continue; }   // строго в границах ЗУ
+          if(uni!==null){ row.push(uni); continue; }
+          let sw=0, swt=0;
+          for(const p of pts){
+            const dla=p.la-lat, dlo=(p.lo-lon)*cosLa;
+            const d2=dla*dla+dlo*dlo;
+            if(d2>maxD2) continue;
+            const wgt=1/(d2+1e-7); sw+=wgt; swt+=wgt*p.t;
+          }
+          row.push(sw?swt/sw:null);
+        }
+        TG.push(row);
       }
-      const t=sw?swt/sw:null;
-      rowT.push(t);
-      rowP.push(map.latLngToContainerPoint([lat,lon]));
-    }
-    TG.push(rowT); PG.push(rowP);
+      objs[o.id]={TG,lats,lons,GX,GY,pts,rings};
+    });
+    thermCache={key:thermDepth,objs};
   }
-  // 1) цветовые полосы с шагом 0,3 °C
-  for(let gy=0; gy<GY; gy++){
-    for(let gx=0; gx<GX; gx++){
-      const t=TG[gy][gx];
-      if(t===null||t<-6||t>4) continue;
-      const tq=Math.round(t/STEP)*STEP;           // квантование по изолиниям 0,3 °C
-      const p0=PG[gy][gx], p1=PG[Math.min(gy+1,GY-1)][Math.min(gx+1,GX-1)];
-      if(!p0||!p1) continue;
-      ctx.fillStyle=isoColor(tq, tmin, tmax);
-      ctx.globalAlpha=0.55;
-      ctx.fillRect(p0.x, p0.y, Math.abs(p1.x-p0.x)+1.5, Math.abs(p1.y-p0.y)+1.5);
-    }
-  }
-  ctx.globalAlpha=1;
-  // 2) изолинии с шагом 0,3 °C (0 °C — утолщённая)
-  const L0=Math.ceil(tmin/STEP)*STEP;
-  for(let Lv=L0; Lv<=tmax; Lv+=STEP){
-    const zero=Math.abs(Lv)<0.01;
-    ctx.strokeStyle=zero?'#08306b':'rgba(40,40,40,.5)';
-    ctx.lineWidth=zero?1.8:0.7;
-    for(let gy=0; gy<GY-1; gy++){
-      for(let gx=0; gx<GX-1; gx++){
+  // отрисовка (пиксельная проекция — при каждом событии карты)
+  const ob=thermCache.objs;
+  let wellsN=0, objsN=0;
+  const zoom=map.getZoom();
+  for(const gid in ob){
+    const G=ob[gid];
+    const {TG,lats,lons,GX,GY,pts,rings}=G;
+    const lonSt=(lons[GX-1]-lons[0])/(GX-1), latSt=(lats[0]-lats[GY-1])/(GY-1);
+    const w0=lons[0]-lonSt/2, n0=lats[0]+latSt/2;
+    const xs=new Array(GX+1), ys=new Array(GY+1);
+    for(let gx=0;gx<=GX;gx++) xs[gx]=map.latLngToContainerPoint([n0,w0+gx*lonSt]).x;
+    for(let gy=0;gy<=GY;gy++) ys[gy]=map.latLngToContainerPoint([n0-gy*latSt,w0]).y;
+    if(xs[GX]<0||xs[0]>r.width||ys[GY]<0||ys[0]>r.height) continue;        // объект вне экрана
+    objsN++; wellsN+=pts.length;
+    // 1) цветовые полосы с шагом 0,3 °C
+    for(let gy=0;gy<GY;gy++){
+      for(let gx=0;gx<GX;gx++){
         const t=TG[gy][gx];
-        if(t===null) continue;
-        const tr=TG[gy][gx+1], td=TG[gy+1][gx];
-        if(tr!==null&&(t-Lv)*(tr-Lv)<0){
-          const f=(Lv-t)/(tr-t);
-          const a=PG[gy][gx], bb=PG[gy][gx+1];
-          if(!a||!bb) continue;
-          const x=a.x+(bb.x-a.x)*f, y=a.y+(bb.y-a.y)*f;
-          ctx.beginPath(); ctx.moveTo(x-2.2,y); ctx.lineTo(x+2.2,y); ctx.stroke();
-        }
-        if(td!==null&&(t-Lv)*(td-Lv)<0){
-          const f=(Lv-t)/(td-t);
-          const a=PG[gy][gx], bb=PG[gy+1][gx];
-          if(!a||!bb) continue;
-          const x=a.x+(bb.x-a.x)*f, y=a.y+(bb.y-a.y)*f;
-          ctx.beginPath(); ctx.moveTo(x,y-2.2); ctx.lineTo(x,y+2.2); ctx.stroke();
+        if(t===null||t<-6||t>4) continue;
+        const tq=Math.round(t/STEP)*STEP;
+        ctx.fillStyle=isoColor(tq,tmin,tmax);
+        ctx.globalAlpha=0.55;
+        ctx.fillRect(xs[gx],ys[gy],xs[gx+1]-xs[gx]+0.7,ys[gy+1]-ys[gy]+0.7);
+      }
+    }
+    ctx.globalAlpha=1;
+    // 2) изолинии с шагом 0,3 °C (0 °C — утолщённая)
+    for(let Lv=Math.ceil(tmin/STEP)*STEP; Lv<=tmax+1e-9; Lv+=STEP){
+      const zero=Math.abs(Lv)<0.01;
+      ctx.strokeStyle=zero?'#08306b':'rgba(40,40,40,.5)';
+      ctx.lineWidth=zero?1.8:0.7;
+      for(let gy=0;gy<GY-1;gy++){
+        for(let gx=0;gx<GX-1;gx++){
+          const t=TG[gy][gx];
+          if(t===null) continue;
+          const tr=TG[gy][gx+1], td=TG[gy+1][gx];
+          if(tr!==null&&(t-Lv)*(tr-Lv)<0){
+            const f=(Lv-t)/(tr-t);
+            const x=xs[gx]+(xs[gx+1]-xs[gx])*f, y=(ys[gy]+ys[gy+1])/2;
+            ctx.beginPath(); ctx.moveTo(x-2.2,y); ctx.lineTo(x+2.2,y); ctx.stroke();
+          }
+          if(td!==null&&(t-Lv)*(td-Lv)<0){
+            const f=(Lv-t)/(td-t);
+            const x=(xs[gx]+xs[gx+1])/2, y=ys[gy]+(ys[gy+1]-ys[gy])*f;
+            ctx.beginPath(); ctx.moveTo(x,y-2.2); ctx.lineTo(x,y+2.2); ctx.stroke();
+          }
         }
       }
     }
-  }
-  // 3) точки объектов (из скважин); в режиме НГК — с подписями t(НГК)
-  pts.forEach(([la,lo,t,nm,st])=>{
-    const p=map.latLngToContainerPoint([la,lo]);
-    ctx.beginPath(); ctx.arc(p.x,p.y,2.6,0,7);
-    ctx.fillStyle=isoColor(t,tmin,tmax); ctx.fill();
-    ctx.strokeStyle='#333'; ctx.lineWidth=.6; ctx.stroke();
-    if(isNgc&&st){
-      const l1=t.toFixed(1).replace('.',',')+' °C', l2='НГК ≈ '+String(st.h).replace('.',',')+' м · '+st.n+' скв.';
-      ctx.font='600 11px sans-serif';
-      const w=Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width)+8;
-      ctx.fillStyle='rgba(255,255,255,.88)'; ctx.fillRect(p.x+6,p.y-20,w,26);
-      ctx.strokeStyle='rgba(60,60,60,.35)'; ctx.lineWidth=.6; ctx.strokeRect(p.x+6,p.y-20,w,26);
-      ctx.fillStyle=t>=0?'#b3202c':'#08306b'; ctx.fillText(l1,p.x+10,p.y-11);
-      ctx.fillStyle='#444'; ctx.font='10px sans-serif'; ctx.fillText(l2,p.x+10,p.y+1);
+    // 3) контур ЗУ (тонкая пунктирная обводка — граница построения)
+    if(rings.length){
+      ctx.strokeStyle='rgba(192,57,43,.5)'; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+      rings.forEach(rg=>{
+        ctx.beginPath();
+        rg.forEach((pt,i)=>{ const p=map.latLngToContainerPoint([pt[0],pt[1]]); if(i) ctx.lineTo(p.x,p.y); else ctx.moveTo(p.x,p.y); });
+        ctx.closePath(); ctx.stroke();
+      });
+      ctx.setLineDash([]);
     }
-  });
+    // 4) точки скважин; на крупном масштабе — подписи t
+    const lbl=zoom>=13&&pts.length<=80;
+    pts.forEach(p=>{
+      const q=map.latLngToContainerPoint([p.la,p.lo]);
+      ctx.beginPath(); ctx.arc(q.x,q.y,2.6,0,7);
+      ctx.fillStyle=isoColor(p.t,tmin,tmax); ctx.fill();
+      ctx.strokeStyle='#333'; ctx.lineWidth=.6; ctx.stroke();
+      if(lbl){
+        const s1=p.t.toFixed(1).replace('.',',');
+        ctx.font='600 10px sans-serif';
+        ctx.lineWidth=2.6; ctx.strokeStyle='rgba(255,255,255,.9)';
+        ctx.strokeText(s1,q.x+4,q.y-4);
+        ctx.fillStyle=p.t>=0?'#b3202c':'#08306b';
+        ctx.fillText(s1,q.x+4,q.y-4);
+      }
+    });
+  }
+  if(!objsN){
+    ctx.fillStyle='#666'; ctx.font='12px sans-serif';
+    ctx.fillText(isNgc?'в видимой области нет скважин с определённой НГК и геопривязкой':'в видимой области нет геопривязанных замеров на этой глубине',10,20);
+  }
   thermCtl.style.display='block';
   thermCtl.innerHTML='🌡 Глубина: <button class="wbtn" data-td="ngk" style="padding:1px 6px; '+(isNgc?'background:#0077c8;color:#fff':'')+'">НГК</button> '+
     THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#0077c8;color:#fff':''}">${d} м</button>`).join(' ')+
     ` · изолинии 0,3 °C · <span style="color:#08306b">━</span> 0 °C · <span style="color:#08306b">■</span><0°C <span style="color:#f50818">■</span>>0°C`+
-    (isNgc?'<br><span style="font-size:10.5px;color:#555">t на глубине НГК (нулевых годовых колебаний), среднее по скважинам объекта за последний замер; IDW-интерполяция — между объектами. Поточечная интерполяция по скважинам включается после геопривязки журнальных скважин (координаты в исходных журналах отсутствуют).</span>':'');
+    `<br><span style="font-size:10.5px;color:#555">Поскважинная IDW-интерполяция термозамеров (раздел «Термометрия» карточек объектов${isNgc?', t на глубине НГК — нулевых годовых колебаний, последний замер':''}) — строго в границах ЗУ (кадастр НСПД/ЕГРН, выгрузка ${window.KAD?KAD.updated:'—'}). Точки — скважины с замерами; объектов: ${objsN}, скважин: ${wellsN}. Объекты без геопривязанных замеров не отображаются.</span>`;
   thermCtl.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ const v=bt.dataset.td; thermDepth=(v==='ngk')?'ngk':+v; thermDraw(); });
 }
 function thermToggle(on){
