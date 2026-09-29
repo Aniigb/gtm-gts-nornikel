@@ -129,6 +129,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   #gtmCov .covArrow{position:absolute; right:7px; top:3px; font-style:normal; font-size:11px; color:#5a6b7a; transition:transform .25s ease}
   #gtmCov.open .covArrow{transform:rotate(90deg)}
   @media (max-width:900px){ #gtmCov{transform:scale(.82); transform-origin:bottom left} }
+  /* сворачиваемые панели слоёв карты: теплокарта и примечание ЦМР — раскрытие при наведении, закрепление кликом по заголовку */
+  #thermCtl{max-height:26px; overflow:hidden; cursor:pointer; transition:max-height .25s ease; box-sizing:border-box}
+  #thermCtl.open{max-height:300px; cursor:default}
+  #thermCtl .mlHead{display:block; font-weight:700; color:#33404d; position:relative; padding-right:14px; white-space:nowrap; line-height:16px}
+  #thermCtl .mlArrow{position:absolute; right:0; top:1px; font-style:normal; font-size:11px; color:#5a6b7a; transition:transform .25s ease}
+  #thermCtl.open .mlArrow{transform:rotate(90deg)}
+  #runoffNote{max-height:35px; overflow:hidden; cursor:pointer; transition:max-height .25s ease; box-sizing:border-box}
+  #runoffNote.open{max-height:160px; cursor:default}
+  #runoffNote .rnArrow{position:absolute; right:0; top:1px; font-style:normal; font-size:11px; color:#c9bb92; transition:transform .25s ease}
+  #runoffNote.open .rnArrow{transform:rotate(90deg)}
   #wxTicker{position:absolute; left:0; right:64px; top:0; z-index:650; height:24px; overflow:hidden; display:flex; align-items:center; background:rgba(15,28,38,.88); color:#dfe9f0; border-bottom:1px solid #3a4c5c}
   #wxTicker .tk{display:flex; white-space:nowrap; animation:tkScroll 46s linear infinite; will-change:transform}
   #wxTicker .tk span{padding-right:110px; font-size:12px; letter-spacing:.02em}
@@ -1931,9 +1941,19 @@ function runoffNote(on){
     if(!runoffNoteEl){
       runoffNoteEl=document.createElement('div');
       runoffNoteEl.id='runoffNote';
-      runoffNoteEl.style.cssText='position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:650; background:rgba(24,28,32,.92); color:#f2e9d8; border:1px solid #8a7d5a; border-radius:8px; padding:9px 16px; font-size:12.5px; line-height:1.45; max-width:80%; text-align:center; pointer-events:none; box-shadow:0 2px 12px rgba(0,0,0,.45)';
-      runoffNoteEl.innerHTML='🌊 <b>Поверхностный сток и эрозионный скрининг по ЦМР (ArcticDEM v3.0, исходная ячейка 10 м, скрининговый уровень).</b><br>Расчётные водотоки от водосбора ~1 км² и очаги размыва (SPI) в буферах объектов. Карты, классы риска и режимные меры: Центр контроля ГТМ → «🌊 Модель стока».';
+      runoffNoteEl.style.cssText='position:absolute; left:50%; bottom:30px; transform:translateX(-50%); z-index:650; background:rgba(24,28,32,.92); color:#f2e9d8; border:1px solid #8a7d5a; border-radius:8px; padding:8px 16px; font-size:12.5px; line-height:1.45; max-width:80%; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,.45)';
+      runoffNoteEl.innerHTML='<span style="display:block; font-weight:700; position:relative; padding:0 14px; white-space:nowrap">🌊 Поверхностный сток и эрозионный скрининг по ЦМР<i class="rnArrow">▸</i></span>'+
+        '<span style="display:block">(ArcticDEM v3.0, исходная ячейка 10 м, скрининговый уровень.) Расчётные водотоки от водосбора ~1 км² и очаги размыва (SPI) в буферах объектов. Карты, классы риска и режимные меры: Центр контроля ГТМ → «🌊 Модель стока».</span>';
       document.getElementById('map').appendChild(runoffNoteEl);
+      /* компактный режим: раскрытие при наведении, закрепление кликом по заголовку */
+      let rnPinned=false;
+      const rnSync=hover=>{ runoffNoteEl.classList.toggle('open', !!(rnPinned||hover)); };
+      runoffNoteEl.addEventListener('mouseenter',()=>rnSync(true));
+      runoffNoteEl.addEventListener('mouseleave',()=>rnSync(false));
+      runoffNoteEl.addEventListener('click',ev=>{
+        const r=runoffNoteEl.getBoundingClientRect();
+        if(ev.clientY-r.top<=26){ rnPinned=!rnPinned; rnSync(true); }
+      });
     }
     runoffNoteEl.style.display='block';
   }else if(runoffNoteEl) runoffNoteEl.style.display='none';
@@ -2071,10 +2091,22 @@ function thermEnsure(){
   thermCv=document.createElement('canvas');
   thermCv.style.cssText='position:absolute; inset:0; z-index:590; pointer-events:none';
   document.getElementById('map').appendChild(thermCv);
-  // переключатель глубин
+  // переключатель глубин (сворачиваемая панель: заголовок постоянный, тело обновляется в thermDraw)
   thermCtl=document.createElement('div');
+  thermCtl.id='thermCtl';
   thermCtl.style.cssText='position:absolute; right:64px; top:26px; z-index:640; background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:11.5px; display:none; max-width:430px';
+  thermCtl.innerHTML='<span class="mlHead" title="Наведите курсор или кликните для раскрытия; клик по заголовку — закрепить/открепить">🌡 Тепловая карта грунтов<i class="mlArrow">▸</i></span><div id="thermBody"></div>';
   document.getElementById('map').appendChild(thermCtl);
+  /* компактный режим: раскрытие при наведении, закрепление кликом по заголовку */
+  let thermPinned=false;
+  const thSync=hover=>{ thermCtl.classList.toggle('open', !!(thermPinned||hover)); };
+  thermCtl.addEventListener('mouseenter',()=>thSync(true));
+  thermCtl.addEventListener('mouseleave',()=>thSync(false));
+  thermCtl.addEventListener('click',ev=>{
+    if(ev.target.closest('[data-td]')) return;
+    const r=thermCtl.getBoundingClientRect();
+    if(ev.clientY-r.top<=22){ thermPinned=!thermPinned; thSync(true); }
+  });
   map.on('resize move zoom', ()=>{ if(thermOn) thermDraw(); });
 }
 function thermDraw(){
@@ -2214,11 +2246,12 @@ function thermDraw(){
     ctx.fillText(isNgc?'в видимой области нет скважин с определённой НГК и геопривязкой':'в видимой области нет геопривязанных замеров на этой глубине',10,20);
   }
   thermCtl.style.display='block';
-  thermCtl.innerHTML='🌡 Глубина: <button class="wbtn" data-td="ngk" style="padding:1px 6px; '+(isNgc?'background:#0077c8;color:#fff':'')+'">НГК</button> '+
+  const tb=thermCtl.querySelector('#thermBody');
+  tb.innerHTML='Глубина: <button class="wbtn" data-td="ngk" style="padding:1px 6px; '+(isNgc?'background:#0077c8;color:#fff':'')+'">НГК</button> '+
     THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#0077c8;color:#fff':''}">${d} м</button>`).join(' ')+
     ` · изолинии 0,3 °C · <span style="color:#08306b">━</span> 0 °C · <span style="color:#08306b">■</span><0°C <span style="color:#f50818">■</span>>0°C`+
     `<br><span style="font-size:10.5px;color:#555">Поскважинная IDW-интерполяция термозамеров (раздел «Термометрия» карточек объектов${isNgc?', t на глубине НГК — нулевых годовых колебаний, последний замер':''}) — в границах объектов: контур ЗУ (кадастр НСПД/ЕГРН, выгрузка ${window.KAD?KAD.updated:'—'}), где он покрывает сеть наблюдений, иначе — буфер 800 м вокруг поля скважин. Точки — скважины с замерами; объектов: ${objsN}, скважин: ${wellsN}. Объекты без геопривязанных замеров не отображаются.</span>`;
-  thermCtl.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ const v=bt.dataset.td; thermDepth=(v==='ngk')?'ngk':+v; thermDraw(); });
+  tb.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ const v=bt.dataset.td; thermDepth=(v==='ngk')?'ngk':+v; thermDraw(); });
 }
 function thermToggle(on){
   thermOn=on;
