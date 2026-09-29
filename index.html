@@ -130,9 +130,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   #gtmCov.open .covArrow{transform:rotate(90deg)}
   @media (max-width:900px){ #gtmCov{transform:scale(.82); transform-origin:bottom left} }
   /* сворачиваемые панели слоёв карты: теплокарта и примечание ЦМР — раскрытие при наведении, закрепление кликом по заголовку */
-  #thermCtl{max-height:26px; overflow:hidden; cursor:pointer; transition:max-height .25s ease; box-sizing:border-box}
+  #thermCtl{max-height:34px; overflow:hidden; cursor:pointer; transition:max-height .25s ease; box-sizing:border-box}
   #thermCtl.open{max-height:300px; cursor:default}
-  #thermCtl .mlHead{display:block; font-weight:700; color:#33404d; position:relative; padding-right:14px; white-space:nowrap; line-height:16px}
+  #thermCtl .mlHead{display:inline-block; font-weight:700; color:#33404d; position:relative; padding-right:14px; white-space:nowrap; line-height:16px}
   #thermCtl .mlArrow{position:absolute; right:0; top:1px; font-style:normal; font-size:11px; color:#5a6b7a; transition:transform .25s ease}
   #thermCtl.open .mlArrow{transform:rotate(90deg)}
   #runoffNote{max-height:35px; overflow:hidden; cursor:pointer; transition:max-height .25s ease; box-sizing:border-box}
@@ -2095,7 +2095,7 @@ function thermEnsure(){
   thermCtl=document.createElement('div');
   thermCtl.id='thermCtl';
   thermCtl.style.cssText='position:absolute; right:64px; top:26px; z-index:640; background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:11.5px; display:none; max-width:430px';
-  thermCtl.innerHTML='<span class="mlHead" title="Наведите курсор или кликните для раскрытия; клик по заголовку — закрепить/открепить">🌡 Тепловая карта грунтов<i class="mlArrow">▸</i></span><div id="thermBody"></div>';
+  thermCtl.innerHTML='<span class="mlHead" title="Наведите курсор или кликните для раскрытия легенды; клик по заголовку — закрепить/открепить">🌡 Тепловая карта грунтов<i class="mlArrow">▸</i></span> <span id="thermBtns"></span><div id="thermBody"></div>';
   document.getElementById('map').appendChild(thermCtl);
   /* компактный режим: раскрытие при наведении, закрепление кликом по заголовку */
   let thermPinned=false;
@@ -2247,11 +2247,12 @@ function thermDraw(){
   }
   thermCtl.style.display='block';
   const tb=thermCtl.querySelector('#thermBody');
-  tb.innerHTML='Глубина: <button class="wbtn" data-td="ngk" style="padding:1px 6px; '+(isNgc?'background:#0077c8;color:#fff':'')+'">НГК</button> '+
-    THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#0077c8;color:#fff':''}">${d} м</button>`).join(' ')+
-    ` · изолинии 0,3 °C · <span style="color:#08306b">━</span> 0 °C · <span style="color:#08306b">■</span><0°C <span style="color:#f50818">■</span>>0°C`+
+  const tbs=thermCtl.querySelector('#thermBtns');
+  tbs.innerHTML='<button class="wbtn" data-td="ngk" style="padding:1px 6px; '+(isNgc?'background:#0077c8;color:#fff':'')+'">НГК</button> '+
+    THERM_DEPTHS.map(d=>`<button class="wbtn" data-td="${d}" style="padding:1px 6px; ${d===thermDepth?'background:#0077c8;color:#fff':''}">${d} м</button>`).join(' ');
+  tb.innerHTML=`изолинии 0,3 °C · <span style="color:#08306b">━</span> 0 °C · <span style="color:#08306b">■</span><0°C <span style="color:#f50818">■</span>>0°C`+
     `<br><span style="font-size:10.5px;color:#555">Поскважинная IDW-интерполяция термозамеров (раздел «Термометрия» карточек объектов${isNgc?', t на глубине НГК — нулевых годовых колебаний, последний замер':''}) — в границах объектов: контур ЗУ (кадастр НСПД/ЕГРН, выгрузка ${window.KAD?KAD.updated:'—'}), где он покрывает сеть наблюдений, иначе — буфер 800 м вокруг поля скважин. Точки — скважины с замерами; объектов: ${objsN}, скважин: ${wellsN}. Объекты без геопривязанных замеров не отображаются.</span>`;
-  tb.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ const v=bt.dataset.td; thermDepth=(v==='ngk')?'ngk':+v; thermDraw(); });
+  tbs.querySelectorAll('[data-td]').forEach(bt=>bt.onclick=()=>{ const v=bt.dataset.td; thermDepth=(v==='ngk')?'ngk':+v; thermDraw(); });
 }
 function thermToggle(on){
   thermOn=on;
