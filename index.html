@@ -977,6 +977,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 <script src="niokr.js?v=02b2f4095c"></script>
 <script src="stok_data.js?v=20260916a"></script>
 <script src="reestr_coords.js?v=20260928a"></script>
+<script src="akt.js?v=20261002a"></script>
+<script src="district.js?v=20261002a"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -2586,8 +2588,10 @@ function renderList(){
     const acc=document.createElement('div');
     acc.className='acc'+((openStreets.has(g)||curQ)?' open':'');
     const h=document.createElement('div'); h.className='acc-h';
-    h.innerHTML=`<span>${esc(g)}</span><span class="n">${items.length} об.</span>`;
+    h.innerHTML=`<span>${esc(g)}</span><span class="n">${items.length} об.</span><button class="dsum" title="Сводная карточка площадки «${esc(g)}»: состояние, мониторинг, сооружения, критерии" data-d="${esc(g)}">▦</button>`;
     h.onclick=()=>{ acc.classList.toggle('open'); if(acc.classList.contains('open')) openStreets.add(g); else openStreets.delete(g); };
+    const dsumBtn=h.querySelector('.dsum');
+    if(dsumBtn) dsumBtn.onclick=e=>{ e.stopPropagation(); if(typeof renderDistrict==='function') renderDistrict(g); };
     const bd=document.createElement('div'); bd.className='acc-b';
     items.forEach(x=>{ bd.appendChild(objItem(x.o,x.i)); });
     acc.appendChild(h); acc.appendChild(bd); list.appendChild(acc);
@@ -2999,7 +3003,7 @@ function normText(s){
 }
 function escT(s){ return esc(normText(s)); }
 let curObj=null, curWell=null, curDepths=new Set(), curTab='passport', fcDepth=5;
-const TABS=[['passport','Паспорт ГТС'],['gtm','Паспорт ГТМ'],['igi','Инженерно-геологические изыскания'],['fac','Сооружения'],['kk','Контрольные критерии'],['geoterm','Термометрия'],['piezo','Пьезометрия'],['geod','Деформации'],['calc','Расчёты'],['climate','Климат до 2050'],['expl','Осмотры и эксплуатация'],['repairs','Ремонты и работы'],['docs','Документация'],['photo','Фотоматериалы'],['misc','Иное']];
+const TABS=[['passport','Паспорт ГТС'],['gtm','Паспорт ГТМ'],['igi','Инженерно-геологические изыскания'],['fac','Сооружения'],['kk','Контрольные критерии'],['geoterm','Термометрия'],['piezo','Пьезометрия'],['geod','Деформации'],['calc','Расчёты'],['climate','Климат до 2050'],['expl','Осмотры и эксплуатация'],['akt','Акт обследования'],['repairs','Ремонты и работы'],['docs','Документация'],['photo','Фотоматериалы'],['misc','Иное']];
 /* наполненность вкладок карточки: число единиц данных (бейдж на вкладке); 0 — вкладка приглушается */
 const TAB_DATA={
   gtm:o=>Object.values(o.points||{}).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0),
@@ -3146,7 +3150,7 @@ function reestrBind(el){
 function renderTab(o){
   const el=document.getElementById('tabBody');
   ({passport:tabGtsPassport, gtm:tabGtmGts, igi:tabIgi, fac:tabFac, kk:tabKK, geoterm:tabGeoterm, piezo:tabPiezo, geod:tabGeod, calc:tabCalcGts, climate:tabClimate,
-    expl:tabExpl, repairs:tabRepairs, docs:tabGtsDocs, photo:tabPhoto, misc:tabMisc})[curTab](o, el);
+    expl:tabExpl, akt:tabAkt, repairs:tabRepairs, docs:tabGtsDocs, photo:tabPhoto, misc:tabMisc})[curTab](o, el);
   reestrBind(el);
 }
 
@@ -10747,6 +10751,9 @@ setTimeout(()=>{ try{
     if(e.key==='PrintScreen'){ try{ navigator.clipboard.writeText(''); }catch(_){} cpToast(); }
   }, true);
 })();
+
+/* ---------- экспорт хелперов для внешних модулей (akt.js и др.) ---------- */
+Object.assign(window,{esc,micAttach,exifGps,downscaleImg,polishComment,fmtPhTs,libDocx,durlToU8,facOf,stopSR,statusDetail,statusOf,DCOL,SCOL});
 
 };
 const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"fzxkZwIvQG1ccaBx",ivW:"B112c22CT9Vz+Nln"};
