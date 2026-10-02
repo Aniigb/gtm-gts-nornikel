@@ -383,11 +383,13 @@ function tabAkt(o, el) {
     let html = '';
     if (shared.length) {
       html += '<div class="sect" style="margin:12px 0 4px">Реестр в общей базе · ' + shared.length + '</div>';
-      shared.slice().reverse().forEach(a => {
+      shared.slice().forEach(a => {
         html += '<div class="akt-hist">🗄 <b>Акт ' + aktEsc(a.num || 'б/н') + ' от ' + aktEsc(a.date || '—') + '</b>' +
           (a.kv ? ' · ' + ['','I','II','III','IV'][Math.max(1, Math.min(4, a.kv))] + ' кв. ' + (a.god || '') + (a.ochered ? ' · ' + aktEsc(a.ochered) + ' оч.' : '') : '') +
           (a.cat ? ' · ' + aktEsc(a.cat) : '') +
-          (a.file ? '<br><span class="note">файл: ' + aktEsc(a.file) + '</span>' : '') + '</div>';
+          (a.file ? '<br><span class="note">файл: ' + aktEsc(a.file) + '</span>' : '') +
+          (a.zakl ? '<br><span class="note" style="color:var(--txt)"><b>Выводы:</b> ' + aktEsc(a.zakl) + '</span>' : '') +
+          (a.note ? '<br><span class="note">⚠ ' + aktEsc(a.note) + '</span>' : '') + '</div>';
       });
     }
     if (!list.length && !shared.length) { h.innerHTML = '<div class="note" style="margin-top:10px">Акты обследования по объекту ещё не формировались.</div>'; return; }
