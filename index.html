@@ -148,6 +148,21 @@ document.addEventListener('DOMContentLoaded',()=>{
   .wells{display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 8px}
   .wbtn{border:1px solid var(--line); background:#fff; border-radius:4px; padding:3px 10px; font-size:12px; cursor:pointer}
   .wbtn.on{background:var(--c-centr); color:#fff; border-color:var(--c-centr)}
+  /* ---------- кастомный выпадающий список (длинные опции, без переполнения панели) ---------- */
+  .csd{position:relative; display:block; width:100%; min-width:0}
+  .csd-btn{display:flex; align-items:center; gap:6px; width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12.8px; cursor:pointer; font-family:inherit; text-align:left; color:var(--ink)}
+  .csd-btn:hover{border-color:var(--c-centr)}
+  .csd-btn:focus{outline:none; border-color:var(--c-centr); box-shadow:0 0 0 2px rgba(31,94,153,.18)}
+  .csd-lab{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .csd-car{flex:none; color:var(--mut); font-size:10px; transition:transform .15s}
+  .csd.open .csd-car{transform:rotate(180deg)}
+  .csd-pop{display:none; position:absolute; z-index:80; top:calc(100% + 3px); left:0; right:0; background:#fff; border:1px solid var(--line); border-radius:6px; box-shadow:0 8px 22px rgba(15,28,38,.22); max-height:320px; overflow-y:auto}
+  .csd.open .csd-pop{display:block}
+  .csd-it{padding:7px 10px; font-size:12.6px; line-height:1.35; cursor:pointer; border-bottom:1px solid #eef3f8; white-space:normal; overflow-wrap:anywhere}
+  .csd-it:last-child{border-bottom:none}
+  .csd-it:hover, .csd-it.hi{background:#e4eef7}
+  .csd-it.sel{font-weight:700; color:var(--c-centr)}
+  .csd-dis{opacity:.55; pointer-events:none}
   .depths{display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px}
   .dbtn{border:1px solid var(--line); background:#fff; border-radius:4px; padding:2px 8px; font-size:11.5px; cursor:pointer}
   .dbtn.on{color:#fff}
@@ -8750,6 +8765,53 @@ function calcInputs(o){
     tcalc: TCALC[o.a]!==undefined?TCALC[o.a]:null
   };
 }
+/* csdMake: превращает нативный <select> в компактный кастомный дропдаун, который не раздувает
+   контейнер при длинных опциях. Нативный select скрывается, но остаётся источником данных:
+   выбор пункта выставляет selectedIndex и диспатчит 'change' — штатные обработчики работают. */
+function csdMake(sel){
+  if(!sel) return null;
+  if(sel._csd) return sel._csd;
+  if(!window._csdGlob){ window._csdGlob=true;
+    document.addEventListener('click', ev=>{ document.querySelectorAll('.csd.open').forEach(w=>{ if(!w.contains(ev.target)) w.classList.remove('open'); }); });
+  }
+  const wrap=document.createElement('div'); wrap.className='csd'+(sel.disabled?' csd-dis':'');
+  const btn=document.createElement('button'); btn.type='button'; btn.className='csd-btn';
+  const lab=document.createElement('span'); lab.className='csd-lab';
+  const car=document.createElement('span'); car.className='csd-car'; car.textContent='▾';
+  btn.appendChild(lab); btn.appendChild(car);
+  const pop=document.createElement('div'); pop.className='csd-pop';
+  sel.parentNode.insertBefore(wrap, sel);
+  sel.style.display='none';
+  wrap.appendChild(sel); wrap.appendChild(btn); wrap.appendChild(pop);
+  const curName=()=>{ const op=sel.options[sel.selectedIndex]; return op?op.textContent:'—'; };
+  const syncLab=()=>{ lab.textContent=curName(); lab.title=curName(); };
+  const open=()=>{ wrap.classList.add('open'); const it=pop.querySelector('.csd-it.sel'); if(it) it.scrollIntoView({block:'nearest'}); };
+  const close=()=>wrap.classList.remove('open');
+  pop.innerHTML=[...sel.options].map((op,i)=>`<div class="csd-it${i===sel.selectedIndex?' sel':''}" data-i="${i}">${esc(op.textContent)}</div>`).join('');
+  syncLab();
+  btn.onclick=e=>{ e.stopPropagation(); wrap.classList.contains('open')?close():open(); };
+  pop.onclick=e=>{
+    const it=e.target.closest('.csd-it'); if(!it) return;
+    sel.selectedIndex=+it.dataset.i;
+    pop.querySelectorAll('.csd-it').forEach(x=>x.classList.remove('sel')); it.classList.add('sel');
+    syncLab(); close();
+    sel.dispatchEvent(new Event('change',{bubbles:true}));
+  };
+  btn.onkeydown=e=>{
+    if(e.key==='Escape'){ close(); return; }
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'||e.key==='Enter'||e.key===' '){
+      e.preventDefault();
+      if(!wrap.classList.contains('open')){ open(); return; }
+      const items=[...pop.querySelectorAll('.csd-it')];
+      let i=items.findIndex(x=>x.classList.contains('hi')); if(i<0) i=items.findIndex(x=>x.classList.contains('sel'));
+      if(e.key==='Enter'||e.key===' '){ if(items[i]) items[i].click(); return; }
+      i=(e.key==='ArrowDown')?Math.min(items.length-1,i+1):Math.max(0,i-1);
+      items.forEach(x=>x.classList.remove('hi')); if(items[i]){ items[i].classList.add('hi'); items[i].scrollIntoView({block:'nearest'}); }
+    }
+  };
+  sel._csd=wrap;
+  return wrap;
+}
 function tabCalc(o, el){
   const ro=!document.body.classList.contains('role-edit');
   const ci=calcInputs(o);
@@ -8758,10 +8820,12 @@ function tabCalc(o, el){
   el.innerHTML=`
   <div class="normref">Раздел нормативных расчётов — для пользователя с правами «оператор». Коэффициенты из таблиц СП вводятся вручную и помечены; формулы и подстановка показываются открыто. Данные объекта подставляются автоматически.${ro?' <b>У вас права «наблюдатель» — поля только для чтения.</b>':''}</div>
   <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px">
-    <b style="font-size:12.5px">Расчёт:</b>
-    <select id="calcSel" style="flex:1; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:12.8px">
-      ${CALCS.map(c=>`<option value="${c.id}" ${c.id===curCalc?'selected':''}>${esc(c.name)}</option>`).join('')}
-    </select>
+    <b style="font-size:12.5px; flex:none">Расчёт:</b>
+    <div style="flex:1; min-width:0">
+      <select id="calcSel">
+        ${CALCS.map(c=>`<option value="${c.id}" ${c.id===curCalc?'selected':''}>${esc(c.name)}</option>`).join('')}
+      </select>
+    </div>
   </div>
   ${ro?'':'<button class="addrow" id="calcAuto" style="border-style:solid; border-color:var(--ok); color:var(--ok); margin-bottom:8px">⚡ Автозаполнить из карточки объекта и нормативных таблиц</button>'}
   <div id="calcBody"></div>
@@ -8776,6 +8840,7 @@ function tabCalc(o, el){
     const go=document.getElementById('calcGo'); if(go) go.click();
   };
   document.getElementById('calcSel').onchange=e=>{ curCalc=e.target.value; tabCalc(o, el); };
+  csdMake(document.getElementById('calcSel'));
   const clr=document.getElementById('calcAppClear');
   if(clr) clr.onclick=e=>{ e.preventDefault(); sessionStorage.setItem('gtm_calcapp', JSON.stringify(JSON.parse(sessionStorage.getItem('gtm_calcapp')||'[]').filter(x=>x.addr!==o.a))); tabCalc(o, el); };
   const body=document.getElementById('calcBody');
