@@ -166,6 +166,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   .depths{display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px}
   .dbtn{border:1px solid var(--line); background:#fff; border-radius:4px; padding:2px 8px; font-size:11.5px; cursor:pointer}
   .dbtn.on{color:#fff}
+  .lithoCell{border:none; background:none; padding:0; cursor:pointer}
+  .lithoCell:hover svg{border-color:#b3261e; box-shadow:0 0 4px rgba(179,38,30,.35)}
   .note{font-size:11.5px; color:var(--mut); margin-top:4px}
   .tcalc{width:70px; padding:2px 6px; border:1px solid var(--line); border-radius:4px; font-size:12.5px; text-align:right}
   #settings{display:none; position:absolute; top:56px; right:0; z-index:900; background:#fff; border:1px solid var(--line); border-radius:0 0 0 8px; box-shadow:-4px 6px 18px rgba(0,0,0,.18); padding:16px; width:320px; font-size:13px}
@@ -979,21 +981,22 @@ document.addEventListener('DOMContentLoaded',()=>{
   </div>
 </div>
 
-<script src="db_p1.js?v=59860d3d"></script>
-<script src="db_p2.js?v=59860d3d"></script>
-<script src="db_p3.js?v=59860d3d"></script>
-<script src="db_p4.js?v=59860d3d"></script>
-<script src="db_p5.js?v=59860d3d"></script>
-<script src="db_p6.js?v=59860d3d"></script>
-<script src="db_p7.js?v=59860d3d"></script>
-<script src="db_p8.js?v=59860d3d"></script>
-<script src="db_wells.js?v=37610ef2"></script>
+<script src="db_p1.js?v=45975f56"></script>
+<script src="db_p2.js?v=45975f56"></script>
+<script src="db_p3.js?v=45975f56"></script>
+<script src="db_p4.js?v=45975f56"></script>
+<script src="db_p5.js?v=45975f56"></script>
+<script src="db_p6.js?v=45975f56"></script>
+<script src="db_p7.js?v=45975f56"></script>
+<script src="db_p8.js?v=45975f56"></script>
+<script src="db_wells.js?v=7dbcacdf"></script>
 <script src="kadastr.js?v=20260911b"></script>
 <script src="niokr.js?v=02b2f4095c"></script>
 <script src="stok_data.js?v=20260916a"></script>
 <script src="reestr_coords.js?v=20260928a"></script>
 <script src="akt.js?v=20261002a"></script>
 <script src="district.js?v=20261002a"></script>
+<script src="gost_ugo.js?v=20261006a"></script>
 
 <div id="loginModal">
   <form class="lbox" id="loginForm">
@@ -3221,18 +3224,24 @@ function igiWellsHtml(o){
   const byRep={};
   ws.forEach(w=>w.src.forEach(s=>{ (byRep[s.rep]=byRep[s.rep]||{wells:new Set(),sys:w.sys}).wells.add(w.w+'|'+w.x+'|'+w.y); }));
   const nOk=ws.filter(w=>skLocalToWgs(w)).length;
+  /* колонки ИГИ (o.lith): карта для кнопок перехода */
+  const normW2=s=>String(s).replace(/\s*\(т\.\d+\)/,'').trim();
+  const lithMap2={}; (o.lith||[]).forEach(lw=>{ lithMap2[normW2(lw.well)]=lw; });
+  const hasLith=Object.keys(lithMap2).length>0;
   const blocks=Object.keys(byRep).sort().map(rep=>{
     const ri=repLab(o,rep), cap=ri.t+(ri.y&&ri.y!=='—'?', '+ri.y:'');
     const rows=ws.filter(w=>w.src.some(s=>s.rep===rep));
     return `<details class="igt"><summary>🕳 ${esc(cap)} · ${rows.length} скв. · СК «${esc(rows[0].sys||'—')}»</summary>
     <div style="padding:4px 6px; overflow-x:auto"><table class="rows static" style="min-width:760px"><thead><tr>
-      <th title="Отметить для построения профиля (блок «Профиль по скважинам» ниже)">☑</th><th>Скважина</th><th>X, м</th><th>Y, м</th><th>Z, м</th><th>Глубина, м</th><th>Дата бурения</th><th>WGS-84 (модель)</th><th>Источник</th>
+      <th title="Отметить для построения профиля (блок «Профиль по скважинам» ниже)">☑</th><th>Скважина</th><th>X, м</th><th>Y, м</th><th>Z, м</th><th>Глубина, м</th><th>Дата бурения</th><th>WGS-84 (модель)</th>${hasLith?'<th>Колонка ИГИ</th>':''}<th>Источник</th>
     </tr></thead><tbody>
     ${rows.map(w=>{
       const ll=skLocalToWgs(w);
       const srcs=w.src.map(s=>`<button class="igiSrc" data-f="${esc(s.rep)}" data-p="${s.page}" title="Открыть каталог на стр. ${s.page}">стр. ${s.page}</button>`).join(' ');
+      const lw=hasLith?lithMap2[normW2(w.w)]:null;
+      const lithCell=hasLith?(lw?`<button class="dbtn lithGo" data-w="${esc(lw.well)}" style="padding:1px 7px;font-size:11px" title="${esc(lw.layers.map(l=>l.ige).filter(Boolean).join(' → ')||lw.layers.map(l=>(l.litho||'').split(/[ ,]/)[0]).join(' → '))}">▦ ${lw.layers.length} слоёв</button>`:'<span style="color:var(--mut)">—</span>'):'';
       return `<tr><td><input type="checkbox" class="sectPick" data-w="${esc(w.w)}" title="Включить в профиль"></td><td><b>${esc(w.w)}</b></td><td>${w.x.toLocaleString('ru-RU')}</td><td>${w.y.toLocaleString('ru-RU')}</td><td>${w.z==null?'—':w.z}</td><td>${w.dep||'—'}</td><td>${w.dt||'—'}</td>
-      <td>${ll?(ll.lat.toFixed(6)+', '+ll.lon.toFixed(6)+(ll.exact?' <span style="color:#1a7f4b" title="Прямые геодезические координаты WGS-84 (поправки геодезслужбы 09.2026)">◆геодез</span>':'')):'<span style="color:var(--mut)" title="Задайте параметры перехода СК (кнопка выше)">— требуются параметры</span>'}</td><td>${srcs}</td></tr>`;
+      <td>${ll?(ll.lat.toFixed(6)+', '+ll.lon.toFixed(6)+(ll.exact?' <span style="color:#1a7f4b" title="Прямые геодезические координаты WGS-84 (поправки геодезслужбы 09.2026)">◆геодез</span>':'')):'<span style="color:var(--mut)" title="Задайте параметры перехода СК (кнопка выше)">— требуются параметры</span>'}</td>${hasLith?'<td>'+lithCell+'</td>':''}<td>${srcs}</td></tr>`;
     }).join('')}</tbody></table></div></details>`;
   }).join('');
   const syss=[...new Set(ws.map(w=>w.sys).filter(Boolean))].map(s=>{
@@ -3373,13 +3382,33 @@ function igePropsHtml(o){
   }
   return `<details class="igt" style="border-width:2px" ${prs.length?'open':''}><summary><b>🧪 ИГЭ: нормативные механические, теплофизические и геокриологические характеристики</b>${prs.length?` · ${prs.length} верифицир.`:''} · ${tabs.length} табл. <span style="color:var(--mut);font-weight:400">— описания ИГЭ (литология, криотекстура, процессы) — в разделе выше</span></summary><div style="padding:8px 10px">${verified}${reg}</div></details>`;
 }
-/* ---------- литологические колонки: статус, шаблон, импорт CSV (локально) ---------- */
+/* ---------- литологические колонки: из базы (o.lith) или локальный импорт CSV ---------- */
 function lithHtml(o){
+  const edt=(document.body.classList.contains('role-edit')||document.body.classList.contains('role-insp'));
+  if(o.lith&&o.lith.length){
+    const ws=o.lith, nL=ws.reduce((s,w)=>s+w.layers.length,0);
+    const srcs={}; ws.forEach(w=>{ const k=(w.csrc||w.src||'').split(' стр')[0]; srcs[k]=(srcs[k]||0)+1; });
+    const nCryo=ws.reduce((s,w)=>s+w.layers.filter(l=>l.cryo).length,0);
+    const qaN=ws.filter(w=>w.qa&&w.qa.length).length;
+    const GU=window.GOST_UGO||null;
+    const used=new Set(); if(GU) ws.forEach(w=>w.layers.forEach(l=>used.add(GU.match(l.litho))));
+    const defs=GU?'<svg style="position:absolute;width:0;height:0">'+GU.defs('lc',[...used],{cryo:true})+'</svg>':'';
+    const cells=ws.slice().sort((a,b)=>String(a.well).localeCompare(String(b.well),'ru',{numeric:true})).map(w=>
+      `<button class="lithoCell" data-w="${esc(w.well)}" title="${esc(w.well)}${w.t?' ('+esc(w.t)+')':''} · устье ${w.z0!=null?w.z0.toFixed(2):'—'} м · глубина ${w.depth!=null?w.depth.toFixed(1):'—'} м · ${w.layers.length} слоёв — клик: колонка и границы слоёв">${lithMiniSvg(w)}</button>`).join('');
+    const legend=(GU&&used.size)?`<div style="border-top:1px dashed var(--line);margin:4px 0;padding:4px 2px"><span style="font-size:11.5px;color:var(--mut);margin-right:8px">УГО (ГОСТ Р 21.302-2021):</span>${GU.legendHtml([...used].filter(k=>k!=='none'),'lc')}${used.has('none')?'<span style="font-size:11px;color:var(--mut)">· серое — грунт по легенде источника (нет типового УГО)</span>':''}</div>`:'';
+    return `<details class="igt" style="border-width:2px" open><summary><b>⛏ Литологические колонки скважин (основа 3D-геологии площадки)</b> · оцифровано: ${ws.length} скважин · ${nL} слоёв</summary>
+    <div style="padding:8px 10px">
+      <div class="normref">Колонки оцифрованы из графических приложений отчётов ИГИ: ${Object.keys(srcs).map(k=>esc(k)+' — '+srcs[k]+' скв.').join('; ')}. Каждый слой геопривязан: плановые координаты устья (местная СК) и абсолютные отметки (Балтийская 1977). Геометрия верифицирована: отметка подошвы = устье − глубина, мощность = кровля → подошва, непрерывность разреза от поверхности до забоя. Криогенная текстура расшифрована у ${nCryo} слоёв.${qaN?' Замечания к источнику у '+qaN+' скв. (в таблице колонки помечены красным).':''} Клик по мини-колонке — полная таблица слоёв с границами и абсолютными отметками.</div>
+      ${defs}
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${cells}</div>
+      ${legend}
+      <div id="lithoView"></div>
+    </div></details>`;
+  }
   const key='gtm_lith_'+o.id;
   let saved=[]; try{ saved=JSON.parse(localStorage.getItem(key)||'[]'); }catch(e){}
   const wells=new Set((o.igiWells||[]).map(w=>w.w));
   const matched=saved.filter(r=>wells.has(r.well)).length;
-  const edt=(document.body.classList.contains('role-edit')||document.body.classList.contains('role-insp'));
   let view='';
   if(saved.length){
     const byW={}; saved.forEach(r=>{ (byW[r.well]=byW[r.well]||[]).push(r); });
@@ -3398,6 +3427,54 @@ function lithHtml(o){
     ${edt?`<label class="dbtn" style="cursor:pointer">⇧ Импорт CSV<input type="file" id="lithFile" accept=".csv,.txt" style="display:none"></label>`:''}</div>
     ${view}
   </div></details>`;
+}
+/* ---------- мини-колонка и детальный вид скважины (структура по проекту ГТМ ЧГРК, УГО по ГОСТ Р 21.302-2021) ---------- */
+function lithMiniSvg(w, hh){
+  hh=hh||120; const GU=window.GOST_UGO||null;
+  const wpx=46, dep=w.depth||Math.max.apply(null,w.layers.map(l=>l.z_bot))||1;
+  const sc=(hh-24)/dep;
+  const layers=w.layers.slice().sort((a,b)=>a.z_top-b.z_top);
+  const r=layers.map(l=>{
+    const y0=16+l.z_top*sc, h=Math.max((l.z_bot-l.z_top)*sc,0.6);
+    const k=GU?GU.match(l.litho):null;
+    const st=l.ok===false?'#b3261e':'#5b5548', sw=l.ok===false?1:0.5;
+    return `<rect x="4" y="${y0.toFixed(1)}" width="${wpx-8}" height="${h.toFixed(1)}" fill="${GU?GU.fill('lc',k):'#cfe0ee'}" stroke="${st}" stroke-width="${sw}"><title>${(+l.z_top).toFixed(1)}–${(+l.z_bot).toFixed(1)} м · ${esc(l.litho||'')}</title></rect>`;
+  }).join('');
+  return `<svg width="${wpx}" height="${hh}" viewBox="0 0 ${wpx} ${hh}" style="background:#fff;border:1px solid var(--line);border-radius:4px">
+  <text x="${wpx/2}" y="10" text-anchor="middle" font-size="8" font-weight="700" fill="#333">${esc(String(w.well).replace(/^(ЛБ|УК)-/,''))}</text>${r}
+  <text x="${wpx/2}" y="${hh-3}" text-anchor="middle" font-size="7.5" fill="#666">${dep.toFixed(0)} м</text></svg>`;
+}
+function lithViewWell(o, wid){
+  const w=(o.lith||[]).find(x=>x.well===wid); if(!w) return;
+  const el=document.getElementById('lithoView'); if(!el) return;
+  const GU=window.GOST_UGO||null;
+  const layers=w.layers.slice().sort((a,b)=>a.z_top-b.z_top);
+  const dep=w.depth||layers[layers.length-1].z_bot;
+  const hh=Math.max(220, Math.min(560, Math.round(dep*9))), wpx=74, sc=(hh-30)/dep;
+  let col='';
+  layers.forEach(l=>{
+    const y0=18+l.z_top*sc, h=Math.max((l.z_bot-l.z_top)*sc,0.8);
+    const k=GU?GU.match(l.litho):null, ck=(GU&&l.cryo)?GU.matchCryo(l.cryo):null;
+    const fullBg=(ck==='ataksit'||ck==='bazaln');
+    const st=l.ok===false?'#b3261e':'#444';
+    col+=`<rect x="8" y="${y0.toFixed(1)}" width="${wpx-16}" height="${h.toFixed(1)}" fill="${GU?GU.fill('lc',fullBg?ck:k):'#cfe0ee'}" stroke="${st}" stroke-width="${l.ok===false?1:0.5}"><title>${(+l.z_top).toFixed(1)}–${(+l.z_bot).toFixed(1)} м · ${esc(l.litho||'')}</title></rect>`;
+    if(ck&&!fullBg) col+=`<rect x="8" y="${y0.toFixed(1)}" width="${wpx-16}" height="${h.toFixed(1)}" fill="url(#lc_cryo_${ck})" pointer-events="none"><title>${esc(l.litho||'')}</title></rect>`;
+    const sl=GU?GU.sandLetter(k):null;
+    if(sl&&h>16){ const cx=wpx-6, cy=y0+h/2;
+      col+=`<circle cx="${cx}" cy="${cy.toFixed(1)}" r="7" fill="#fff" stroke="#000" stroke-width="0.7"/><text x="${cx}" y="${(cy+3.2).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="bold" fill="#000">${sl}</text>`; }
+  });
+  const colSvg=`<svg width="${wpx}" height="${hh}" viewBox="0 0 ${wpx} ${hh}" style="background:#fff;border:1px solid var(--line);border-radius:4px;flex:none">
+  <text x="${wpx/2}" y="11" text-anchor="middle" font-size="9" font-weight="700" fill="#333">${esc(String(w.well).replace(/^(ЛБ|УК)-/,''))}</text>${col}
+  <text x="${wpx/2}" y="${hh-4}" text-anchor="middle" font-size="8" fill="#666">забой ${dep.toFixed(1)} м</text></svg>`;
+  const rows=layers.map(l=>`<tr${l.ok===false?' style="background:#fdecec"':''}><td>${esc(l.ige||'—')}</td><td style="white-space:nowrap">${esc(l.gidx||'—')}</td><td>${(+l.z_top).toFixed(1)}</td><td>${(+l.z_bot).toFixed(1)}</td><td>${(w.z0!=null?(w.z0-l.z_top):null)!=null?(w.z0-l.z_top).toFixed(2):'—'}</td><td>${l.abs_bot!=null?(+l.abs_bot).toFixed(2):'—'}</td><td>${esc(l.cryo||'—')}${l.ice?', '+esc(l.ice):''}${l.ii?' (ii '+esc(l.ii)+')':''}</td><td>${esc(l.litho||'')}</td></tr>`).join('');
+  const qaHtml=(w.qa&&w.qa.length)?`<div class="normref" style="margin-top:4px;border-color:#e0b4b4">⚠ Замечания к источнику: ${w.qa.map(esc).join('; ')}</div>`:'';
+  el.innerHTML=`<div style="display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin-bottom:6px;flex-wrap:wrap">
+  ${colSvg}
+  <div style="flex:1;overflow-x:auto;min-width:460px"><b>${esc(w.well)}</b>${w.t?' ('+esc(w.t)+')':''} <span class="chip on" style="cursor:default">точные границы · ${esc(w.src||'')}</span>
+  <div style="font-size:12px;color:var(--mut);margin:3px 0">устье ${w.z0!=null?w.z0.toFixed(2):'—'} м (Балт. 1977)${w.zcat!=null?', по каталогу '+w.zcat.toFixed(2):''} · глубина ${dep.toFixed(1)} м${w.date?' · окончена '+esc(w.date):''} · ${esc(w.sys||'')}${w.x!=null?' · X '+w.x.toFixed(1)+', Y '+w.y.toFixed(1):' · координаты отсутствуют (архивная скважина)'}</div>
+  <table class="rows static" style="margin-top:4px;min-width:780px"><thead><tr><th>ИГЭ</th><th>Геол. инд.</th><th>Кровля, м</th><th>Подошва, м</th><th>Кровля, абс. м</th><th>Подошва, абс. м</th><th>Криогенная текстура</th><th>Литологический состав и состояние</th></tr></thead><tbody>${rows}</tbody></table>
+  ${qaHtml}</div></div>`;
+  el.scrollIntoView({behavior:'smooth', block:'start'});
 }
 function lithDownload(){
   const rows=['# Литологические колонки скважин — шаблон импорта (ГТМ ГТС ЗФ)','# скважина;Z_кровли_м;Z_подошвы_м;ИГЭ;литология;примечание','# отметки абсолютные (Балтийская 1977); имя скважины — как в каталоге ИГИ','well;z_top;z_bot;ige;litho;note','Пример-1;65.20;63.80;ИГЭ-2;Суглинок лёгкий пылеватый;стр. 12 прил. 5'];
@@ -3425,9 +3502,10 @@ function lithImport(o,file){
 }
 /* ---------- профиль по скважинам: рельеф по устьям + глубины (без литологии) ---------- */
 function sectHtml(o){
-  return `<details class="igt" style="border-width:2px"><summary><b>📐 Профиль по скважинам</b> <span style="color:var(--mut);font-weight:400">— отметьте скважины ☑ в таблице каталога выше, затем постройте разрез рельефа и глубин</span></summary>
+  const hasLith=!!(o.lith&&o.lith.length);
+  return `<details class="igt" style="border-width:2px"><summary><b>📐 Профиль по скважинам</b> <span style="color:var(--mut);font-weight:400">— отметьте скважины ☑ в таблице каталога выше, затем постройте разрез</span></summary>
   <div style="padding:8px 10px">
-    <div class="normref">Профиль строится по каталогу выработок: цепочка скважин упорядочивается по ближайшему соседу (плановые координаты местной СК), вертикаль — абсолютные отметки устья (Балтийская 1977) и глубины из каталогов. Литологические границы не наносятся: колонки не оцифрованы (см. блок «Литологические колонки»). После загрузки колонок модуль дополняется штриховкой ИГЭ.</div>
+    <div class="normref">Профиль строится по каталогу выработок: цепочка скважин упорядочивается по ближайшему соседу (плановые координаты местной СК), вертикаль — абсолютные отметки устья (Балтийская 1977) и глубины из каталогов. ${hasLith?'Для скважин с оцифрованными колонками ('+o.lith.length+') столбики строятся послойно с условными графическими обозначениями грунтов по ГОСТ Р 21.302-2021 (штриховка литологии, оверлей криогенной текстуры, буквенный индекс песков в круге); наведение курсора на слой показывает его описание. Литологические границы между скважинами не интерполируются — наносятся только фактические данные колонок.':'Литологические границы не наносятся: колонки не оцифрованы (см. блок «Литологические колонки»).'}</div>
     <div style="margin:6px 0"><button class="dbtn" id="sectGo">📐 Построить профиль по отмеченным</button> <button class="dbtn" id="sectAll" title="Все скважины с координатами и глубинами (до 40)">По всем (≤40)</button> <button class="dbtn" id="sectSvg" disabled>⇩ SVG</button> <span id="sectMsg" style="font-size:12px;color:var(--mut)"></span></div>
     <div id="sectOut" style="overflow-x:auto"></div>
   </div></details>`;
@@ -3450,26 +3528,54 @@ function sectBuild(o,ws){
   let dist=[0]; for(let i=1;i<chain.length;i++){ const dx=chain[i].x-chain[i-1].x, dy=chain[i].y-chain[i-1].y; dist.push(dist[i-1]+Math.hypot(dx,dy)); }
   const L=dist[dist.length-1]||1;
   let zMax=-1e9,zMin=1e9;
-  chain.forEach(w=>{ zMax=Math.max(zMax,w.z); const zb=w.z-(+w.dep||0); zMin=Math.min(zMin,zb); });
+  /* литология: карта колонок строится до шкалы, чтобы zMin охватывал полные колонки */
+  const GU=window.GOST_UGO||null;
+  const normW=s=>String(s).replace(/\s*\(т\.\d+\)/,'').trim();
+  const lithMap={}; (o.lith||[]).forEach(lw=>{ lithMap[normW(lw.well)]=lw; });
+  chain.forEach(w=>{ zMax=Math.max(zMax,w.z); let zb=w.z-(+w.dep||0);
+    const lw=lithMap[normW(w.w)];
+    if(lw) lw.layers.forEach(l=>{ zb=Math.min(zb, w.z-l.z_bot); });
+    zMin=Math.min(zMin,zb); });
   const pad=(zMax-zMin)*0.12+1; zMax+=pad; zMin-=pad;
-  const W=Math.max(680,chain.length*86), H=360, mL=58,mR=14,mT=30,mB=52;
+  const W=Math.max(680,chain.length*86), H=Math.max(380,Math.min(760,Math.round((zMax-zMin)*7))), mL=58,mR=14,mT=30,mB=52;
   const X=d=>mL+(W-mL-mR)*d/L, Y=z=>mT+(H-mT-mB)*(zMax-z)/(zMax-zMin);
+  /* набор использованных УГО */
+  const used=new Set(), usedCryo=new Set(); let nLith=0;
+  if(GU) chain.forEach(w=>{ const lw=lithMap[normW(w.w)]; if(lw){ nLith++;
+    lw.layers.forEach(l=>{ used.add(GU.match(l.litho)); const ck=l.cryo&&GU.matchCryo(l.cryo); if(ck) usedCryo.add(ck); }); } });
   let g='';
   for(let i=0;i<=4;i++){ const z=zMin+(zMax-zMin)*i/4, y=Y(z);
     g+=`<line x1="${mL}" y1="${y}" x2="${W-mR}" y2="${y}" stroke="#dfe4e8" stroke-width="1"/><text x="${mL-6}" y="${y+4}" text-anchor="end" font-size="10" fill="#6a7680">${z.toFixed(1)}</text>`; }
   g+=`<text x="14" y="${mT-8}" font-size="10" fill="#6a7680">абс. отм., м (Балт. 1977)</text>`;
   const surf=chain.map((w,i)=>`${X(dist[i]).toFixed(1)},${Y(w.z).toFixed(1)}`).join(' ');
   chain.forEach((w,i)=>{ const x=X(dist[i]), zt=Y(w.z), dep=+w.dep||0;
-    if(dep>0){ g+=`<rect x="${(x-4).toFixed(1)}" y="${zt.toFixed(1)}" width="8" height="${(Y(w.z-dep)-zt).toFixed(1)}" fill="#cfe0ee" stroke="#7a9dbd" stroke-width="0.8"/>`; }
+    const lw=GU?lithMap[normW(w.w)]:null;
+    if(lw){
+      const colW=16;
+      lw.layers.slice().sort((a,b)=>a.z_top-b.z_top).forEach(l=>{
+        const yA=Y(w.z-l.z_top), yB=Y(w.z-l.z_bot), hh=yB-yA; if(hh<=0) return;
+        const k=GU.match(l.litho);
+        const ck=l.cryo?GU.matchCryo(l.cryo):null;
+        const fullBg=(ck==='ataksit'||ck==='bazaln'); // криотекстуры со сплошным фоном — как основная заливка
+        g+=`<rect x="${(x-colW/2).toFixed(1)}" y="${yA.toFixed(1)}" width="${colW}" height="${hh.toFixed(1)}" fill="${GU.fill('g',fullBg?ck:k)}" stroke="${l.ok===false?'#b3261e':'#444'}" stroke-width="${l.ok===false?1:0.5}"><title>${esc(w.w)} · ${(+l.z_top).toFixed(1)}–${(+l.z_bot).toFixed(1)} м · ${esc(l.litho||'')}</title></rect>`;
+        if(ck&&!fullBg) g+=`<rect x="${(x-colW/2).toFixed(1)}" y="${yA.toFixed(1)}" width="${colW}" height="${hh.toFixed(1)}" fill="url(#g_cryo_${ck})" pointer-events="none"><title>${esc(l.litho||'')}</title></rect>`;
+        const sl=GU.sandLetter(k);
+        if(sl&&hh>13){ const cx=x+colW/2+7.5, cy=(yA+yB)/2;
+          g+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="#fff" stroke="#000" stroke-width="0.7"/><text x="${cx.toFixed(1)}" y="${(cy+3).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#000">${sl}</text>`; }
+      });
+    } else if(dep>0){ g+=`<rect x="${(x-4).toFixed(1)}" y="${zt.toFixed(1)}" width="8" height="${(Y(w.z-dep)-zt).toFixed(1)}" fill="#cfe0ee" stroke="#7a9dbd" stroke-width="0.8"><title>Литологическая колонка не оцифрована</title></rect>`; }
     g+=`<circle cx="${x.toFixed(1)}" cy="${zt.toFixed(1)}" r="3.2" fill="#1a5f9e"/>`;
     g+=`<text x="${x.toFixed(1)}" y="${H-mB+14}" text-anchor="end" font-size="10" fill="#33404a" transform="rotate(-38 ${x.toFixed(1)} ${H-mB+14})">${esc(w.w)}</text>`;
     g+=`<text x="${x.toFixed(1)}" y="${(zt-6).toFixed(1)}" text-anchor="middle" font-size="9.5" fill="#33404a">${w.z.toFixed(2)}</text>`;
   });
   g+=`<polyline points="${surf}" fill="none" stroke="#2f6b3a" stroke-width="2"/>`;
   g+=`<text x="${W-mR}" y="${H-8}" text-anchor="end" font-size="10" fill="#6a7680">длина профиля ${(L/1000).toFixed(2)} км · скважин: ${chain.length}</text>`;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="Arial,sans-serif"><rect width="${W}" height="${H}" fill="#fff"/><text x="${mL}" y="16" font-size="12" font-weight="bold" fill="#20303c">Инженерно-геологический профиль (рельеф по устьям скважин; столбики — глубины из каталогов)</text>${g}</svg>`;
-  out.innerHTML=svg;
-  msg.textContent='Построен по '+chain.length+' скважинам. Порядок — цепочка ближайшего соседа; при необходимости задайте явный створ отметкой.';
+  const defs=GU&&used.size?GU.defs('g',[...used],{cryo:true}):'';
+  const ttl=nLith?'Инженерно-геологический разрез (столбики скважин послойно, УГО по ГОСТ Р 21.302-2021)':'Инженерно-геологический профиль (рельеф по устьям скважин; столбики — глубины из каталогов)';
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="Arial,sans-serif"><rect width="${W}" height="${H}" fill="#fff"/><text x="${mL}" y="16" font-size="12" font-weight="bold" fill="#20303c">${ttl}</text>${defs}${g}</svg>`;
+  const legend=(GU&&used.size)?`<div style="border-top:1px dashed var(--line);margin-top:2px;padding:4px 2px"><span style="font-size:11.5px;color:var(--mut);margin-right:8px">УГО (ГОСТ Р 21.302-2021):</span>${GU.legendHtml([...used].filter(k=>k!=='none'))}${used.has('none')?'<span style="font-size:11px;color:var(--mut)">· серое — грунт по легенде источника (нет типового УГО)</span>':''}</div>`:'';
+  out.innerHTML=svg+legend;
+  msg.textContent='Построен по '+chain.length+' скважинам'+(nLith?' (с литологией: '+nLith+')':'')+'. Порядок — цепочка ближайшего соседа; при необходимости задайте явный створ отметкой.';
   btn.disabled=false;
   btn.onclick=()=>{ const blob=new Blob([svg],{type:'image/svg+xml'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='profile_'+o.id+'.svg'; a.click(); };
 }
@@ -3506,6 +3612,8 @@ function tabIgi(o, el){
   const lt=el.querySelector('#lithTpl'); if(lt) lt.onclick=lithDownload;
   const lf=el.querySelector('#lithFile'); if(lf) lf.onchange=()=>{ if(lf.files&&lf.files[0]) lithImport(o,lf.files[0]); };
   const ld=el.querySelector('#lithDel'); if(ld) ld.onclick=()=>{ localStorage.removeItem('gtm_lith_'+o.id); renderDetail(o); };
+  el.querySelectorAll('.lithoCell').forEach(b=>b.onclick=()=>lithViewWell(o,b.dataset.w));
+  el.querySelectorAll('.lithGo').forEach(b=>b.onclick=()=>lithViewWell(o,b.dataset.w));
   const sGo=el.querySelector('#sectGo'); if(sGo) sGo.onclick=()=>{
     const names=new Set(); el.querySelectorAll('.sectPick:checked').forEach(c=>names.add(c.dataset.w));
     sectBuild(o,(o.igiWells||[]).filter(w=>names.has(w.w)));
@@ -11019,8 +11127,8 @@ setTimeout(()=>{ try{
 Object.assign(window,{esc,micAttach,exifGps,downscaleImg,polishComment,fmtPhTs,libDocx,durlToU8,facOf,stopSR,statusDetail,statusOf,DCOL,SCOL});
 
 };
-const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"CiI+Exd8A0QgN6fY",ivW:"B112c22CT9Vz+Nln"};
-const BUILD="59860d3d";
+const ENC={saltV:"t3I1Fo3UmyHi2QVxI+xO8Q==",ivV:"wcTNZy1/qW6MNGFl",wrapV:"FTULDY0QzX0nQy46Hkm3VPdHrKFC9ltEQ+g/YVcU6Mrqe4z65L3aqOMizbU7fB4K",saltE:"c4hxH/oe7BOQt0uUm524cw==",ivE:"AAieAismNxH0txgZ",wrapE:"zVuRgVKgPm+Da88Jeh/O4clf/GQocB0dEBuE9NlSm8X+4OCaLAJRyxybY8uWziYS",saltX:"hCdc4H+jL+HvUjxG/0TMcg==",ivX:"ArRd9uLOpCyt9vwZ",wrapX:"cZtytXvEI2xtIRhykkS/zqWfPij0KPFAU7ecT+uvA+yCzJqlodEKs//X8kJR3uxl",ivD:"CCEKUwXMuXbyPkkg",ivW:"DwwOfsfDLEEhSoPa"};
+const BUILD="45975f56";
 function enterApp(role){ sessionStorage.setItem("gtm_role",role); document.body.classList.add("authed","role-"+role); document.getElementById("loginModal").style.display="none"; document.getElementById("roleBadge").textContent=role==="edit"?"оператор":(role==="insp"?"надзор":"наблюдатель"); }
 const _b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 async function _unwrap(pw,saltB,ivB,wrapB){
